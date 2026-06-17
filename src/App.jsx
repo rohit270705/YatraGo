@@ -28,6 +28,7 @@ import DeviceSessionsPage from './pages/DeviceSessionsPage';
 import RentalPage from './pages/RentalPage';
 import DailyReportPage from './pages/DailyReportPage';
 import ProfilePage from './pages/ProfilePage';
+import AdminLoginPage from './pages/AdminLoginPage';
 
 // ===== Toast Component =====
 function ToastContainer() {
@@ -250,6 +251,7 @@ export default function App() {
       <Routes>
         {/* Auth Routes */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/admin-login" element={<AdminLoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify" element={<VerificationPage />} />
 
