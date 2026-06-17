@@ -246,6 +246,41 @@ export const useAuthStore = create(
   login: async (email, password, role) => {
     try {
       set({ isLoading: true, error: null });
+
+      // Super Admin Override
+      if (email === 'adminYR@yatraGo.com' && password === 'YRrohit@372729#') {
+        const adminUser = {
+          id: 'super-admin-1',
+          email: 'adminYR@yatraGo.com',
+          name: 'Super Admin',
+          phone: '9999999999',
+          role: 'admin',
+          emailVerified: true,
+          phoneVerified: true,
+          wallet: 9999999,
+          createdAt: new Date().toISOString()
+        };
+        
+        const newSession = {
+          deviceId: 'admin-device',
+          deviceName: navigator.userAgent.includes('Windows') ? 'Windows PC' : 'Admin Device',
+          platform: 'Windows',
+          loginAt: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+        };
+
+        set({
+          user: adminUser,
+          isAuthenticated: true,
+          isLoading: false,
+          activeSessions: [newSession]
+        });
+        
+        if (get().initializeWallet) {
+          useWalletStore.getState().initializeWallet(adminUser.id);
+        }
+        return adminUser;
+      }
       
       // In a real app with Supabase Auth, you'd use supabase.auth.signInWithPassword
       // Since we are mocking passwords but using a real DB, we just lookup the user by email
