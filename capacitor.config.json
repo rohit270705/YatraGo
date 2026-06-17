@@ -1,0 +1,11 @@
+{
+  "appId": "com.yatrago.app",
+  "appName": "YatraGo",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#0a0e1a"
+  }
+}

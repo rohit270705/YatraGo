@@ -1,0 +1,66 @@
+{
+  "name": "yatrago-tours-travels",
+  "productName": "YatraGo",
+  "version": "1.0.0",
+  "description": "YatraGo — Tours & Travels Platform for booking trips, rentals, and parcel delivery",
+  "main": "electron.cjs",
+  "private": true,
+  "type": "module",
+  "author": "YatraGo",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron:dev": "vite build && electron .",
+    "electron:build": "vite build && electron-builder --win --dir",
+    "electron:dist": "vite build && electron-builder --win"
+  },
+  "build": {
+    "appId": "com.yatrago.app",
+    "productName": "YatraGo",
+    "directories": {
+      "output": "dist_electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron.cjs",
+      "public/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "YatraGo"
+    }
+  },
+  "devDependencies": {
+    "electron": "^36.4.0",
+    "electron-builder": "^26.0.12",
+    "electron-packager": "^17.1.2",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.12"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
+    "@react-google-maps/api": "^2.20.8",
+    "@supabase/supabase-js": "^2.108.2",
+    "lucide-react": "^1.17.0",
+    "react-router-dom": "^7.17.0",
+    "uuid": "^14.0.0",
+    "zustand": "^5.0.14"
+  }
+}

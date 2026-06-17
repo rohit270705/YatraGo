@@ -1,0 +1,47 @@
+name: Build Electron Apps
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  # Allow manual triggers from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        # Build on Windows, Mac, and Linux runners
+        os: [windows-latest, macos-latest, ubuntu-latest]
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm install
+
+      # We need to build the Vite web app before Electron can package it
+      - name: Build Web App
+        run: npm run build
+
+      - name: Build Electron App
+        uses: samuelmeuli/action-electron-builder@v1
+        with:
+          # Use the script defined in package.json
+          build_script_name: build
+          
+          # GitHub token is required for releasing
+          github_token: ${{ secrets.github_token }}
+
+          # If the commit is tagged with a version (e.g., "v1.0.0"),
+          # it will automatically create a GitHub Release with the builds.
+          release: ${{ startsWith(github.ref, 'refs/tags/v') }}
