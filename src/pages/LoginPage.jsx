@@ -17,6 +17,7 @@ export default function LoginPage() {
     { id: 'passenger', label: 'Passenger', desc: 'Book trips & parcels', icon: '🧳' },
     { id: 'agent', label: 'Travel Agent', desc: 'Book for customers', icon: '💼' },
     { id: 'owner', label: 'Vehicle Owner', desc: 'Register vehicles', icon: '🚗' },
+    { id: 'driver', label: 'Driver', desc: 'Find trips & earn', icon: '🛣️' },
   ];
 
   const handleSubmit = async (e) => {
@@ -29,9 +30,11 @@ export default function LoginPage() {
 
     if (success) {
       addToast('Welcome back! Login successful.', 'success');
-      const dest = selectedRole === 'agent' ? '/agent'
-        : selectedRole === 'owner' ? '/owner'
-        : selectedRole === 'admin' ? '/admin'
+      // Get the true role from the store (handles Admin bypass properly)
+      const user = useAuthStore.getState().user;
+      const dest = user?.role === 'admin' ? '/admin'
+        : user?.role === 'agent' ? '/agent'
+        : user?.role === 'owner' ? '/owner'
         : '/dashboard';
       navigate(dest);
     } else {

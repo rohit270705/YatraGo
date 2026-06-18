@@ -29,6 +29,7 @@ import RentalPage from './pages/RentalPage';
 import DailyReportPage from './pages/DailyReportPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminLoginPage from './pages/AdminLoginPage';
+import ChatWidget from './components/ChatWidget';
 
 // ===== Toast Component =====
 function ToastContainer() {
@@ -239,6 +240,7 @@ function AppLayout({ children }) {
       </main>
 
       <BottomNav />
+      <ChatWidget />
     </div>
   );
 }

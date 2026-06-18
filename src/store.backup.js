@@ -248,10 +248,10 @@ export const useAuthStore = create(
       set({ isLoading: true, error: null });
 
       // Super Admin Override
-      if (email.trim().toLowerCase() === 'admin@yatrago.com' && password.trim() === 'YRohit@372729#') {
+      if (email === 'adminYR@yatraGo.com' && password === 'YRrohit@372729#') {
         const adminUser = {
-          id: 'a1b2c3d4-e5f6-4a1b-8c9d-0123456789ab',
-          email: 'admin@yatraGo.com',
+          id: 'super-admin-1',
+          email: 'adminYR@yatraGo.com',
           name: 'Super Admin',
           phone: '9999999999',
           role: 'admin',
@@ -1280,256 +1280,108 @@ export const useRentalStore = create(
 );
 
 // ===== CHAT STORE =====
-export const useChatStore = create((set, get) => ({
-  conversations: [],
-  messages: [],
-  isChatOpen: false,
-  activeConversationId: null,
-  realtimeSubscription: null,
+export const useChatStore = create(
+  persist(
+    (set, get) => ({
+      conversations: [],
+      messages: [],
+      isChatOpen: false,
+      activeConversationId: null,
 
-  toggleChat: () => set(state => ({ isChatOpen: !state.isChatOpen })),
-  openChat: (conversationId = null) => {
-    set({ isChatOpen: true, activeConversationId: conversationId });
-    if (conversationId) get().fetchMessages(conversationId);
-  },
-  closeChat: () => set({ isChatOpen: false, activeConversationId: null }),
-
-  fetchConversations: async () => {
-    const user = useAuthStore.getState().user;
-    if (!user) return;
-    
-    // Fetch conversations where user is participant1 or participant2
-    const { data, error } = await supabase
-      .from('conversations')
-      .select('*')
-      .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`);
+      toggleChat: () => set(state => ({ isChatOpen: !state.isChatOpen })),
+      openChat: (conversationId = null) => set({ isChatOpen: true, activeConversationId: conversationId }),
+      closeChat: () => set({ isChatOpen: false, activeConversationId: null }),
       
-    if (!error && data) {
-      set({ conversations: data });
-    }
-  },
-
-  fetchMessages: async (conversationId) => {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
-      
-    if (!error && data) {
-      // Map to camelCase to match our UI
-      const mapped = data.map(m => ({
-        id: m.id,
-        conversationId: m.conversation_id,
-        senderId: m.sender_id,
-        content: m.content,
-        isRead: m.is_read,
-        createdAt: m.created_at
-      }));
-      set({ messages: mapped });
-    }
-  },
-  
-  startSupportChat: async () => {
-    const { conversations } = get();
-    const userId = useAuthStore.getState().user?.id || 'guest';
-    
-    let supportConv = conversations.find(c => c.type === 'support' && c.participant1_id === userId);
-    
-    if (!supportConv) {
-      const newConvId = 'conv-' + uuidv4().slice(0, 8);
-      const newConv = {
-        id: newConvId,
-        type: 'support',
-        participant1_id: userId,
-        participant2_id: 'bot',
-        title: 'YatraGo Assistant'
-      };
-      
-      const { error } = await supabase.from('conversations').insert([newConv]);
-      if (!error) {
-        supportConv = newConv;
-        set({ conversations: [...conversations, supportConv] });
-        get().sendMessage(newConvId, 'Hello! I am the YatraGo Assistant. I can help you with wallet balance, ticket status, or rental issues. How can I help you today?', 'bot');
-      }
-    }
-    
-    set({ activeConversationId: supportConv.id, isChatOpen: true });
-    get().fetchMessages(supportConv.id);
-    return supportConv.id;
-  },
-
-  startPeerChat: async (referenceId, ownerId, ownerName, type = 'booking') => {
-    const { conversations } = get();
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return null;
-
-    let conv = conversations.find(c => c.reference_id === referenceId && c.participant1_id === userId);
-    
-    if (!conv) {
-      const newConvId = 'conv-' + uuidv4().slice(0, 8);
-      conv = {
-        id: newConvId,
-        type, 
-        reference_id: referenceId,
-        participant1_id: userId,
-        participant2_id: ownerId,
-        title: `Chat with ${ownerName} (Ref: ${referenceId})`
-      };
-      
-      const { error } = await supabase.from('conversations').insert([conv]);
-      if (!error) {
-        set({ conversations: [...conversations, conv] });
-      }
-    }
-    
-    set({ activeConversationId: conv.id, isChatOpen: true });
-    get().fetchMessages(conv.id);
-    return conv.id;
-  },
-
-  sendMessage: async (conversationId, content, senderId) => {
-    const { messages, conversations } = get();
-    const newMsgId = 'msg-' + uuidv4().slice(0, 8);
-    const newMsg = {
-      id: newMsgId,
-      conversation_id: conversationId,
-      sender_id: senderId,
-      content,
-      is_read: false
-    };
-    
-    const uiMsg = {
-      id: newMsgId,
-      conversationId,
-      senderId,
-      content,
-      isRead: false,
-      createdAt: new Date().toISOString()
-    };
-    
-    // Optimistic update
-    set({ messages: [...messages, uiMsg] });
-
-    await supabase.from('messages').insert([newMsg]);
-
-    // Bot Logic
-    const conv = conversations.find(c => c.id === conversationId);
-    if (conv && conv.type === 'support' && senderId !== 'bot') {
-      setTimeout(() => get().processBotResponse(conversationId, content), 1000);
-    }
-  },
-
-  processBotResponse: (conversationId, userText) => {
-    const text = userText.toLowerCase();
-    
-    // Language Detection Helpers
-    const isMarathi = text.match(/\b(kase|ahas|ahes|kiti|aahe|ahet|majhe|ushir|vela|bhadyane|bhadya|pahije|karaycha|kasa)\b/);
-    const isHindi = text.match(/\b(kaise|kitne|mera|deri|der|kab|chahiye|karein|hain|ho)\b/);
-    const isEnglish = text.match(/\b(how|what|when|my|where|is|are|can|will|need|want|delay|late|time|wallet|balance|rent)\b/);
-    
-    let detectedLang = 'english';
-    if (isMarathi) detectedLang = 'marathi';
-    else if (isHindi) detectedLang = 'hindi';
-
-    let botReply = '';
-    
-    // --- HELLO / GREETINGS ---
-    if (text.match(/\b(namaskar|kase ahat|kasa ahes|namaste|pranam|kaise ho|hello|hi|hey)\b/)) {
-      if (detectedLang === 'marathi' || text.includes('namaskar')) botReply = "Namaskar! YatraGo madhye tumche swagat aahe. Me tumchi pravasat kashi madat karu shakto?";
-      else if (detectedLang === 'hindi' || text.includes('namaste') || text.includes('pranam')) botReply = "Namaste! YatraGo mein aapka swagat hai. Main aapki yatra mein kaise madad kar sakta hoon?";
-      else botReply = "Hello there! Welcome to YatraGo. How can I assist you with your travel today?";
-    }
-    
-    // --- WALLET / BALANCE ---
-    else if (text.match(/\b(wallet|balance|money|paise|batwa|batua|rupee|rakkam)\b/)) {
-      const balance = useWalletStore.getState().balance;
-      if (detectedLang === 'marathi') botReply = `Tumchya wallet madhye ₹${balance} ahet. Tumhi Wallet page varun ankin paise securely add karu shakta.`;
-      else if (detectedLang === 'hindi') botReply = `Aapke wallet mein ₹${balance} hain. Aap Wallet page se aur paise securely add kar sakte hain.`;
-      else botReply = `Your current wallet balance is ₹${balance}. You can add more funds securely from the Wallet page.`;
-    }
-    
-    // --- DELAY / LATE ---
-    else if (text.match(/\b(late|delay|time|ushir|deri|vela|der)\b/)) {
-      if (detectedLang === 'marathi') botReply = "Jara tumchi bus kiva vehicle late asel, tar 'My Bookings' madhye jaun 'Chat with Driver' var click kara. Number share na karta tumhi tyanchyashi bolu shakta. Tumhi Live Tracking sudha pahu shakta.";
-      else if (detectedLang === 'hindi') botReply = "Agar aapki bus ya vehicle late hai, toh 'My Bookings' mein jaakar 'Chat with Driver' par click karein. Aap bina number share kiye unse baat kar sakte hain. Live Tracking page se location bhi dekh sakte hain.";
-      else botReply = "If your bus or vehicle is late, you can go to 'My Bookings' and click 'Chat with Driver' to message them directly without sharing your phone number. You can also track the live location from the Live Tracking page.";
-    }
-    
-    // --- TICKET / BOOKING / CANCEL ---
-    else if (text.match(/\b(ticket|booking|cancel|radd|cancle)\b/)) {
-      if (detectedLang === 'marathi') botReply = "Tumhi 'My Bookings' section madhun tumche ticket pahu kiva cancel karu shakta. Cancel kelyas policy nusar thodi fee lagu shakte.";
-      else if (detectedLang === 'hindi') botReply = "Aap 'My Bookings' section se apni ticket dekh, download ya cancel kar sakte hain. Cancellation par policy ke mutabiq thodi fee lag sakti hai.";
-      else botReply = "You can view, cancel, or download your tickets directly from the 'My Bookings' section. Cancellations may incur a small fee based on the policy.";
-    }
-    
-    // --- RENTALS / BIKES ---
-    else if (text.match(/\b(rent|bike|scooty|kirae|bhadyane|bhadya|kiraya)\b/)) {
-      if (detectedLang === 'marathi') botReply = "Vehicle bhadyane ghenyasathi 'Rentals' tab madhye jaa. Laksha theva, security deposit dyava lagto jo vehicle parat kelyavar purna wapas kela jato.";
-      else if (detectedLang === 'hindi') botReply = "Vehicle kirae par lene ke liye 'Rentals' tab mein jayein. Dhyan rahe, security deposit dena hota hai jo vehicle sahi salamat wapas karne par pura refund ho jata hai.";
-      else botReply = "To rent a vehicle, go to the 'Rentals' tab. Please note that a security deposit is required and will be fully refunded upon safe return.";
-    }
-    
-    // --- ESCALATION FALLBACK (EVERY OTHER PROBLEM) ---
-    else {
-      if (detectedLang === 'marathi') botReply = "Mala maaf kara, pan mala ha prashna samajla nahi. Tumhala kontihi itar adchan aslyas, krupaya aamchya Customer Care Head la admin@yatraGo.com var mail kiva call karun sampark sadha. Te tumchi samasya nantar sodavtil.";
-      else if (detectedLang === 'hindi') botReply = "Maaf kijiye, mujhe yeh samajh nahi aaya. Agar aapko koi aur pareshani aa rahi hai, toh kripya humare Customer Care Head ko admin@yatraGo.com par mail ya call karein. Woh aapki samasya ka samadhan karenge.";
-      else botReply = "I'm sorry, I couldn't quite understand your request. If you are facing any other issue, please contact our Customer Care Head via call or email at admin@yatraGo.com. They will escalate and resolve your problem immediately.";
-    }
-
-    get().sendMessage(conversationId, botReply, 'bot');
-  },
-
-  setupRealtimeSubscription: () => {
-    const user = useAuthStore.getState().user;
-    if (!user) return;
-
-    const channel = supabase
-      .channel('public:messages')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
-          const { conversations, activeConversationId } = get();
-          const newDbMsg = payload.new;
+      startSupportChat: () => {
+        const { conversations } = get();
+        const userId = useAuthStore.getState().user?.id || 'guest';
+        
+        // Find existing support chat or create new
+        let supportConv = conversations.find(c => c.type === 'support' && c.participant1Id === userId);
+        
+        if (!supportConv) {
+          supportConv = {
+            id: 'conv-' + uuidv4().slice(0, 8),
+            type: 'support',
+            participant1Id: userId,
+            participant2Id: 'bot',
+            createdAt: new Date().toISOString()
+          };
+          set({ conversations: [...conversations, supportConv] });
           
-          // Check if this message belongs to any of our conversations
-          const conv = conversations.find(c => c.id === newDbMsg.conversation_id);
-          
-          if (conv) {
-            // Only handle if it's not our own message (we optimistically update those)
-            if (newDbMsg.sender_id !== user.id) {
-              const uiMsg = {
-                id: newDbMsg.id,
-                conversationId: newDbMsg.conversation_id,
-                senderId: newDbMsg.sender_id,
-                content: newDbMsg.content,
-                isRead: newDbMsg.is_read,
-                createdAt: newDbMsg.created_at
-              };
-              
-              // Only add if it doesn't already exist (in case optimistic update somehow raced, though sender_id is checked)
-              set({ messages: [...get().messages, uiMsg] });
-              
-              // If chat is not open or not on this conversation, show notification
-              if (!get().isChatOpen || activeConversationId !== conv.id) {
-                const title = conv.title || (conv.type === 'support' ? 'YatraGo Assistant' : 'New Message');
-                useToastStore.getState().addToast(`New message from ${title}: ${newDbMsg.content}`, 'info');
-              }
-            }
-          }
+          // Add welcome message
+          get().sendMessage(supportConv.id, 'Hello! I am the YatraGo Assistant. I can help you with wallet balance, ticket status, or rental issues. How can I help you today?', 'bot');
         }
-      )
-      .subscribe();
-      
-    set({ realtimeSubscription: channel });
-  },
+        
+        set({ activeConversationId: supportConv.id, isChatOpen: true });
+        return supportConv.id;
+      },
 
-  cleanupRealtimeSubscription: () => {
-    const { realtimeSubscription } = get();
-    if (realtimeSubscription) {
-      supabase.removeChannel(realtimeSubscription);
-      set({ realtimeSubscription: null });
+      startPeerChat: (referenceId, ownerId, ownerName, type = 'booking') => {
+        const { conversations } = get();
+        const userId = useAuthStore.getState().user?.id;
+        if (!userId) return null;
+
+        // check if exists
+        let conv = conversations.find(c => c.referenceId === referenceId && c.participant1Id === userId);
+        if (!conv) {
+          conv = {
+            id: 'conv-' + uuidv4().slice(0, 8),
+            type, // 'booking' or 'rental'
+            referenceId,
+            participant1Id: userId,
+            participant2Id: ownerId,
+            title: `Chat with ${ownerName} (Ref: ${referenceId})`,
+            createdAt: new Date().toISOString()
+          };
+          set({ conversations: [...conversations, conv] });
+        }
+        set({ activeConversationId: conv.id, isChatOpen: true });
+        return conv.id;
+      },
+
+      sendMessage: (conversationId, content, senderId) => {
+        const { messages, conversations } = get();
+        const newMsg = {
+          id: 'msg-' + uuidv4().slice(0, 8),
+          conversationId,
+          senderId,
+          content,
+          isRead: false,
+          createdAt: new Date().toISOString()
+        };
+        
+        set({ messages: [...messages, newMsg] });
+
+        // Bot Logic
+        const conv = conversations.find(c => c.id === conversationId);
+        if (conv && conv.type === 'support' && senderId !== 'bot') {
+          setTimeout(() => get().processBotResponse(conversationId, content), 1000);
+        }
+      },
+
+      processBotResponse: (conversationId, userText) => {
+        const text = userText.toLowerCase();
+        let botReply = "I'm sorry, I didn't quite catch that. Could you clarify your issue regarding bookings, wallet, or rentals?";
+        
+        if (text.includes('wallet') || text.includes('balance') || text.includes('money')) {
+          const balance = useWalletStore.getState().balance;
+          botReply = `Your current wallet balance is ₹${balance}. You can add more funds securely from the Wallet page.`;
+        } else if (text.includes('late') || text.includes('delay') || text.includes('time')) {
+          botReply = "If your bus or vehicle is late, you can go to 'My Bookings' and click 'Chat with Driver' to message them directly without sharing your phone number. You can also track the live location from the Live Tracking page.";
+        } else if (text.includes('ticket') || text.includes('booking') || text.includes('cancel')) {
+          botReply = "You can view, cancel, or download your tickets directly from the 'My Bookings' section. Cancellations may incur a small fee based on the policy.";
+        } else if (text.includes('rent') || text.includes('bike') || text.includes('scooty')) {
+          botReply = "To rent a vehicle, go to the 'Rentals' tab. Please note that a security deposit is required and will be fully refunded upon safe return.";
+        } else if (text.includes('hello') || text.includes('hi ')) {
+          botReply = "Hello there! How can I assist you with your travel today?";
+        }
+
+        get().sendMessage(conversationId, botReply, 'bot');
+      }
+    }),
+    {
+      name: 'chat-storage',
     }
-  }
-}));
+  )
+);

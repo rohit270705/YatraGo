@@ -5,7 +5,7 @@ import {
   ArrowRight, Filter, Edit3, X, Star, MessageSquare, Save, Ban, ThumbsUp,
   Pencil, Info
 } from 'lucide-react';
-import { useBookingStore, useToastStore } from '../store';
+import { useBookingStore, useToastStore, useChatStore } from '../store';
 
 const REVIEW_TAGS = [
   'Clean Vehicle', 'On Time', 'Polite Driver', 'Comfortable Ride',
@@ -15,6 +15,7 @@ const REVIEW_TAGS = [
 
 export default function MyBookingsPage() {
   const navigate = useNavigate();
+  const { startPeerChat } = useChatStore();
   const {
     bookings, cancelBooking, completeBooking, modifyBooking,
     canModifyBooking, submitReview, skipReview
@@ -307,6 +308,9 @@ export default function MyBookingsPage() {
               <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 {booking.status === 'confirmed' && (
                   <>
+                    <button className="btn btn-secondary btn-sm" onClick={() => startPeerChat(booking.id, booking.vehicle?.ownerId || 'driver', booking.vehicle?.ownerName || 'Driver')}>
+                      <MessageSquare size={14} /> Chat with Driver
+                    </button>
                     <button className="btn btn-secondary btn-sm" onClick={() => openModify(booking)}>
                       <Edit3 size={14} /> Modify Details
                     </button>

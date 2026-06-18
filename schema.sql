@@ -125,3 +125,30 @@ CREATE POLICY "Allow public read/write for dev" ON public.routes FOR ALL USING (
 CREATE POLICY "Allow public read/write for dev" ON public.bookings FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read/write for dev" ON public.rental_vehicles FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read/write for dev" ON public.active_rentals FOR ALL USING (true) WITH CHECK (true);
+
+-- 8. Conversations Table
+CREATE TABLE public.conversations (
+  id text PRIMARY KEY,
+  type text NOT NULL, -- support, booking, rental
+  reference_id text,
+  participant1_id text NOT NULL,
+  participant2_id text NOT NULL,
+  title text,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+-- 9. Messages Table
+CREATE TABLE public.messages (
+  id text PRIMARY KEY,
+  conversation_id text REFERENCES public.conversations(id) ON DELETE CASCADE,
+  sender_id text NOT NULL,
+  content text NOT NULL,
+  is_read boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read/write for dev" ON public.conversations FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read/write for dev" ON public.messages FOR ALL USING (true) WITH CHECK (true);

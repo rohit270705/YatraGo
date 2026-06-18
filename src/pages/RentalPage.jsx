@@ -4,7 +4,7 @@ import {
   Search, SlidersHorizontal, Zap, ArrowRight, Calendar, AlertCircle,
   RotateCcw, XCircle, ChevronDown
 } from 'lucide-react';
-import { useRentalStore, useWalletStore, useToastStore, useAuthStore } from '../store';
+import { useRentalStore, useWalletStore, useToastStore, useAuthStore, useChatStore } from '../store';
 
 const CATEGORY_TABS = [
   { id: 'all', label: 'All', icon: '🚀' },
@@ -432,6 +432,10 @@ export default function RentalPage() {
                           + ₹{rental.securityDeposit} deposit
                         </div>
                         <div style={{ display: 'flex', gap: 6, marginTop: 8, justifyContent: 'flex-end' }}>
+                          <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.7rem' }}
+                            onClick={() => useChatStore.getState().startPeerChat(rental.id, 'owner_id', 'Vehicle Owner', 'rental')}>
+                            Chat
+                          </button>
                           <button className="btn btn-danger btn-sm" style={{ fontSize: '0.7rem' }}
                             onClick={() => handleCancel(rental.id)}>
                             Cancel

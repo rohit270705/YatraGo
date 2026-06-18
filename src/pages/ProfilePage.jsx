@@ -41,18 +41,36 @@ export default function ProfilePage() {
     }
   }, [user]);
 
+  const parseDateToCalculateAge = (val) => {
+    if (!val) return '';
+    let d = null;
+    // Format: YYYY-MM-DD (Native picker)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      d = new Date(val);
+    } 
+    // Format: DD-MM-YYYY or DD/MM/YYYY (Manual entry)
+    else if (/^\d{2}[-/]\d{2}[-/]\d{4}$/.test(val)) {
+      const parts = val.split(/[-/]/);
+      d = new Date(parts[2], parts[1] - 1, parts[0]);
+    }
+    
+    if (d && !isNaN(d.getTime())) {
+      const today = new Date();
+      let age = today.getFullYear() - d.getFullYear();
+      const m = today.getMonth() - d.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < d.getDate())) {
+        age--;
+      }
+      return age > 0 ? age : 0;
+    }
+    return '';
+  };
+
   const updateForm = (field, value) => {
     setForm(prev => {
       const next = { ...prev, [field]: value };
-      if (field === 'dob' && value) {
-        const birthDate = new Date(value);
-        const today = new Date();
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-          age--;
-        }
-        next.age = age > 0 ? age : 0;
+      if (field === 'dob') {
+        next.age = parseDateToCalculateAge(value);
       }
       return next;
     });
@@ -211,7 +229,7 @@ export default function ProfilePage() {
               <label className="form-label">Date of Birth</label>
               <div className="form-input-icon-wrapper">
                 <Calendar className="form-input-icon" size={20} />
-                <input type="date" className="form-input" 
+                <input type="text" className="form-input" placeholder="DD-MM-YYYY or Calendar"
                   value={form.dob} onChange={e => updateForm('dob', e.target.value)} 
                   disabled={!isEditing} />
               </div>
