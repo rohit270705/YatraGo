@@ -144,15 +144,23 @@ export default function LoginPage() {
 
             {error && <div className="form-error" style={{ marginBottom: '16px' }}>{error}</div>}
 
-            <button
-              type="submit"
-              className="btn btn-primary btn-lg btn-full"
-              disabled={isLoading}
-              style={{ marginTop: '8px' }}
-            >
-              {isLoading ? <span className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }} /> : 'Sign In'}
+            <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={isLoading}>
+              {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
+
+          <div style={{ marginTop: 24 }}>
+            <button type="button" onClick={() => addToast('Google Sign In requires Supabase OAuth Configuration.', 'info')} className="btn" style={{ 
+              width: '100%', 
+              background: 'white', 
+              color: 'var(--color-bg-primary)', 
+              justifyContent: 'center',
+              border: '1px solid #e2e8f0'
+            }}>
+              <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: 20, height: 20, marginRight: 8 }} />
+              Sign in with Google
+            </button>
+          </div>
 
           <div className="auth-switch">
             Don't have an account?{' '}

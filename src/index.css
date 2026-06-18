@@ -613,7 +613,7 @@ input, button, textarea, select {
   grid-template-columns: 1fr 1fr;
   gap: var(--space-md);
 }
-@media (max-width: 600px) {
+@media (max-width: 1024px) {
   .form-row {
     grid-template-columns: 1fr;
   }

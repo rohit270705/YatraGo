@@ -14,6 +14,7 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     name: '', email: '', phone: '', password: '', confirmPassword: '',
     role: 'passenger', bloodGroup: '', aadharNumber: '', panNumber: '',
+    dob: '', address: '', avatarUrl: ''
   });
 
   const updateForm = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
@@ -31,6 +32,15 @@ export default function RegisterPage() {
       return;
     }
     setStep(2);
+  };
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => updateForm('avatarUrl', reader.result);
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleStep2 = async (e) => {
@@ -57,10 +67,14 @@ export default function RegisterPage() {
       addToast('Account created! Please verify your email and phone.', 'success');
       navigate('/verify');
     } else {
-      // Get the latest error from the store, or fallback
       const errorMsg = useAuthStore.getState().error || 'Registration failed. Please try again.';
       addToast(errorMsg, 'error');
     }
+  };
+
+  const handleGoogleAuth = () => {
+    addToast('Google Sign In requires Supabase OAuth Configuration.', 'info');
+    // In the future: supabase.auth.signInWithOAuth({ provider: 'google' });
   };
 
   return (
@@ -214,6 +228,32 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
+                <div className="form-group">
+                <label className="form-label">Profile Photo</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{
+                    width: 64, height: 64, borderRadius: '50%',
+                    background: 'var(--color-surface)', border: 'var(--border-subtle)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    backgroundImage: form.avatarUrl ? `url(${form.avatarUrl})` : 'none',
+                    backgroundSize: 'cover', backgroundPosition: 'center', overflow: 'hidden'
+                  }}>
+                    {!form.avatarUrl && <User size={24} color="var(--color-text-tertiary)" />}
+                  </div>
+                  <input type="file" accept="image/*" onChange={handlePhotoUpload} className="form-input" style={{ flex: 1, padding: '8px' }} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Date of Birth</label>
+                <input type="date" className="form-input" value={form.dob} onChange={(e) => updateForm('dob', e.target.value)} required />
+              </div>
+
+              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                <label className="form-label">Full Address</label>
+                <input type="text" className="form-input" placeholder="Enter your full residential address" value={form.address} onChange={(e) => updateForm('address', e.target.value)} required />
+              </div>
+
                 <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
                   <button type="button" className="btn btn-secondary btn-lg" onClick={() => setStep(1)}>
                     ← Back
@@ -226,10 +266,22 @@ export default function RegisterPage() {
             </>
           )}
 
-          <div className="auth-switch">
-            Already have an account?{' '}
-            <Link to="/login">Sign In</Link>
+          <div style={{ marginTop: 24 }}>
+            <button type="button" onClick={handleGoogleAuth} className="btn" style={{ 
+              width: '100%', 
+              background: 'white', 
+              color: 'var(--color-bg-primary)', 
+              justifyContent: 'center',
+              border: '1px solid #e2e8f0'
+            }}>
+              <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: 20, height: 20, marginRight: 8 }} />
+              Sign up with Google
+            </button>
           </div>
+
+          <p className="auth-footer">
+            Already have an account? <Link to="/login">Sign in here</Link>
+          </p>
         </div>
       </div>
     </div>

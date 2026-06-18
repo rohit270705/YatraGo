@@ -1,16 +1,17 @@
 -- Supabase Database Schema Initialization for YatraGo
 
 -- Drop existing tables if they exist to prevent "already exists" errors
-DROP TABLE IF EXISTS public.active_rentals CASCADE;
-DROP TABLE IF EXISTS public.rental_vehicles CASCADE;
-DROP TABLE IF EXISTS public.bookings CASCADE;
-DROP TABLE IF EXISTS public.routes CASCADE;
-DROP TABLE IF EXISTS public.wallet_transactions CASCADE;
-DROP TABLE IF EXISTS public.wallets CASCADE;
-DROP TABLE IF EXISTS public.users CASCADE;
+-- WARNING: These have been commented out to prevent accidental deletion of live data!
+-- DROP TABLE IF EXISTS public.active_rentals CASCADE;
+-- DROP TABLE IF EXISTS public.rental_vehicles CASCADE;
+-- DROP TABLE IF EXISTS public.bookings CASCADE;
+-- DROP TABLE IF EXISTS public.routes CASCADE;
+-- DROP TABLE IF EXISTS public.wallet_transactions CASCADE;
+-- DROP TABLE IF EXISTS public.wallets CASCADE;
+-- DROP TABLE IF EXISTS public.users CASCADE;
 
 -- 1. Users Table
-CREATE TABLE public.users (
+CREATE TABLE IF NOT EXISTS public.users (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   email text UNIQUE NOT NULL,
   name text NOT NULL,
@@ -30,7 +31,7 @@ CREATE TABLE public.users (
 );
 
 -- 2. Wallets Table
-CREATE TABLE public.wallets (
+CREATE TABLE IF NOT EXISTS public.wallets (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid REFERENCES public.users(id) ON DELETE CASCADE,
   balance numeric DEFAULT 0.0,
@@ -38,7 +39,7 @@ CREATE TABLE public.wallets (
 );
 
 -- 3. Wallet Transactions Table
-CREATE TABLE public.wallet_transactions (
+CREATE TABLE IF NOT EXISTS public.wallet_transactions (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid REFERENCES public.users(id) ON DELETE CASCADE,
   type text NOT NULL, -- ADD_MONEY, DEDUCT_MONEY, TICKET_REFUND
@@ -50,7 +51,7 @@ CREATE TABLE public.wallet_transactions (
 );
 
 -- 4. Routes (Buses/Travels) Table
-CREATE TABLE public.routes (
+CREATE TABLE IF NOT EXISTS public.routes (
   id text PRIMARY KEY,
   vehicle_id text,
   from_city text NOT NULL,
@@ -66,7 +67,7 @@ CREATE TABLE public.routes (
 );
 
 -- 5. Bookings Table
-CREATE TABLE public.bookings (
+CREATE TABLE IF NOT EXISTS public.bookings (
   id text PRIMARY KEY,
   user_id uuid REFERENCES public.users(id),
   route_id text REFERENCES public.routes(id),
@@ -83,7 +84,7 @@ CREATE TABLE public.bookings (
 );
 
 -- 6. Rental Vehicles Table
-CREATE TABLE public.rental_vehicles (
+CREATE TABLE IF NOT EXISTS public.rental_vehicles (
   id text PRIMARY KEY,
   owner_id uuid REFERENCES public.users(id),
   name text NOT NULL,
@@ -97,7 +98,7 @@ CREATE TABLE public.rental_vehicles (
 );
 
 -- 7. Active Rentals Table
-CREATE TABLE public.active_rentals (
+CREATE TABLE IF NOT EXISTS public.active_rentals (
   id text PRIMARY KEY,
   user_id uuid REFERENCES public.users(id),
   vehicle_id text REFERENCES public.rental_vehicles(id),
@@ -127,7 +128,7 @@ CREATE POLICY "Allow public read/write for dev" ON public.rental_vehicles FOR AL
 CREATE POLICY "Allow public read/write for dev" ON public.active_rentals FOR ALL USING (true) WITH CHECK (true);
 
 -- 8. Conversations Table
-CREATE TABLE public.conversations (
+CREATE TABLE IF NOT EXISTS public.conversations (
   id text PRIMARY KEY,
   type text NOT NULL, -- support, booking, rental
   reference_id text,
@@ -138,7 +139,7 @@ CREATE TABLE public.conversations (
 );
 
 -- 9. Messages Table
-CREATE TABLE public.messages (
+CREATE TABLE IF NOT EXISTS public.messages (
   id text PRIMARY KEY,
   conversation_id text REFERENCES public.conversations(id) ON DELETE CASCADE,
   sender_id text NOT NULL,

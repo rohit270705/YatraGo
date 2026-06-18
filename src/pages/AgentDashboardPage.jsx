@@ -6,7 +6,7 @@ import {
   Type, Palette, Phone, Mail, MapPin, Globe, Save, Eye, EyeOff,
   Upload, Sparkles, ChevronDown
 } from 'lucide-react';
-import { useAgentStore, useBookingStore, useToastStore } from '../store';
+import { useAgentStore, useBookingStore, useToastStore, useAuthStore } from '../store';
 
 const GRADIENT_PRESETS = [
   { id: 'ocean', name: 'Ocean', gradient: 'linear-gradient(135deg, #0c3547 0%, #1b6b93 50%, #1bb5c0 100%)' },
@@ -50,14 +50,24 @@ export default function AgentDashboardPage() {
   const { currentAgent } = useAgentStore();
   const { bookings } = useBookingStore();
   const { addToast } = useToastStore();
+  const { user } = useAuthStore();
 
   const agentBookings = bookings.filter(b => b.isAgentBooking);
   const totalCommission = agentBookings.reduce((sum, b) => sum + (b.commissionAmount || 0), 0);
 
+  // Initialize banner with user's profile details
+  const initialBanner = {
+    ...DEFAULT_BANNER,
+    agencyName: user?.name || DEFAULT_BANNER.agencyName,
+    phone: user?.phone || DEFAULT_BANNER.phone,
+    email: user?.email || DEFAULT_BANNER.email,
+    location: user?.address || DEFAULT_BANNER.location,
+  };
+
   // Banner state
-  const [banner, setBanner] = useState(DEFAULT_BANNER);
+  const [banner, setBanner] = useState(initialBanner);
   const [isEditing, setIsEditing] = useState(false);
-  const [editBanner, setEditBanner] = useState(DEFAULT_BANNER);
+  const [editBanner, setEditBanner] = useState(initialBanner);
   const [activeEditTab, setActiveEditTab] = useState('content'); // content | style | visibility
 
   const openEditor = () => {
