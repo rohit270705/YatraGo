@@ -243,6 +243,26 @@ export const useAuthStore = create(
     }
   },
 
+  signInWithGoogle: async () => {
+    try {
+      set({ isLoading: true, error: null });
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+      if (error) throw error;
+      // Note: The redirect will happen automatically. Session sync is handled in App.jsx.
+    } catch (err) {
+      console.error('Google Auth Error:', err);
+      set({ error: err.message, isLoading: false });
+    }
+  },
+
   login: async (email, password, role) => {
     try {
       set({ isLoading: true, error: null });

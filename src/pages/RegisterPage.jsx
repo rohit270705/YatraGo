@@ -73,8 +73,7 @@ export default function RegisterPage() {
   };
 
   const handleGoogleAuth = () => {
-    addToast('Google Sign In requires Supabase OAuth Configuration.', 'info');
-    // In the future: supabase.auth.signInWithOAuth({ provider: 'google' });
+    useAuthStore.getState().signInWithGoogle();
   };
 
   return (

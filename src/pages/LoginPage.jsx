@@ -150,7 +150,7 @@ export default function LoginPage() {
           </form>
 
           <div style={{ marginTop: 24 }}>
-            <button type="button" onClick={() => addToast('Google Sign In requires Supabase OAuth Configuration.', 'info')} className="btn" style={{ 
+            <button type="button" onClick={() => useAuthStore.getState().signInWithGoogle()} className="btn" style={{ 
               width: '100%', 
               background: 'white', 
               color: 'var(--color-bg-primary)', 

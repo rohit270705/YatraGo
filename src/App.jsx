@@ -7,6 +7,7 @@ import {
   Home, Map, Bike
 } from 'lucide-react';
 import { useAuthStore, useToastStore } from './store';
+import { supabase } from './supabaseClient';
 
 // ===== Pages =====
 import LoginPage from './pages/LoginPage';
@@ -247,6 +248,57 @@ function AppLayout({ children }) {
 
 // ===== Main App =====
 export default function App() {
+  const { user, isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    // Listen for Google Auth changes from Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        // When Google user signs in, sync them with our public.users table
+        try {
+          const { user: authUser } = session;
+          
+          // Check if they exist in our custom public.users table
+          const { data: existingUser } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', authUser.email)
+            .single();
+
+          if (!existingUser) {
+            // New Google User - create their profile
+            const { data: newUser, error } = await supabase
+              .from('users')
+              .insert([{
+                email: authUser.email,
+                name: authUser.user_metadata?.full_name || 'Google User',
+                avatar_url: authUser.user_metadata?.avatar_url || null,
+                role: 'passenger',
+                email_verified: true
+              }])
+              .select()
+              .single();
+
+            if (!error && newUser) {
+              useAuthStore.setState({ user: newUser, isAuthenticated: true });
+            }
+          } else {
+            // Existing user, just log them in to our state
+            useAuthStore.setState({ user: existingUser, isAuthenticated: true });
+          }
+        } catch (err) {
+          console.error("Error syncing Google Auth with public.users", err);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        useAuthStore.setState({ user: null, isAuthenticated: false });
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   return (
     <HashRouter>
       <ToastContainer />
