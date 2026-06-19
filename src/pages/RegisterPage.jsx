@@ -201,7 +201,7 @@ export default function RegisterPage() {
                   </div>
                   <div className="form-group">
                     <label className="form-label">Date of Birth</label>
-                    <input type="date" className="form-input" />
+                    <input type="date" className="form-input" value={form.dob} onChange={(e) => updateForm('dob', e.target.value)} required />
                   </div>
                 </div>
 
@@ -243,10 +243,7 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Date of Birth</label>
-                <input type="date" className="form-input" value={form.dob} onChange={(e) => updateForm('dob', e.target.value)} required />
-              </div>
+
 
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label">Full Address</label>

@@ -18,12 +18,18 @@ export default function MyBookingsPage() {
   const { startPeerChat } = useChatStore();
   const {
     bookings, cancelBooking, completeBooking, modifyBooking,
-    canModifyBooking, submitReview, skipReview
+    canModifyBooking, submitReview, skipReview, payForBooking
   } = useBookingStore();
   const { addToast } = useToastStore();
   const [activeTab, setActiveTab] = useState('all');
   const [cancellingId, setCancellingId] = useState(null);
   const [showCancelModal, setShowCancelModal] = useState(null);
+
+  const handlePayNow = async (bookingId) => {
+    const res = await payForBooking(bookingId);
+    if (res.success) addToast('Payment successful! Booking confirmed. 🎉', 'success');
+    else addToast(res.error, 'error');
+  };
 
   // Modify modal state
   const [modifyModal, setModifyModal] = useState(null);
@@ -137,6 +143,9 @@ export default function MyBookingsPage() {
       case 'confirmed': return <span className="badge badge-success"><CheckCircle size={12} /> Confirmed</span>;
       case 'cancelled': return <span className="badge badge-danger"><XCircle size={12} /> Cancelled</span>;
       case 'completed': return <span className="badge badge-teal"><CheckCircle size={12} /> Completed</span>;
+      case 'pending_owner_approval': return <span className="badge badge-warning"><Clock size={12} /> Awaiting Approval</span>;
+      case 'approved_awaiting_payment': return <span className="badge badge-teal" style={{background: 'rgba(46, 204, 113, 0.1)', color: '#2ecc71', borderColor: '#2ecc71'}}><CheckCircle size={12} /> Ready to Pay</span>;
+      case 'rejected_by_owner': return <span className="badge badge-danger"><Ban size={12} /> Rejected</span>;
       default: return <span className="badge badge-info">{status}</span>;
     }
   };
@@ -306,6 +315,19 @@ export default function MyBookingsPage() {
 
               {/* Action Buttons */}
               <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                {booking.status === 'approved_awaiting_payment' && (
+                  <button className="btn btn-primary btn-sm" style={{ background: '#2ecc71', borderColor: '#2ecc71' }}
+                    onClick={() => handlePayNow(booking.id)}>
+                    <CheckCircle size={14} /> Pay Now
+                  </button>
+                )}
+                
+                {booking.status === 'pending_owner_approval' && (
+                  <button className="btn btn-danger btn-sm" onClick={() => setShowCancelModal(booking.id)}>
+                    Cancel Request
+                  </button>
+                )}
+
                 {booking.status === 'confirmed' && (
                   <>
                     <button className="btn btn-secondary btn-sm" onClick={() => startPeerChat(booking.id, booking.vehicle?.ownerId || 'driver', booking.vehicle?.ownerName || 'Driver')}>

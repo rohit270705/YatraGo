@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   ShieldCheck, Users, Car, Ticket, Wallet, TrendingUp, CheckCircle,
   XCircle, AlertTriangle, Eye, Ban, DollarSign, FileCheck, BarChart3,
@@ -26,7 +26,7 @@ const MOCK_USERS = [
 ];
 
 export default function AdminDashboardPage() {
-  const { vehicles, approveVehicle, rejectVehicle, getPendingApprovals } = useVehicleStore();
+  const { vehicles, approveVehicle, rejectVehicle, getPendingApprovals, fetchVehicles } = useVehicleStore();
   const { bookings } = useBookingStore();
   const { transactions } = useWalletStore();
   const { rentalVehicles, activeRentals } = useRentalStore();
@@ -35,6 +35,10 @@ export default function AdminDashboardPage() {
   const [userFilter, setUserFilter] = useState('all');
   const [userSearch, setUserSearch] = useState('');
   const [vehicleTabFilter, setVehicleTabFilter] = useState('all');
+
+  useEffect(() => {
+    fetchVehicles();
+  }, [fetchVehicles]);
 
   const pendingVehicles = getPendingApprovals();
   const activeVehicles = vehicles.filter(v => v.approved && v.isActive);
@@ -114,14 +118,22 @@ export default function AdminDashboardPage() {
     { id: 'wallets', label: 'Wallets', icon: Wallet },
   ];
 
-  const handleApprove = (vehicleId) => {
-    approveVehicle(vehicleId);
-    addToast('Vehicle approved and now live on platform!', 'success');
+  const handleApprove = async (vehicleId) => {
+    const { success, error } = await approveVehicle(vehicleId);
+    if (success) {
+      addToast('Vehicle approved and now live on platform!', 'success');
+    } else {
+      addToast(error || 'Failed to approve vehicle', 'error');
+    }
   };
 
-  const handleReject = (vehicleId) => {
-    rejectVehicle(vehicleId);
-    addToast('Vehicle registration rejected.', 'warning');
+  const handleReject = async (vehicleId) => {
+    const { success, error } = await rejectVehicle(vehicleId);
+    if (success) {
+      addToast('Vehicle registration rejected.', 'warning');
+    } else {
+      addToast(error || 'Failed to reject vehicle', 'error');
+    }
   };
 
   const getRoleBadge = (role) => {

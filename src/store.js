@@ -249,6 +249,7 @@ export const useAuthStore = create(
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
+          redirectTo: window.location.origin,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -260,6 +261,23 @@ export const useAuthStore = create(
     } catch (err) {
       console.error('Google Auth Error:', err);
       set({ error: err.message, isLoading: false });
+    }
+  },
+
+  linkGoogleAccount: async () => {
+    try {
+      set({ isLoading: true, error: null });
+      const { data, error } = await supabase.auth.linkIdentity({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+    } catch (err) {
+      console.error('Link Google Error:', err);
+      set({ error: err.message, isLoading: false });
+      return { error: err.message };
     }
   },
 
@@ -603,7 +621,13 @@ export const useBookingStore = create(
       reviews: [],
 
       searchRoutes: (from, to, date) => {
+    const { vehicles } = get();
     const results = MOCK_ROUTES.filter(r => {
+      // Find the vehicle for this route
+      const vehicle = vehicles.find(v => v.id === (r.vehicle_id || r.vehicleId));
+      // Only show routes if vehicle exists and is approved
+      if (!vehicle || !vehicle.approved) return false;
+
       const matchFrom = !from || r.from.toLowerCase().includes(from.toLowerCase());
       const matchTo = !to || r.to.toLowerCase().includes(to.toLowerCase());
       const matchDate = !date || r.date === date;
@@ -644,15 +668,10 @@ export const useBookingStore = create(
         totalAmount += commissionAmount;
       }
 
-      // Deduct from wallet
-      const walletSuccess = await useWalletStore.getState().deductMoney(
-        totalAmount,
-        `Ticket: ${route.from_city || route.from} → ${route.to_city || route.to} (${route.journey_date || route.date})`
-      );
+      // For the two-step booking flow, we don't deduct money immediately.
+      // We just create a pending request for the owner to approve.
 
-      if (!walletSuccess) return { error: 'Insufficient wallet balance' };
-
-      // Insert into Supabase
+      // Insert into Supabase with pending status
       const { data: booking, error: insertError } = await supabase.from('bookings').insert([{
         id: 'BK-' + uuidv4().slice(0, 8).toUpperCase(),
         user_id: user.id,
@@ -664,15 +683,10 @@ export const useBookingStore = create(
         commission_amount: commissionAmount,
         is_agent_booking: isAgentBooking,
         agent_id: agentId,
-        status: 'confirmed'
+        status: 'pending_owner_approval'
       }]).select().single();
 
       if (insertError) {
-        // Refund the deducted amount because booking failed
-        await useWalletStore.getState().refundMoney(
-          totalAmount,
-          `Refund: Booking failed (${route.from_city || route.from} → ${route.to_city || route.to})`
-        );
         throw insertError;
       }
 
@@ -837,6 +851,62 @@ export const useBookingStore = create(
       ),
     }));
   },
+  approveBooking: async (bookingId) => {
+    // In a real app, we would update Supabase here
+    const { error } = await supabase.from('bookings').update({ status: 'approved_awaiting_payment' }).eq('id', bookingId);
+    if (error) return { error: error.message };
+
+    set(state => ({
+      bookings: state.bookings.map(b =>
+        b.id === bookingId ? { ...b, status: 'approved_awaiting_payment' } : b
+      ),
+    }));
+    return { success: true };
+  },
+
+  rejectBooking: async (bookingId) => {
+    // In a real app, we would update Supabase here
+    const { error } = await supabase.from('bookings').update({ status: 'rejected_by_owner' }).eq('id', bookingId);
+    if (error) return { error: error.message };
+
+    set(state => ({
+      bookings: state.bookings.map(b =>
+        b.id === bookingId ? { ...b, status: 'rejected_by_owner' } : b
+      ),
+    }));
+    return { success: true };
+  },
+
+  payForBooking: async (bookingId) => {
+    const { bookings } = get();
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking) return { error: 'Booking not found' };
+
+    // Deduct from wallet
+    const walletSuccess = await useWalletStore.getState().deductMoney(
+      booking.totalAmount,
+      `Ticket Payment: Booking ${bookingId}`
+    );
+
+    if (!walletSuccess) return { error: 'Insufficient wallet balance' };
+
+    // Update in Supabase
+    const { error } = await supabase.from('bookings').update({ status: 'confirmed' }).eq('id', bookingId);
+    if (error) {
+       await useWalletStore.getState().refundMoney(
+         booking.totalAmount,
+         `Refund: Booking failed (${bookingId})`
+       );
+       return { error: error.message };
+    }
+
+    set(state => ({
+      bookings: state.bookings.map(b =>
+        b.id === bookingId ? { ...b, status: 'confirmed', paidAt: new Date().toISOString() } : b
+      ),
+    }));
+    return { success: true };
+  },
 
   cancelBooking: (bookingId) => {
     const { bookings } = get();
@@ -881,43 +951,218 @@ export const useBookingStore = create(
 );
 
 
-// ===== VEHICLE STORE =====
+// Helper to map DB snake_case to frontend camelCase
+const mapVehicleFromDB = (v) => ({
+  id: v.id,
+  ownerId: v.owner_id,
+  owner_id: v.owner_id,
+  registrationNumber: v.registration_number,
+  type: v.type,
+  seatingCapacity: v.seating_capacity,
+  luggageCapacity: v.luggage_capacity,
+  approved: v.is_verified,
+  isActive: v.is_active,
+  createdAt: v.created_at,
+  photos: {
+    front: v.photo_front_url || null,
+    back: v.photo_back_url || null,
+    left: v.photo_left_url || null,
+    right: v.photo_right_url || null,
+    interior: v.photo_interior_url || null,
+  },
+});
+
 export const useVehicleStore = create((set, get) => ({
   vehicles: MOCK_VEHICLES,
+  isLoading: false,
+
+  fetchVehicles: async () => {
+    try {
+      set({ isLoading: true });
+      const { data, error } = await supabase.from('vehicles').select('*');
+      if (error) throw error;
+      
+      const mappedVehicles = (data || []).map(mapVehicleFromDB);
+      
+      // Merge with mock vehicles for now to keep UI populated
+      const combined = [...MOCK_VEHICLES, ...mappedVehicles];
+      set({ vehicles: combined, isLoading: false });
+    } catch (err) {
+      console.error('Error fetching vehicles:', err);
+      set({ isLoading: false });
+    }
+  },
 
   getVehicle: (id) => get().vehicles.find(v => v.id === id),
 
-  addVehicle: (vehicleData) => {
-    const vehicle = {
-      id: 'v' + uuidv4().slice(0, 6),
-      ...vehicleData,
-      approved: false,
-      isActive: false,
-      journeyHistory: [],
-      currentLocation: null,
-    };
-    set(state => ({ vehicles: [...state.vehicles, vehicle] }));
-    return vehicle;
+  // Upload a single photo to Supabase Storage
+  uploadVehiclePhoto: async (vehicleId, photoFile, photoType) => {
+    try {
+      const fileExt = photoFile.name.split('.').pop();
+      const filePath = `${vehicleId}/${photoType}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('vehicle-photos')
+        .upload(filePath, photoFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('vehicle-photos')
+        .getPublicUrl(filePath);
+
+      return { success: true, url: urlData.publicUrl };
+    } catch (err) {
+      console.error(`Error uploading ${photoType} photo:`, err);
+      return { success: false, error: err.message };
+    }
   },
 
-  approveVehicle: (vehicleId) => {
-    set(state => ({
-      vehicles: state.vehicles.map(v =>
-        v.id === vehicleId ? { ...v, approved: true, isActive: true } : v
-      ),
-    }));
+  createVehicle: async (vehicleData) => {
+    try {
+      set({ isLoading: true });
+
+      // 1. Insert the vehicle row first
+      const { data, error } = await supabase.from('vehicles').insert([{
+        owner_id: vehicleData.owner_id,
+        registration_number: vehicleData.registrationNumber,
+        type: vehicleData.type,
+        seating_capacity: vehicleData.seatingCapacity,
+        luggage_capacity: vehicleData.luggageCapacity,
+        is_verified: false,
+        is_active: false
+      }]).select().single();
+
+      if (error) throw error;
+
+      const vehicleId = data.id;
+
+      // 2. Upload photos if provided
+      const photoFields = ['front', 'back', 'left', 'right', 'interior'];
+      const photoUrls = {};
+      for (const field of photoFields) {
+        const file = vehicleData.photos?.[field];
+        if (file) {
+          const result = await get().uploadVehiclePhoto(vehicleId, file, field);
+          if (result.success) {
+            photoUrls[`photo_${field}_url`] = result.url;
+          }
+        }
+      }
+
+      // 3. Update the vehicle row with photo URLs if any were uploaded
+      if (Object.keys(photoUrls).length > 0) {
+        const { error: updateError } = await supabase.from('vehicles')
+          .update(photoUrls)
+          .eq('id', vehicleId);
+        if (updateError) console.error('Error saving photo URLs:', updateError);
+        Object.assign(data, photoUrls);
+      }
+
+      const mappedVehicle = mapVehicleFromDB(data);
+
+      set(state => ({ vehicles: [mappedVehicle, ...state.vehicles], isLoading: false }));
+      return { success: true, vehicle: mappedVehicle };
+    } catch (err) {
+      console.error('Error creating vehicle:', err);
+      set({ isLoading: false });
+      return { success: false, error: err.message };
+    }
   },
 
-  rejectVehicle: (vehicleId) => {
-    set(state => ({
-      vehicles: state.vehicles.map(v =>
-        v.id === vehicleId ? { ...v, approved: false, isActive: false } : v
-      ),
-    }));
+  deleteVehicle: async (vehicleId) => {
+    try {
+      // If it's a mock vehicle, just remove from state
+      if (vehicleId.startsWith('v')) {
+        set(state => ({
+          vehicles: state.vehicles.filter(v => v.id !== vehicleId),
+        }));
+        return { success: true };
+      }
+
+      // Delete photos from storage
+      const { data: files } = await supabase.storage
+        .from('vehicle-photos')
+        .list(vehicleId);
+      if (files && files.length > 0) {
+        const filePaths = files.map(f => `${vehicleId}/${f.name}`);
+        await supabase.storage.from('vehicle-photos').remove(filePaths);
+      }
+
+      // Delete vehicle from database
+      const { error } = await supabase.from('vehicles')
+        .delete()
+        .eq('id', vehicleId);
+      if (error) throw error;
+
+      set(state => ({
+        vehicles: state.vehicles.filter(v => v.id !== vehicleId),
+      }));
+      return { success: true };
+    } catch (err) {
+      console.error('Error deleting vehicle:', err);
+      return { success: false, error: err.message };
+    }
   },
 
-  getPendingApprovals: () => get().vehicles.filter(v => !v.approved),
-  getActiveVehicles: () => get().vehicles.filter(v => v.approved && v.isActive),
+  approveVehicle: async (vehicleId) => {
+    try {
+      // If it's a mock vehicle, just update state
+      if (vehicleId.startsWith('v')) {
+        set(state => ({
+          vehicles: state.vehicles.map(v =>
+            v.id === vehicleId ? { ...v, approved: true, isActive: true } : v
+          ),
+        }));
+        return { success: true };
+      }
+
+      const { error } = await supabase.from('vehicles')
+        .update({ is_verified: true, is_active: true })
+        .eq('id', vehicleId);
+        
+      if (error) throw error;
+
+      set(state => ({
+        vehicles: state.vehicles.map(v =>
+          v.id === vehicleId ? { ...v, is_verified: true, is_active: true, approved: true, isActive: true } : v
+        ),
+      }));
+      return { success: true };
+    } catch (err) {
+      console.error('Error approving vehicle:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  rejectVehicle: async (vehicleId) => {
+    try {
+      // If it's a mock vehicle, just remove it from state
+      if (vehicleId.startsWith('v')) {
+        set(state => ({
+          vehicles: state.vehicles.filter(v => v.id !== vehicleId),
+        }));
+        return { success: true };
+      }
+
+      const { error } = await supabase.from('vehicles')
+        .delete()
+        .eq('id', vehicleId);
+        
+      if (error) throw error;
+
+      set(state => ({
+        vehicles: state.vehicles.filter(v => v.id !== vehicleId),
+      }));
+      return { success: true };
+    } catch (err) {
+      console.error('Error rejecting vehicle:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  getPendingApprovals: () => get().vehicles.filter(v => (v.is_verified === false || v.approved === false)),
+  getActiveVehicles: () => get().vehicles.filter(v => (v.is_verified === true || v.approved === true) && (v.is_active !== false && v.isActive !== false)),
 }));
 
 

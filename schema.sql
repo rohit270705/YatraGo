@@ -38,6 +38,27 @@ CREATE TABLE IF NOT EXISTS public.wallets (
   created_at timestamp with time zone DEFAULT now()
 );
 
+-- 2.5 Vehicles Table (Buses, Cars, etc. for Owners)
+CREATE TABLE IF NOT EXISTS public.vehicles (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  owner_id uuid REFERENCES public.users(id) ON DELETE CASCADE,
+  registration_number text NOT NULL UNIQUE,
+  type text NOT NULL, -- Bus, Car, Traveller
+  seating_capacity integer NOT NULL,
+  luggage_capacity numeric,
+  rc_doc_url text,
+  insurance_doc_url text,
+  puc_doc_url text,
+  photo_front_url text,
+  photo_back_url text,
+  photo_left_url text,
+  photo_right_url text,
+  photo_interior_url text,
+  is_verified boolean DEFAULT false,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now()
+);
+
 -- 3. Wallet Transactions Table
 CREATE TABLE IF NOT EXISTS public.wallet_transactions (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -117,6 +138,7 @@ ALTER TABLE public.wallets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wallet_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.active_rentals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.vehicles ENABLE ROW LEVEL SECURITY;
 
 -- Basic Policies (Allow all for development, restrict later)
 CREATE POLICY "Allow public read/write for dev" ON public.users FOR ALL USING (true) WITH CHECK (true);
@@ -126,6 +148,7 @@ CREATE POLICY "Allow public read/write for dev" ON public.routes FOR ALL USING (
 CREATE POLICY "Allow public read/write for dev" ON public.bookings FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read/write for dev" ON public.rental_vehicles FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read/write for dev" ON public.active_rentals FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read/write for dev" ON public.vehicles FOR ALL USING (true) WITH CHECK (true);
 
 -- 8. Conversations Table
 CREATE TABLE IF NOT EXISTS public.conversations (
