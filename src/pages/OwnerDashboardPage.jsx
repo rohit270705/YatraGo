@@ -28,11 +28,11 @@ export default function OwnerDashboardPage() {
     front: null, back: null, left: null, right: null, interior: null
   });
 
-  const myVehicles = vehicles.filter(v => v.owner_id === user?.id || v.ownerId === user?.id);
+  const myVehicles = (vehicles || []).filter(v => v.owner_id === user?.id || v.ownerId === user?.id);
   const pendingVehicles = myVehicles.filter(v => !v.approved);
   const activeVehicles = myVehicles.filter(v => v.approved);
 
-  const myBookings = bookings.filter(b => myVehicles.some(v => v.id === b.route?.vehicle_id || v.id === b.route?.vehicleId || v.id === b.vehicle?.id));
+  const myBookings = (bookings || []).filter(b => myVehicles.some(v => v.id === b.route?.vehicle_id || v.id === b.route?.vehicleId || v.id === b.vehicle?.id));
   const pendingBookings = myBookings.filter(b => b.status === 'pending_owner_approval');
   const totalEarnings = myBookings.filter(b => b.status === 'completed' || b.status === 'confirmed').reduce((s, b) => s + b.totalAmount, 0);
 

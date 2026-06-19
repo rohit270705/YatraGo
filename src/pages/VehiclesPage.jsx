@@ -111,7 +111,7 @@ export default function VehiclesPage() {
               {/* Right side */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
-                  {vehicle.journeyHistory.length} trips completed
+                  {vehicle.journeyHistory?.length || 0} trips completed
                 </div>
                 <button className="btn btn-secondary btn-sm">
                   <Eye size={14} /> View Details
