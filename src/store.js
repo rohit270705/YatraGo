@@ -978,12 +978,18 @@ const mapVehicleFromDB = (v) => ({
   approved: v.approved,
   isActive: v.is_active,
   createdAt: v.created_at,
+  documentsSubmitted: v.documents_submitted || false,
   photos: {
     front: v.photo_front_url || null,
     back: v.photo_back_url || null,
     left: v.photo_left_url || null,
     right: v.photo_right_url || null,
     interior: v.photo_interior_url || null,
+  },
+  documents: {
+    rc: { number: v.rc_number || '', photoUrl: v.rc_photo_url || null },
+    puc: { number: v.puc_number || '', validUntil: v.puc_valid_until || '', photoUrl: v.puc_photo_url || null },
+    dl: { number: v.dl_number || '', holderName: v.dl_holder_name || '', validUntil: v.dl_valid_until || '', photoUrl: v.dl_photo_url || null },
   },
 });
 
@@ -1138,6 +1144,43 @@ export const useVehicleStore = create((set, get) => ({
         
       if (error) throw error;
 
+      // Find the vehicle to get owner details
+      const vehicle = get().vehicles.find(v => v.id === vehicleId);
+      const ownerId = vehicle?.ownerId || vehicle?.owner_id;
+      const regNumber = vehicle?.registrationNumber || vehicle?.registration_number || vehicleId;
+
+      // Create in-app notification for the owner
+      if (ownerId) {
+        try {
+          await supabase.from('notifications').insert([{
+            user_id: ownerId,
+            title: '🎉 Vehicle Approved!',
+            message: `Your vehicle ${regNumber} has been approved by admin! Please upload your pending documents (RC Book, PUC Certificate, Driving License) to complete the registration.`,
+            type: 'action_required',
+            reference_type: 'vehicle_approved',
+            reference_id: vehicleId,
+          }]);
+        } catch (notifErr) {
+          console.warn('Failed to create notification:', notifErr);
+        }
+
+        // Look up owner email for email notification
+        try {
+          const { data: ownerData } = await supabase.from('users').select('email, name').eq('id', ownerId).single();
+          if (ownerData?.email) {
+            // Send approval email via Edge Function or log it
+            console.log(`[EMAIL] To: ${ownerData.email} | Subject: Vehicle ${regNumber} Approved | From: admin@yatraGo.com`);
+            console.log(`[EMAIL] Body: Dear ${ownerData.name}, your vehicle ${regNumber} has been approved. Please log in and upload your RC Book, PUC Certificate, and Driving License to complete registration.`);
+            // In production, call an edge function or email API here
+          }
+        } catch (emailErr) {
+          console.warn('Failed to send email notification:', emailErr);
+        }
+
+        // Update the notification store if it's the current user
+        useNotificationStore.getState().fetchNotifications();
+      }
+
       set(state => ({
         vehicles: state.vehicles.map(v =>
           v.id === vehicleId ? { ...v, approved: true, is_active: true, isActive: true } : v
@@ -1178,6 +1221,109 @@ export const useVehicleStore = create((set, get) => ({
 
   getPendingApprovals: () => get().vehicles.filter(v => v.approved === false),
   getActiveVehicles: () => get().vehicles.filter(v => v.approved === true && (v.is_active !== false && v.isActive !== false)),
+
+  // Upload a document photo to Supabase Storage
+  uploadDocumentPhoto: async (vehicleId, docType, photoFile) => {
+    try {
+      // Validate file size (max 5MB)
+      if (photoFile.size > 5 * 1024 * 1024) {
+        return { success: false, error: 'File must be under 5MB' };
+      }
+      // Validate file type (jpg/png only)
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+      if (!validTypes.includes(photoFile.type)) {
+        return { success: false, error: 'Only JPG and PNG formats are allowed' };
+      }
+
+      const fileExt = photoFile.name.split('.').pop().toLowerCase();
+      const filePath = `${vehicleId}/doc_${docType}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('vehicle-photos')
+        .upload(filePath, photoFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('vehicle-photos')
+        .getPublicUrl(filePath);
+
+      return { success: true, url: urlData.publicUrl };
+    } catch (err) {
+      console.error(`Error uploading ${docType} document:`, err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  // Submit all vehicle documents (RC, PUC, DL) after approval
+  submitVehicleDocuments: async (vehicleId, docData) => {
+    try {
+      set({ isLoading: true });
+
+      const photoUrls = {};
+
+      // Upload RC Book photo
+      if (docData.rcPhoto) {
+        const result = await get().uploadDocumentPhoto(vehicleId, 'rc', docData.rcPhoto);
+        if (result.success) photoUrls.rc_photo_url = result.url;
+        else { set({ isLoading: false }); return { success: false, error: `RC Book photo: ${result.error}` }; }
+      }
+
+      // Upload PUC photo
+      if (docData.pucPhoto) {
+        const result = await get().uploadDocumentPhoto(vehicleId, 'puc', docData.pucPhoto);
+        if (result.success) photoUrls.puc_photo_url = result.url;
+        else { set({ isLoading: false }); return { success: false, error: `PUC photo: ${result.error}` }; }
+      }
+
+      // Upload DL photo
+      if (docData.dlPhoto) {
+        const result = await get().uploadDocumentPhoto(vehicleId, 'dl', docData.dlPhoto);
+        if (result.success) photoUrls.dl_photo_url = result.url;
+        else { set({ isLoading: false }); return { success: false, error: `DL photo: ${result.error}` }; }
+      }
+
+      // Update vehicle record with all document info
+      const updatePayload = {
+        rc_number: docData.rcNumber || null,
+        puc_number: docData.pucNumber || null,
+        puc_valid_until: docData.pucValidUntil || null,
+        dl_number: docData.dlNumber || null,
+        dl_holder_name: docData.dlHolderName || null,
+        dl_valid_until: docData.dlValidUntil || null,
+        documents_submitted: true,
+        ...photoUrls,
+      };
+
+      const { error } = await supabase.from('vehicles')
+        .update(updatePayload)
+        .eq('id', vehicleId);
+
+      if (error) throw error;
+
+      // Update local state
+      set(state => ({
+        vehicles: state.vehicles.map(v =>
+          v.id === vehicleId ? {
+            ...v,
+            documentsSubmitted: true,
+            documents: {
+              rc: { number: docData.rcNumber || '', photoUrl: photoUrls.rc_photo_url || v.documents?.rc?.photoUrl || null },
+              puc: { number: docData.pucNumber || '', validUntil: docData.pucValidUntil || '', photoUrl: photoUrls.puc_photo_url || v.documents?.puc?.photoUrl || null },
+              dl: { number: docData.dlNumber || '', holderName: docData.dlHolderName || '', validUntil: docData.dlValidUntil || '', photoUrl: photoUrls.dl_photo_url || v.documents?.dl?.photoUrl || null },
+            }
+          } : v
+        ),
+        isLoading: false,
+      }));
+
+      return { success: true };
+    } catch (err) {
+      console.error('Error submitting documents:', err);
+      set({ isLoading: false });
+      return { success: false, error: err.message };
+    }
+  },
 }));
 
 
@@ -1560,6 +1706,64 @@ export const useRentalStore = create(
 );
 
 // ===== CHAT STORE =====
+export const useNotificationStore = create((set, get) => ({
+  notifications: [],
+  isLoading: false,
+
+  fetchNotifications: async () => {
+    try {
+      const user = useAuthStore.getState().user;
+      if (!user) return;
+      
+      set({ isLoading: true });
+      const { data, error } = await supabase.from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      set({ notifications: data || [], isLoading: false });
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+      set({ isLoading: false });
+    }
+  },
+
+  markAsRead: async (notificationId) => {
+    try {
+      const { error } = await supabase.from('notifications')
+        .update({ is_read: true })
+        .eq('id', notificationId);
+      if (error) throw error;
+      set(state => ({
+        notifications: state.notifications.map(n => 
+          n.id === notificationId ? { ...n, is_read: true } : n
+        )
+      }));
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
+  },
+
+  markAllAsRead: async () => {
+    try {
+      const user = useAuthStore.getState().user;
+      if (!user) return;
+      
+      const { error } = await supabase.from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false);
+      if (error) throw error;
+      set(state => ({
+        notifications: state.notifications.map(n => ({ ...n, is_read: true }))
+      }));
+    } catch (err) {
+      console.error('Error marking all notifications as read:', err);
+    }
+  }
+}));
+
 export const useChatStore = create((set, get) => ({
   conversations: [],
   messages: [],

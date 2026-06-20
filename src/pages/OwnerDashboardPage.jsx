@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Car, Plus, Calendar, MapPin, DollarSign, AlertTriangle, CheckCircle,
-  Shield, Upload, Clock, Users, Luggage, TrendingUp, Bell, Trash2, Camera, Image, X
+  Shield, Upload, Clock, Users, Luggage, TrendingUp, Bell, Trash2, Camera, Image, X, FileText, UploadCloud
 } from 'lucide-react';
 import { useVehicleStore, useBookingStore, useToastStore, useAuthStore } from '../store';
 
@@ -14,6 +14,15 @@ export default function OwnerDashboardPage() {
   const [showRouteModal, setShowRouteModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPhotoViewer, setShowPhotoViewer] = useState(null);
+  
+  // Document Upload State
+  const [showDocUpload, setShowDocUpload] = useState(null);
+  const [docForm, setDocForm] = useState({
+    rcNumber: '', rcPhoto: null,
+    pucNumber: '', pucValidUntil: '', pucPhoto: null,
+    dlNumber: '', dlHolderName: '', dlValidUntil: '', dlPhoto: null
+  });
+  const [docPreviews, setDocPreviews] = useState({ rc: null, puc: null, dl: null });
 
   useEffect(() => {
     fetchVehicles();
@@ -132,6 +141,53 @@ export default function OwnerDashboardPage() {
     }
   };
 
+  const handleDocFileSelect = (docType, file) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      addToast('File must be less than 5MB', 'error');
+      return;
+    }
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!validTypes.includes(file.type)) {
+      addToast('Only JPG and PNG files are allowed', 'error');
+      return;
+    }
+    setDocForm(p => ({ ...p, [`${docType}Photo`]: file }));
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setDocPreviews(p => ({ ...p, [docType]: e.target.result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDocumentSubmit = async (e) => {
+    e.preventDefault();
+    if (!docForm.rcPhoto || !docForm.pucPhoto || !docForm.dlPhoto) {
+      addToast('Please upload all required document photos', 'error');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const { submitVehicleDocuments } = useVehicleStore.getState();
+    const result = await submitVehicleDocuments(showDocUpload.id, docForm);
+    setIsSubmitting(false);
+
+    if (result.success) {
+      addToast('Documents submitted successfully!', 'success');
+      setShowDocUpload(null);
+      setDocForm({
+        rcNumber: '', rcPhoto: null,
+        pucNumber: '', pucValidUntil: '', pucPhoto: null,
+        dlNumber: '', dlHolderName: '', dlValidUntil: '', dlPhoto: null
+      });
+      setDocPreviews({ rc: null, puc: null, dl: null });
+    } else {
+      addToast(result.error || 'Failed to submit documents', 'error');
+    }
+  };
+
+  const vehiclesNeedingDocs = activeVehicles.filter(v => !v.documentsSubmitted && v.approved);
+
   return (
     <div className="animate-fade-in">
       <div className="page-header">
@@ -201,6 +257,39 @@ export default function OwnerDashboardPage() {
           <MapPin size={16} /> Set Routes & Availability
         </button>
       </div>
+
+      {/* Vehicles Needing Documents (Approved but docs pending) */}
+      {vehiclesNeedingDocs.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{
+            background: 'rgba(231, 76, 60, 0.1)', border: '1px solid rgba(231, 76, 60, 0.3)',
+            borderRadius: 'var(--radius-lg)', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12
+          }}>
+            <h3 style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-accent-red)' }}>
+              <AlertTriangle size={20} /> Action Required: Upload Documents
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--color-text-primary)' }}>
+              The following vehicles have been approved by the admin. Please upload their RC Book, PUC Certificate, and your Driving License to complete registration and make them visible to passengers.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+              {vehiclesNeedingDocs.map(v => (
+                <div key={v.id} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  background: 'var(--color-surface)', padding: '12px 16px', borderRadius: 'var(--radius-md)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <Car size={20} color="var(--color-accent-teal)" />
+                    <span style={{ fontWeight: 600 }}>{v.registrationNumber} ({v.type})</span>
+                  </div>
+                  <button className="btn btn-primary btn-sm" onClick={() => setShowDocUpload(v)}>
+                    <UploadCloud size={14} /> Upload Documents
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pending Approvals */}
       {pendingVehicles.length > 0 && (
@@ -549,6 +638,93 @@ export default function OwnerDashboardPage() {
           </div>
         </div>
       )}
+      {/* Document Upload Modal */}
+      {showDocUpload && (
+        <div className="modal-backdrop" onClick={() => setShowDocUpload(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 640 }}>
+            <div className="modal-header">
+              <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FileText size={20} color="var(--color-accent-teal)" />
+                Upload Documents: {showDocUpload.registrationNumber}
+              </h3>
+              <button className="modal-close" onClick={() => setShowDocUpload(null)}>✕</button>
+            </div>
+            
+            <p style={{ fontSize: '0.9rem', color: 'var(--color-text-tertiary)', marginBottom: 20 }}>
+              Please upload clear, legible photos of the following documents. Max 5MB per photo (JPG/PNG).
+            </p>
+
+            <form onSubmit={handleDocumentSubmit}>
+              {/* RC Book */}
+              <div style={{ marginBottom: 24, padding: 16, background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-subtle)' }}>
+                <h4 style={{ fontWeight: 600, marginBottom: 12 }}>1. RC Book</h4>
+                <div className="form-group">
+                  <label className="form-label">RC Number</label>
+                  <input className="form-input" required value={docForm.rcNumber} onChange={e => setDocForm(p => ({ ...p, rcNumber: e.target.value.toUpperCase() }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">RC Photo</label>
+                  <input type="file" className="form-input" accept=".jpg,.jpeg,.png" required onChange={e => handleDocFileSelect('rc', e.target.files[0])} />
+                </div>
+              </div>
+
+              {/* PUC Certificate */}
+              <div style={{ marginBottom: 24, padding: 16, background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-subtle)' }}>
+                <h4 style={{ fontWeight: 600, marginBottom: 12 }}>2. PUC Certificate</h4>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">PUC Number</label>
+                    <input className="form-input" required value={docForm.pucNumber} onChange={e => setDocForm(p => ({ ...p, pucNumber: e.target.value.toUpperCase() }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Valid Until</label>
+                    <input type="date" className="form-input" required value={docForm.pucValidUntil} onChange={e => setDocForm(p => ({ ...p, pucValidUntil: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">PUC Photo</label>
+                  <input type="file" className="form-input" accept=".jpg,.jpeg,.png" required onChange={e => handleDocFileSelect('puc', e.target.files[0])} />
+                </div>
+              </div>
+
+              {/* Driving License */}
+              <div style={{ marginBottom: 24, padding: 16, background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-subtle)' }}>
+                <h4 style={{ fontWeight: 600, marginBottom: 12 }}>3. Driving License</h4>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">DL Number</label>
+                    <input className="form-input" required value={docForm.dlNumber} onChange={e => setDocForm(p => ({ ...p, dlNumber: e.target.value.toUpperCase() }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Holder Name</label>
+                    <input className="form-input" required value={docForm.dlHolderName} onChange={e => setDocForm(p => ({ ...p, dlHolderName: e.target.value.toUpperCase() }))} />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Valid Until</label>
+                  <input type="date" className="form-input" required value={docForm.dlValidUntil} onChange={e => setDocForm(p => ({ ...p, dlValidUntil: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">DL Photo</label>
+                  <input type="file" className="form-input" accept=".jpg,.jpeg,.png" required onChange={e => handleDocFileSelect('dl', e.target.files[0])} />
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowDocUpload(null)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <><span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> Uploading...</>
+                  ) : (
+                    <><UploadCloud size={16} /> Submit Documents</>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
