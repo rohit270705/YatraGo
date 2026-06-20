@@ -267,19 +267,32 @@ export const useAuthStore = create(
   linkGoogleAccount: async () => {
     try {
       set({ isLoading: true, error: null });
-      const { data, error } = await supabase.auth.linkIdentity({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin,
-        }
-      });
-      if (error) throw error;
-      useToastStore.getState().addToast('Google account linked successfully!', 'success');
+      
+      // linkIdentity is only available in newer Supabase JS clients
+      if (typeof supabase.auth.linkIdentity === 'function') {
+        const { data, error } = await supabase.auth.linkIdentity({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin,
+          }
+        });
+        if (error) throw error;
+      } else {
+        // Fallback: Use OAuth sign-in which effectively links on re-login
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin,
+          }
+        });
+        if (error) throw error;
+      }
+      useToastStore.getState().addToast('Redirecting to Google for account linking...', 'info');
       set({ isLoading: false });
     } catch (err) {
       console.error('Error linking Google account:', err);
       set({ error: err.message, isLoading: false });
-      useToastStore.getState().addToast(err.message, 'error');
+      useToastStore.getState().addToast(err.message || 'Failed to link Google account', 'error');
     }
   },
 
@@ -623,7 +636,7 @@ export const useBookingStore = create(
       reviews: [],
 
       searchRoutes: (from, to, date) => {
-    const { vehicles } = get();
+    const vehicles = useVehicleStore.getState().vehicles || [];
     const results = MOCK_ROUTES.filter(r => {
       // Find the vehicle for this route
       const vehicle = vehicles.find(v => v.id === (r.vehicle_id || r.vehicleId));

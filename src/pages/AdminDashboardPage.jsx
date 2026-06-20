@@ -42,8 +42,8 @@ export default function AdminDashboardPage() {
 
   const pendingVehicles = getPendingApprovals();
   const activeVehicles = vehicles.filter(v => v.approved && v.isActive);
-  const totalRevenue = bookings.filter(b => b.status !== 'cancelled').reduce((s, b) => s + b.totalAmount, 0);
-  const totalCommissions = bookings.filter(b => b.isAgentBooking).reduce((s, b) => s + (b.commissionAmount || 0), 0);
+  const totalRevenue = (bookings || []).filter(b => b.status !== 'cancelled').reduce((s, b) => s + (b.totalAmount || b.total_amount || 0), 0);
+  const totalCommissions = (bookings || []).filter(b => b.isAgentBooking || b.is_agent_booking).reduce((s, b) => s + (b.commissionAmount || b.commission_amount || 0), 0);
 
   // Combined Vehicle Stats
   const totalTravelVehicles = vehicles.length;

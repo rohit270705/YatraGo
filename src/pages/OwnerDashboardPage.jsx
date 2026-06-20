@@ -34,7 +34,7 @@ export default function OwnerDashboardPage() {
 
   const myBookings = (bookings || []).filter(b => myVehicles.some(v => v.id === b.route?.vehicle_id || v.id === b.route?.vehicleId || v.id === b.vehicle?.id));
   const pendingBookings = myBookings.filter(b => b.status === 'pending_owner_approval');
-  const totalEarnings = myBookings.filter(b => b.status === 'completed' || b.status === 'confirmed').reduce((s, b) => s + b.totalAmount, 0);
+  const totalEarnings = myBookings.filter(b => b.status === 'completed' || b.status === 'confirmed').reduce((s, b) => s + (b.totalAmount || b.total_amount || 0), 0);
 
   const handleApproveBooking = async (bookingId) => {
     const res = await approveBooking(bookingId);
@@ -154,7 +154,7 @@ export default function OwnerDashboardPage() {
         <div className="stat-card">
           <div className="stat-card-icon purple"><Users size={22} /></div>
           <div className="stat-card-label">Total Passengers</div>
-          <div className="stat-card-value">{bookings.length * 3}</div>
+          <div className="stat-card-value">{myBookings.length * 3}</div>
         </div>
         <div className="stat-card">
           <div className="stat-card-icon amber"><Bell size={22} /></div>

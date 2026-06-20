@@ -44,11 +44,11 @@ export default function MyBookingsPage() {
   const [reviewTags, setReviewTags] = useState([]);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
-  const filtered = activeTab === 'all' ? bookings
-    : bookings.filter(b => b.status === activeTab);
+  const filtered = activeTab === 'all' ? (bookings || [])
+    : (bookings || []).filter(b => b.status === activeTab);
 
   // Check for pending reviews
-  const pendingReviews = bookings.filter(b => b.reviewPending);
+  const pendingReviews = (bookings || []).filter(b => b.reviewPending);
 
   const handleCancel = (bookingId) => {
     setCancellingId(bookingId);

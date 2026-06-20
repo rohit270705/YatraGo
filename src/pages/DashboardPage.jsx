@@ -12,10 +12,10 @@ export default function DashboardPage() {
   const { bookings } = useBookingStore();
   const { vehicles } = useVehicleStore();
 
-  const userBookings = bookings.filter(b => b.user_id === user?.id);
+  const userBookings = (bookings || []).filter(b => b.user_id === user?.id);
   const activeBookings = userBookings.filter(b => b.status === 'confirmed');
   const completedBookings = userBookings.filter(b => b.status === 'completed');
-  const activeVehicles = vehicles.filter(v => v.approved && v.isActive);
+  const activeVehicles = (vehicles || []).filter(v => v.approved && v.isActive);
 
   const greeting = () => {
     const hour = new Date().getHours();

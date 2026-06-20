@@ -120,13 +120,13 @@ export default function VehicleDetailPage() {
             <Clock size={18} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
             Last 5 Journeys
           </h3>
-          {vehicle.journeyHistory.length === 0 ? (
+          {(!vehicle.journeyHistory || vehicle.journeyHistory.length === 0) ? (
             <div className="glass-card" style={{ textAlign: 'center', padding: 32 }}>
               <p style={{ color: 'var(--color-text-tertiary)' }}>No journey history yet</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {vehicle.journeyHistory.slice(0, 5).map((journey, i) => (
+              {(vehicle.journeyHistory || []).slice(0, 5).map((journey, i) => (
                 <div key={journey.id} className="glass-card" style={{ padding: '14px 20px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{
