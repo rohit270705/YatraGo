@@ -1029,7 +1029,7 @@ export const useVehicleStore = create((set, get) => ({
         type: vehicleData.type,
         seating_capacity: vehicleData.seatingCapacity,
         luggage_capacity: vehicleData.luggageCapacity,
-        is_verified: false,
+        approved: false,
         is_active: false
       }]).select().single();
 
