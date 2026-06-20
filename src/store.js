@@ -270,14 +270,16 @@ export const useAuthStore = create(
       const { data, error } = await supabase.auth.linkIdentity({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          redirectTo: window.location.origin,
         }
       });
       if (error) throw error;
+      useToastStore.getState().addToast('Google account linked successfully!', 'success');
+      set({ isLoading: false });
     } catch (err) {
-      console.error('Link Google Error:', err);
+      console.error('Error linking Google account:', err);
       set({ error: err.message, isLoading: false });
-      return { error: err.message };
+      useToastStore.getState().addToast(err.message, 'error');
     }
   },
 
@@ -960,7 +962,7 @@ const mapVehicleFromDB = (v) => ({
   type: v.type,
   seatingCapacity: v.seating_capacity,
   luggageCapacity: v.luggage_capacity,
-  approved: v.is_verified,
+  approved: v.approved,
   isActive: v.is_active,
   createdAt: v.created_at,
   photos: {
@@ -1118,14 +1120,14 @@ export const useVehicleStore = create((set, get) => ({
       }
 
       const { error } = await supabase.from('vehicles')
-        .update({ is_verified: true, is_active: true })
+        .update({ approved: true, is_active: true })
         .eq('id', vehicleId);
         
       if (error) throw error;
 
       set(state => ({
         vehicles: state.vehicles.map(v =>
-          v.id === vehicleId ? { ...v, is_verified: true, is_active: true, approved: true, isActive: true } : v
+          v.id === vehicleId ? { ...v, approved: true, is_active: true, isActive: true } : v
         ),
       }));
       return { success: true };
@@ -1161,8 +1163,8 @@ export const useVehicleStore = create((set, get) => ({
     }
   },
 
-  getPendingApprovals: () => get().vehicles.filter(v => (v.is_verified === false || v.approved === false)),
-  getActiveVehicles: () => get().vehicles.filter(v => (v.is_verified === true || v.approved === true) && (v.is_active !== false && v.isActive !== false)),
+  getPendingApprovals: () => get().vehicles.filter(v => v.approved === false),
+  getActiveVehicles: () => get().vehicles.filter(v => v.approved === true && (v.is_active !== false && v.isActive !== false)),
 }));
 
 
