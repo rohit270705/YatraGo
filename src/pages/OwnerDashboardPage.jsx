@@ -29,7 +29,7 @@ export default function OwnerDashboardPage() {
   }, [fetchVehicles]);
 
   const [newVehicle, setNewVehicle] = useState({
-    registrationNumber: '', type: 'SUV', seatingCapacity: 7,
+    registrationNumber: '', modelName: '', variant: '', fuelType: 'Petrol', type: 'Hatchback', seatingCapacity: 5,
     luggageCapacity: 50,
     photos: { front: null, back: null, left: null, right: null, interior: null }
   });
@@ -121,7 +121,7 @@ export default function OwnerDashboardPage() {
       addToast('Vehicle registered with photos! Awaiting admin approval.', 'success');
       setShowAddVehicle(false);
       setNewVehicle({
-        registrationNumber: '', type: 'SUV', seatingCapacity: 7,
+        registrationNumber: '', modelName: '', variant: '', fuelType: 'Petrol', type: 'Hatchback', seatingCapacity: 5,
         luggageCapacity: 50,
         photos: { front: null, back: null, left: null, right: null, interior: null }
       });
@@ -416,14 +416,55 @@ export default function OwnerDashboardPage() {
 
             <div className="form-row">
               <div className="form-group">
+                <label className="form-label">Vehicle Model Name</label>
+                <input className="form-input" placeholder="e.g. Swift, Innova Crysta"
+                  value={newVehicle.modelName}
+                  onChange={e => setNewVehicle(p => ({ ...p, modelName: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Variant</label>
+                <input className="form-input" placeholder="e.g. VXI, ZXI+"
+                  value={newVehicle.variant}
+                  onChange={e => setNewVehicle(p => ({ ...p, variant: e.target.value }))} />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Fuel Type</label>
+                <select className="form-select" value={newVehicle.fuelType}
+                  onChange={e => setNewVehicle(p => ({ ...p, fuelType: e.target.value }))}>
+                  <option value="Petrol">Petrol</option>
+                  <option value="Diesel">Diesel</option>
+                  <option value="CNG">CNG</option>
+                  <option value="Electric">Electric</option>
+                  <option value="Hybrid">Hybrid</option>
+                </select>
+              </div>
+              <div className="form-group">
                 <label className="form-label">Vehicle Type</label>
                 <select className="form-select" value={newVehicle.type}
                   onChange={e => setNewVehicle(p => ({ ...p, type: e.target.value }))}>
-                  <option value="Sedan">Sedan</option>
-                  <option value="SUV">SUV</option>
-                  <option value="Mini Bus">Mini Bus</option>
-                  <option value="Tempo Traveller">Tempo Traveller</option>
-                  <option value="Bus">Bus</option>
+                  <option value="Hatchback">Hatchback</option>
+                  <option value="Sedan/Saloon/Notchback">Sedan/Saloon/Notchback</option>
+                  <option value="Compact Sedan">Compact Sedan</option>
+                  <option value="Coupe">Coupe</option>
+                  <option value="Micro Car">Micro Car</option>
+                  <option value="CUV/Crossover">CUV/Crossover</option>
+                  <option value="Crossover Hatchback">Crossover Hatchback</option>
+                  <option value="MPV/Minivan">MPV/Minivan</option>
+                  <option value="SUV (Sports Utility Vehicle)">SUV (Sports Utility Vehicle)</option>
+                  <option value="Crossover SUV">Crossover SUV</option>
+                  <option value="Coupe SUV">Coupe SUV</option>
+                  <option value="Compact SUV">Compact SUV</option>
+                  <option value="4-Door Coupe">4-Door Coupe</option>
+                  <option value="Station Wagon">Station Wagon</option>
+                  <option value="Convertible/Spyder/Cabriolet">Convertible/Spyder/Cabriolet</option>
+                  <option value="Hybrid Cars">Hybrid Cars</option>
+                  <option value="Pick-Up Truck/Temp">Pick-Up Truck/Temp</option>
+                  <option value="Electric Cars">Electric Cars</option>
+                  <option value="VAN">VAN</option>
+                  <option value="BUS">BUS</option>
                 </select>
               </div>
               <div className="form-group">
