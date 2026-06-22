@@ -268,17 +268,12 @@ export const useAuthStore = create(
     try {
       set({ isLoading: true, error: null });
       
-      // linkIdentity is only available in newer Supabase JS clients
-      if (typeof supabase.auth.linkIdentity === 'function') {
-        const { data, error } = await supabase.auth.linkIdentity({
-          provider: 'google',
-          options: {
-            redirectTo: window.location.origin,
-          }
-        });
-        if (error) throw error;
-      } else {
-        // Fallback: Use OAuth sign-in which effectively links on re-login
+      // Check if there's an active Supabase Auth session first
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData?.session) {
+        // No Supabase Auth session — user logged in via custom email/password
+        // Use OAuth sign-in flow which will link or create account
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
@@ -286,13 +281,36 @@ export const useAuthStore = create(
           }
         });
         if (error) throw error;
+        useToastStore.getState().addToast('Redirecting to Google...', 'info');
+      } else {
+        // Has active Supabase Auth session — try linkIdentity
+        if (typeof supabase.auth.linkIdentity === 'function') {
+          const { data, error } = await supabase.auth.linkIdentity({
+            provider: 'google',
+            options: {
+              redirectTo: window.location.origin,
+            }
+          });
+          if (error) throw error;
+        } else {
+          const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+              redirectTo: window.location.origin,
+            }
+          });
+          if (error) throw error;
+        }
+        useToastStore.getState().addToast('Redirecting to Google for account linking...', 'info');
       }
-      useToastStore.getState().addToast('Redirecting to Google for account linking...', 'info');
       set({ isLoading: false });
     } catch (err) {
       console.error('Error linking Google account:', err);
-      set({ error: err.message, isLoading: false });
-      useToastStore.getState().addToast(err.message || 'Failed to link Google account', 'error');
+      const message = (err.message || '').includes('missing sub claim')
+        ? 'Please sign out and sign in with Google directly to link your account.'
+        : (err.message || 'Failed to link Google account');
+      set({ error: message, isLoading: false });
+      useToastStore.getState().addToast(message, 'error');
     }
   },
 
@@ -1721,10 +1739,24 @@ export const useNotificationStore = create((set, get) => ({
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        // Silently handle auth/RLS errors (e.g. 'missing sub claim')
+        // These occur when user is logged in via custom auth, not Supabase Auth
+        const msg = error.message || '';
+        if (msg.includes('missing sub claim') || msg.includes('JWT') || error.code === 'PGRST301') {
+          console.warn('Notification fetch skipped (no auth session):', msg);
+          set({ isLoading: false });
+          return;
+        }
+        throw error;
+      }
       set({ notifications: data || [], isLoading: false });
     } catch (err) {
-      console.error('Error fetching notifications:', err);
+      // Don't show toast for auth errors — just log silently
+      const msg = err?.message || '';
+      if (!msg.includes('missing sub claim') && !msg.includes('JWT')) {
+        console.error('Error fetching notifications:', err);
+      }
       set({ isLoading: false });
     }
   },
