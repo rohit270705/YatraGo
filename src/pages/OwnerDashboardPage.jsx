@@ -30,6 +30,7 @@ export default function OwnerDashboardPage() {
 
   const [newVehicle, setNewVehicle] = useState({
     registrationNumber: '', modelName: '', variant: '', fuelType: 'Petrol', type: 'Hatchback', seatingCapacity: 5,
+    purchaseDate: '',
     luggageCapacity: 50,
     photos: { front: null, back: null, left: null, right: null, interior: null }
   });
@@ -103,6 +104,34 @@ export default function OwnerDashboardPage() {
     setPhotoPreviews(p => ({ ...p, [photoType]: null }));
   };
 
+  const handleRegistrationChange = (e) => {
+    let val = e.target.value.toUpperCase();
+    let clean = val.replace(/[^A-Z0-9]/g, '');
+    let formatted = '';
+    
+    for (let i = 0; i < clean.length && i < 10; i++) {
+      let char = clean[i];
+      if (i < 2) {
+        if (/[A-Z]/.test(char)) formatted += char;
+        else break;
+      } else if (i < 4) {
+        if (i === 2) formatted += '-';
+        if (/[0-9]/.test(char)) formatted += char;
+        else break;
+      } else if (i < 6) {
+        if (i === 4) formatted += '-';
+        if (/[A-Z]/.test(char)) formatted += char;
+        else break;
+      } else {
+        if (i === 6) formatted += '-';
+        if (/[0-9]/.test(char)) formatted += char;
+        else break;
+      }
+    }
+    
+    setNewVehicle(p => ({ ...p, registrationNumber: formatted }));
+  };
+
   const handleAddVehicle = async () => {
     if (!newVehicle.registrationNumber) {
       addToast('Registration number is required', 'error');
@@ -122,6 +151,7 @@ export default function OwnerDashboardPage() {
       setShowAddVehicle(false);
       setNewVehicle({
         registrationNumber: '', modelName: '', variant: '', fuelType: 'Petrol', type: 'Hatchback', seatingCapacity: 5,
+        purchaseDate: '',
         luggageCapacity: 50,
         photos: { front: null, back: null, left: null, right: null, interior: null }
       });
@@ -407,11 +437,19 @@ export default function OwnerDashboardPage() {
               <button className="modal-close" onClick={() => setShowAddVehicle(false)}>✕</button>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Vehicle Registration Number</label>
-              <input className="form-input" placeholder="MH-XX-AB-1234"
-                value={newVehicle.registrationNumber}
-                onChange={e => setNewVehicle(p => ({ ...p, registrationNumber: e.target.value.toUpperCase() }))} />
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Vehicle Registration Number</label>
+                <input className="form-input" placeholder="MH-02-AB-9999"
+                  value={newVehicle.registrationNumber}
+                  onChange={handleRegistrationChange} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Purchase Date</label>
+                <input type="date" className="form-input"
+                  value={newVehicle.purchaseDate}
+                  onChange={e => setNewVehicle(p => ({ ...p, purchaseDate: e.target.value }))} />
+              </div>
             </div>
 
             <div className="form-row">
