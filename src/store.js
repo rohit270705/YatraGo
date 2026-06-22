@@ -1065,8 +1065,11 @@ export const useVehicleStore = create((set, get) => ({
     try {
       set({ isLoading: true });
 
+      const vehicleId = uuidv4();
+      
       // 1. Insert the vehicle row first
       const { data, error } = await supabase.from('vehicles').insert([{
+        id: vehicleId,
         owner_id: vehicleData.owner_id,
         registration_number: vehicleData.registrationNumber,
         model_name: vehicleData.modelName,
@@ -1081,8 +1084,6 @@ export const useVehicleStore = create((set, get) => ({
       }]).select().single();
 
       if (error) throw error;
-
-      const vehicleId = data.id;
 
       // 2. Upload photos if provided
       const photoFields = ['front', 'back', 'left', 'right', 'interior'];
