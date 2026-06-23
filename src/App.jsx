@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Search, Ticket, Wallet, Car, Package, Users, ShieldCheck,
   LogOut, Menu, X, MapPin, UserCircle, Settings, Bell, ChevronRight,
@@ -32,6 +32,26 @@ import ProfilePage from './pages/ProfilePage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import ChatWidget from './components/ChatWidget';
 
+// ===== FIX 4: mapDbUser moved outside — no longer re-created on every render =====
+const mapDbUser = (data) => ({
+  id: data.id,
+  email: data.email,
+  name: data.name,
+  phone: data.phone,
+  role: data.role,
+  emailVerified: data.email_verified,
+  phoneVerified: data.phone_verified,
+  bloodGroup: data.blood_group,
+  dob: data.dob,
+  age: data.age,
+  gender: data.gender,
+  address: data.address,
+  aadharNumber: data.aadhar_number,
+  panNumber: data.pan_number,
+  avatarUrl: data.avatar_url,
+  createdAt: data.created_at,
+});
+
 // ===== Toast Component =====
 function ToastContainer() {
   const { toasts } = useToastStore();
@@ -47,17 +67,35 @@ function ToastContainer() {
   );
 }
 
-// ===== Protected Route =====
-function ProtectedRoute({ children }) {
+// ===== FIX 1: ProtectedRoute with role-based access control =====
+function ProtectedRoute({ children, allowedRoles }) {
   const { user, isAuthenticated } = useAuthStore();
   const location = useLocation();
 
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Role-based guard — redirect unauthorized users to their own dashboard
+  if (allowedRoles && user?.role && !allowedRoles.includes(user.role)) {
+    const roleHome = {
+      admin: '/admin',
+      agent: '/agent',
+      owner: '/owner',
+      passenger: '/dashboard',
+    };
+    return <Navigate to={roleHome[user.role] || '/dashboard'} replace />;
+  }
 
   const isProfileIncomplete = user && (!user.phone || !user.dob || !user.bloodGroup);
-
   if (isProfileIncomplete && location.pathname !== '/profile') {
-    return <Navigate to="/profile" replace state={{ fromIncomplete: true, message: "Please complete your profile details first." }} />;
+    return (
+      <Navigate
+        to="/profile"
+        replace
+        state={{ fromIncomplete: true, message: 'Please complete your profile details first.' }}
+      />
+    );
   }
 
   return children;
@@ -109,7 +147,8 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/wallet', label: 'Wallets', icon: Wallet },
   ];
 
-  const links = role === 'agent' ? agentLinks
+  const links =
+    role === 'agent' ? agentLinks
     : role === 'owner' ? ownerLinks
     : role === 'admin' ? adminLinks
     : passengerLinks;
@@ -136,7 +175,10 @@ function Sidebar({ isOpen, onClose }) {
 
         <nav className="sidebar-nav">
           <div className="sidebar-section-title">
-            {role === 'agent' ? 'Agent Portal' : role === 'owner' ? 'Owner Portal' : role === 'admin' ? 'Admin Panel' : 'Navigation'}
+            {role === 'agent' ? 'Agent Portal'
+              : role === 'owner' ? 'Owner Portal'
+              : role === 'admin' ? 'Admin Panel'
+              : 'Navigation'}
           </div>
           {links.map(link => (
             <button
@@ -160,12 +202,15 @@ function Sidebar({ isOpen, onClose }) {
         </nav>
 
         <div className="sidebar-user">
-          <div className="sidebar-avatar" style={{ 
-            backgroundImage: user?.avatarUrl ? `url(${user.avatarUrl})` : 'none', 
-            backgroundSize: 'cover', 
-            backgroundPosition: 'center', 
-            color: user?.avatarUrl ? 'transparent' : 'white' 
-          }}>
+          <div
+            className="sidebar-avatar"
+            style={{
+              backgroundImage: user?.avatarUrl ? `url(${user.avatarUrl})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              color: user?.avatarUrl ? 'transparent' : 'white',
+            }}
+          >
             {!user?.avatarUrl && (user?.name?.[0]?.toUpperCase() || 'U')}
           </div>
           <div className="sidebar-user-info">
@@ -188,28 +233,32 @@ function BottomNav() {
   const { user } = useAuthStore();
   const role = user?.role || 'passenger';
 
-  const items = role === 'passenger' ? [
-    { path: '/dashboard', label: 'Home', icon: Home },
-    { path: '/search', label: 'Search', icon: Search },
-    { path: '/rentals', label: 'Rentals', icon: Bike },
-    { path: '/bookings', label: 'Bookings', icon: Ticket },
-    { path: '/wallet', label: 'Wallet', icon: Wallet },
-  ] : role === 'agent' ? [
-    { path: '/agent', label: 'Dashboard', icon: Home },
-    { path: '/search', label: 'Book', icon: Search },
-    { path: '/bookings', label: 'Bookings', icon: Ticket },
-    { path: '/wallet', label: 'Wallet', icon: Wallet },
-  ] : role === 'owner' ? [
-    { path: '/owner', label: 'Dashboard', icon: Home },
-    { path: '/vehicles', label: 'Vehicles', icon: Car },
-    { path: '/bookings', label: 'Bookings', icon: Ticket },
-    { path: '/wallet', label: 'Earnings', icon: Wallet },
-  ] : [
-    { path: '/admin', label: 'Panel', icon: ShieldCheck },
-    { path: '/vehicles', label: 'Vehicles', icon: Car },
-    { path: '/bookings', label: 'Bookings', icon: Ticket },
-    { path: '/wallet', label: 'Wallets', icon: Wallet },
-  ];
+  const items =
+    role === 'passenger' ? [
+      { path: '/dashboard', label: 'Home', icon: Home },
+      { path: '/search', label: 'Search', icon: Search },
+      { path: '/rentals', label: 'Rentals', icon: Bike },
+      { path: '/bookings', label: 'Bookings', icon: Ticket },
+      { path: '/wallet', label: 'Wallet', icon: Wallet },
+    ]
+    : role === 'agent' ? [
+      { path: '/agent', label: 'Dashboard', icon: Home },
+      { path: '/search', label: 'Book', icon: Search },
+      { path: '/bookings', label: 'Bookings', icon: Ticket },
+      { path: '/wallet', label: 'Wallet', icon: Wallet },
+    ]
+    : role === 'owner' ? [
+      { path: '/owner', label: 'Dashboard', icon: Home },
+      { path: '/vehicles', label: 'Vehicles', icon: Car },
+      { path: '/bookings', label: 'Bookings', icon: Ticket },
+      { path: '/wallet', label: 'Earnings', icon: Wallet },
+    ]
+    : [
+      { path: '/admin', label: 'Panel', icon: ShieldCheck },
+      { path: '/vehicles', label: 'Vehicles', icon: Car },
+      { path: '/bookings', label: 'Bookings', icon: Ticket },
+      { path: '/wallet', label: 'Wallets', icon: Wallet },
+    ];
 
   return (
     <nav className="bottom-nav">
@@ -227,17 +276,30 @@ function BottomNav() {
   );
 }
 
-// ===== Notification Bell =====
+// ===== FIX 2: Notification Bell with click-outside close =====
 function NotificationBell() {
   const { notifications, fetchNotifications, markAsRead, markAllAsRead } = useNotificationStore();
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const bellRef = useRef(null);
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000); // Polling every minute
+    const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
+
+  // Close dropdown when user clicks outside the bell area
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (e) => {
+      if (bellRef.current && !bellRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
@@ -245,16 +307,17 @@ function NotificationBell() {
     markAsRead(notif.id);
     setIsOpen(false);
     if (notif.reference_type === 'vehicle_approved') {
-      navigate('/vehicles'); // Or specific dashboard based on role
+      navigate('/vehicles');
     }
   };
 
   return (
-    <div style={{ position: 'relative' }}>
-      <button 
-        className="btn btn-ghost btn-icon" 
-        onClick={() => setIsOpen(!isOpen)}
+    <div ref={bellRef} style={{ position: 'relative' }}>
+      <button
+        className="btn btn-ghost btn-icon"
+        onClick={() => setIsOpen(prev => !prev)}
         style={{ position: 'relative' }}
+        aria-label="Notifications"
       >
         <Bell size={24} />
         {unreadCount > 0 && (
@@ -263,7 +326,7 @@ function NotificationBell() {
             background: 'var(--color-accent-red)', color: 'white',
             fontSize: '10px', fontWeight: 'bold',
             width: 18, height: 18, borderRadius: '50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
@@ -275,12 +338,19 @@ function NotificationBell() {
           position: 'absolute', top: '100%', right: 0, marginTop: 8,
           width: 320, background: 'var(--color-surface)',
           borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-xl)',
-          border: 'var(--border-subtle)', zIndex: 1000, overflow: 'hidden'
+          border: 'var(--border-subtle)', zIndex: 1000, overflow: 'hidden',
         }}>
-          <div style={{ padding: '12px 16px', borderBottom: 'var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{
+            padding: '12px 16px', borderBottom: 'var(--border-subtle)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
             <h4 style={{ margin: 0, fontWeight: 700 }}>Notifications</h4>
             {unreadCount > 0 && (
-              <button onClick={markAllAsRead} className="btn btn-ghost btn-sm" style={{ fontSize: '0.75rem', padding: '4px 8px' }}>
+              <button
+                onClick={markAllAsRead}
+                className="btn btn-ghost btn-sm"
+                style={{ fontSize: '0.75rem', padding: '4px 8px' }}
+              >
                 Mark all read
               </button>
             )}
@@ -292,13 +362,13 @@ function NotificationBell() {
               </div>
             ) : (
               notifications.map(notif => (
-                <div 
+                <div
                   key={notif.id}
                   onClick={() => handleNotificationClick(notif)}
                   style={{
                     padding: '12px 16px', borderBottom: 'var(--border-subtle)',
                     background: notif.is_read ? 'transparent' : 'rgba(27, 153, 139, 0.05)',
-                    cursor: 'pointer', display: 'flex', gap: 12
+                    cursor: 'pointer', display: 'flex', gap: 12,
                   }}
                 >
                   <div style={{ flex: 1 }}>
@@ -310,7 +380,10 @@ function NotificationBell() {
                     </div>
                   </div>
                   {!notif.is_read && (
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-accent-teal)', marginTop: 6 }} />
+                    <div style={{
+                      width: 8, height: 8, borderRadius: '50%',
+                      background: 'var(--color-accent-teal)', marginTop: 6,
+                    }} />
                   )}
                 </div>
               ))
@@ -333,9 +406,7 @@ function AppLayout({ children }) {
           <Menu size={24} />
         </button>
         <span className="sidebar-logo-text" style={{ fontSize: '1.1rem' }}>YatraGo</span>
-        <div style={{ position: 'relative' }}>
-          <NotificationBell />
-        </div>
+        <NotificationBell />
       </div>
 
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -357,44 +428,25 @@ export default function App() {
   const { user, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    // Helper to map DB snake_case to UI camelCase
-    const mapDbUser = (data) => ({
-      id: data.id,
-      email: data.email,
-      name: data.name,
-      phone: data.phone,
-      role: data.role,
-      emailVerified: data.email_verified,
-      phoneVerified: data.phone_verified,
-      bloodGroup: data.blood_group,
-      dob: data.dob,
-      age: data.age,
-      gender: data.gender,
-      address: data.address,
-      aadharNumber: data.aadhar_number,
-      panNumber: data.pan_number,
-      avatarUrl: data.avatar_url,
-      createdAt: data.created_at,
-    });
-
-    // Listen for Google Auth changes from Supabase
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        // When Google user signs in, sync them with our public.users table
         try {
           const { user: authUser } = session;
-          
-          // Check if they exist in our custom public.users table
+
           const { data: existingUser } = await supabase
             .from('users')
             .select('*')
             .eq('email', authUser.email)
             .maybeSingle();
+
           if (!existingUser) {
-            const intendedRole = localStorage.getItem('oauth_intended_role') || 'passenger';
-            localStorage.removeItem('oauth_intended_role'); // Clean up
-            
-            // New Google User - create their profile
+            // FIX 3: Read role from Supabase user_metadata instead of localStorage
+            const intendedRole =
+              authUser.user_metadata?.intended_role ||
+              localStorage.getItem('oauth_intended_role') || // kept as fallback
+              'passenger';
+            localStorage.removeItem('oauth_intended_role');
+
             const { data: newUser, error } = await supabase
               .from('users')
               .insert([{
@@ -402,7 +454,7 @@ export default function App() {
                 name: authUser.user_metadata?.full_name || 'Google User',
                 avatar_url: authUser.user_metadata?.avatar_url || null,
                 role: intendedRole,
-                email_verified: true
+                email_verified: true,
               }])
               .select()
               .single();
@@ -411,11 +463,10 @@ export default function App() {
               useAuthStore.setState({ user: mapDbUser(newUser), isAuthenticated: true });
             }
           } else {
-            // Existing user, just log them in to our state
             useAuthStore.setState({ user: mapDbUser(existingUser), isAuthenticated: true });
           }
         } catch (err) {
-          console.error("Error syncing Google Auth with public.users", err);
+          console.error('Error syncing Google Auth with public.users', err);
         }
       } else if (event === 'SIGNED_OUT') {
         useAuthStore.setState({ user: null, isAuthenticated: false });
@@ -431,37 +482,75 @@ export default function App() {
     <HashRouter>
       <ToastContainer />
       <Routes>
-        {/* Auth Routes */}
+        {/* Public Auth Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/admin-login" element={<AdminLoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify" element={<VerificationPage />} />
 
-        {/* Protected Routes */}
+        {/* Shared Authenticated Routes (all roles) */}
         <Route path="/profile" element={<ProtectedRoute><AppLayout><ProfilePage /></AppLayout></ProtectedRoute>} />
-        <Route path="/dashboard" element={<ProtectedRoute><AppLayout><DashboardPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/search" element={<ProtectedRoute><AppLayout><SearchPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/book/:routeId" element={<ProtectedRoute><AppLayout><BookingPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/sessions" element={<ProtectedRoute><AppLayout><DeviceSessionsPage /></AppLayout></ProtectedRoute>} />
         <Route path="/bookings" element={<ProtectedRoute><AppLayout><MyBookingsPage /></AppLayout></ProtectedRoute>} />
         <Route path="/wallet" element={<ProtectedRoute><AppLayout><WalletPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/daily-report" element={<ProtectedRoute><AppLayout><DailyReportPage /></AppLayout></ProtectedRoute>} />
         <Route path="/vehicles" element={<ProtectedRoute><AppLayout><VehiclesPage /></AppLayout></ProtectedRoute>} />
         <Route path="/vehicle/:vehicleId" element={<ProtectedRoute><AppLayout><VehicleDetailPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/tracking" element={<ProtectedRoute><AppLayout><LiveTrackingPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/parcel" element={<ProtectedRoute><AppLayout><ParcelPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/rentals" element={<ProtectedRoute><AppLayout><RentalPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/sessions" element={<ProtectedRoute><AppLayout><DeviceSessionsPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/daily-report" element={<ProtectedRoute><AppLayout><DailyReportPage /></AppLayout></ProtectedRoute>} />
 
-        {/* Agent Routes */}
-        <Route path="/agent" element={<ProtectedRoute><AppLayout><AgentDashboardPage /></AppLayout></ProtectedRoute>} />
+        {/* Passenger-only Routes */}
+        <Route path="/dashboard" element={
+          <ProtectedRoute allowedRoles={['passenger']}>
+            <AppLayout><DashboardPage /></AppLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/search" element={
+          <ProtectedRoute allowedRoles={['passenger', 'agent']}>
+            <AppLayout><SearchPage /></AppLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/book/:routeId" element={
+          <ProtectedRoute allowedRoles={['passenger', 'agent']}>
+            <AppLayout><BookingPage /></AppLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/tracking" element={
+          <ProtectedRoute allowedRoles={['passenger']}>
+            <AppLayout><LiveTrackingPage /></AppLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/parcel" element={
+          <ProtectedRoute allowedRoles={['passenger']}>
+            <AppLayout><ParcelPage /></AppLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/rentals" element={
+          <ProtectedRoute allowedRoles={['passenger']}>
+            <AppLayout><RentalPage /></AppLayout>
+          </ProtectedRoute>
+        } />
 
-        {/* Owner Routes */}
-        <Route path="/owner" element={<ProtectedRoute><AppLayout><OwnerDashboardPage /></AppLayout></ProtectedRoute>} />
+        {/* Agent-only Routes */}
+        <Route path="/agent" element={
+          <ProtectedRoute allowedRoles={['agent']}>
+            <AppLayout><AgentDashboardPage /></AppLayout>
+          </ProtectedRoute>
+        } />
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={<ProtectedRoute><AppLayout><AdminDashboardPage /></AppLayout></ProtectedRoute>} />
+        {/* Owner-only Routes */}
+        <Route path="/owner" element={
+          <ProtectedRoute allowedRoles={['owner']}>
+            <AppLayout><OwnerDashboardPage /></AppLayout>
+          </ProtectedRoute>
+        } />
 
-        {/* Default */}
+        {/* Admin-only Routes */}
+        <Route path="/admin" element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AppLayout><AdminDashboardPage /></AppLayout>
+          </ProtectedRoute>
+        } />
+
+        {/* Default redirect */}
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
