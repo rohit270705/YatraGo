@@ -1,15 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, User, Phone, Eye, EyeOff, CreditCard } from 'lucide-react';
 import { useAuthStore, useToastStore } from '../store';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const { register, error: storeError } = useAuthStore();
+  const { register, error: storeError, isAuthenticated, user } = useAuthStore();
   const { addToast } = useToastStore();
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const dest = user.role === 'admin' ? '/admin'
+        : user.role === 'agent' ? '/agent'
+        : user.role === 'owner' ? '/owner'
+        : '/dashboard';
+      navigate(dest, { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const [form, setForm] = useState({
     name: '', email: '', phone: '', password: '', confirmPassword: '',

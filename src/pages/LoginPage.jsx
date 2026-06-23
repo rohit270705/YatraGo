@@ -1,17 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, User, Phone, Car, ShieldCheck, Briefcase } from 'lucide-react';
 import { useAuthStore, useToastStore } from '../store';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, error, clearError } = useAuthStore();
+  const { login, error, clearError, isAuthenticated, user } = useAuthStore();
   const { addToast } = useToastStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const dest = user.role === 'admin' ? '/admin'
+        : user.role === 'agent' ? '/agent'
+        : user.role === 'owner' ? '/owner'
+        : '/dashboard';
+      navigate(dest, { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const roles = [
     { id: 'passenger', label: 'Passenger', desc: 'Book trips & parcels', icon: '🧳' },
