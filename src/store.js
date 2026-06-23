@@ -274,6 +274,10 @@ export const useAuthStore = create(
         localStorage.setItem('oauth_intended_role', role);
       }
       
+      // Force sign out of any existing Supabase session. 
+      // If they have a stale 'email' session, signInWithOAuth throws "Manual linking is disabled".
+      await supabase.auth.signOut();
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

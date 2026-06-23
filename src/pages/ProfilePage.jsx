@@ -125,8 +125,8 @@ export default function ProfilePage() {
   };
 
   const handleSave = async () => {
-    // If they came from the "incomplete profile" redirect, force them to fill mandatory fields
-    if (location.state?.fromIncomplete && (!form.phone || !form.dob || !form.bloodGroup)) {
+    // Absolutely enforce mandatory fields
+    if (!form.phone || !form.dob || !form.bloodGroup) {
       addToast('Please complete Phone Number, Date of Birth, and Blood Group first.', 'error');
       return;
     }
