@@ -538,21 +538,63 @@ export const useBookingStore = create(
 
       fetchAllRoutes: async () => {
     try {
-      const { data, error } = await supabase.from('routes').select('*, vehicles(*)');
-      if (!error && data) set({ routes: data.map(mapRoute) });
-    } catch(err) {}
+      // Fetch separately to avoid PostgREST schema cache issues with newly added foreign keys
+      const [routesRes, vehiclesRes] = await Promise.all([
+        supabase.from('routes').select('*'),
+        supabase.from('vehicles').select('*')
+      ]);
+      
+      if (!routesRes.error && routesRes.data) {
+        const vehiclesMap = {};
+        if (vehiclesRes.data) {
+          vehiclesRes.data.forEach(v => {
+            vehiclesMap[v.id] = v;
+          });
+        }
+        
+        const mappedRoutes = routesRes.data.map(r => {
+          // manually attach vehicle to bypass join issue
+          if (r.vehicle_id && vehiclesMap[r.vehicle_id]) {
+            r.vehicles = vehiclesMap[r.vehicle_id];
+          }
+          return mapRoute(r);
+        });
+        
+        set({ routes: mappedRoutes });
+      }
+    } catch(err) {
+      console.error('fetchAllRoutes error:', err);
+    }
   },
       searchRoutes: async (from, to, date) => {
     try {
-      let query = supabase.from('routes').select('*, vehicles(*)');
+      let query = supabase.from('routes').select('*');
       if (from) query = query.ilike('from_city', `%${from}%`);
       if (to) query = query.ilike('to_city', `%${to}%`);
       if (date) query = query.eq('journey_date', date);
 
-      const { data, error } = await query;
-      if (error) throw error;
+      const [routesRes, vehiclesRes] = await Promise.all([
+        query,
+        supabase.from('vehicles').select('*')
+      ]);
+
+      if (routesRes.error) throw routesRes.error;
       
-      const mapped = (data || []).map(mapRoute);
+      const vehiclesMap = {};
+      if (vehiclesRes.data) {
+        vehiclesRes.data.forEach(v => {
+          vehiclesMap[v.id] = v;
+        });
+      }
+      
+      const data = routesRes.data || [];
+      data.forEach(r => {
+        if (r.vehicle_id && vehiclesMap[r.vehicle_id]) {
+          r.vehicles = vehiclesMap[r.vehicle_id];
+        }
+      });
+      
+      const mapped = data.map(mapRoute);
       set({ searchResults: mapped });
       return mapped;
     } catch (err) {
@@ -568,7 +610,14 @@ export const useBookingStore = create(
       if (!user) return { error: 'Not authenticated' };
 
       // Fetch the real route
-      const { data: route, error: routeErr } = await supabase.from('routes').select('*, vehicles(*)').eq('id', routeId).single();
+      const { data: routeData, error: routeErr } = await supabase.from('routes').select('*').eq('id', routeId).single();
+      if (routeErr || !routeData) return { error: 'Route not found' };
+      
+      // manually fetch vehicle
+      const { data: vData } = await supabase.from('vehicles').select('*').eq('id', routeData.vehicle_id).single();
+      if (vData) routeData.vehicles = vData;
+      
+      const route = mapRoute(routeData); // Ensure mapped format for price calculation
       if (routeErr || !route) return { error: 'Route not found' };
 
       const calculatePassengerPrice = (ageStr) => {
