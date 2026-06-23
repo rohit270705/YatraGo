@@ -156,14 +156,6 @@ export default function ProfilePage() {
     } else {
       addToast('Profile updated successfully!', 'success');
       setIsEditing(false);
-      
-      if (location.state?.fromIncomplete) {
-        const dest = user.role === 'admin' ? '/admin'
-          : user.role === 'agent' ? '/agent'
-          : user.role === 'owner' ? '/owner'
-          : '/dashboard';
-        navigate(dest, { replace: true });
-      }
     }
   };
 
