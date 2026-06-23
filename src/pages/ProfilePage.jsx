@@ -131,6 +131,14 @@ export default function ProfilePage() {
       return;
     }
 
+    if (form.aadharNumber) {
+      const aadharClean = form.aadharNumber.replace(/\s/g, '');
+      if (!/^\d{12}$/.test(aadharClean)) {
+        addToast('Invalid Aadhar Number. It must be exactly 12 digits.', 'error');
+        return;
+      }
+    }
+
     if (form.panNumber) {
       const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
       if (!panRegex.test(form.panNumber)) {
@@ -363,9 +371,12 @@ export default function ProfilePage() {
             <label className="form-label">Aadhar Number</label>
             <div className="form-input-icon-wrapper">
               <ShieldCheck className="form-input-icon" size={20} />
-              <input type="text" className="form-input" placeholder="XXXX XXXX XXXX"
-                value={form.aadharNumber} onChange={e => updateForm('aadharNumber', e.target.value)} 
-                disabled={!isEditing} maxLength={14} />
+              <input type="text" className="form-input" placeholder="12-digit Aadhar Number"
+                value={form.aadharNumber} onChange={e => {
+                  const val = e.target.value.replace(/\D/g, ''); // only allow digits
+                  updateForm('aadharNumber', val);
+                }} 
+                disabled={!isEditing} maxLength={12} />
             </div>
           </div>
 
