@@ -357,6 +357,26 @@ export default function App() {
   const { user, isAuthenticated } = useAuthStore();
 
   useEffect(() => {
+    // Helper to map DB snake_case to UI camelCase
+    const mapDbUser = (data) => ({
+      id: data.id,
+      email: data.email,
+      name: data.name,
+      phone: data.phone,
+      role: data.role,
+      emailVerified: data.email_verified,
+      phoneVerified: data.phone_verified,
+      bloodGroup: data.blood_group,
+      dob: data.dob,
+      age: data.age,
+      gender: data.gender,
+      address: data.address,
+      aadharNumber: data.aadhar_number,
+      panNumber: data.pan_number,
+      avatarUrl: data.avatar_url,
+      createdAt: data.created_at,
+    });
+
     // Listen for Google Auth changes from Supabase
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
@@ -388,11 +408,11 @@ export default function App() {
               .single();
 
             if (!error && newUser) {
-              useAuthStore.setState({ user: newUser, isAuthenticated: true });
+              useAuthStore.setState({ user: mapDbUser(newUser), isAuthenticated: true });
             }
           } else {
             // Existing user, just log them in to our state
-            useAuthStore.setState({ user: existingUser, isAuthenticated: true });
+            useAuthStore.setState({ user: mapDbUser(existingUser), isAuthenticated: true });
           }
         } catch (err) {
           console.error("Error syncing Google Auth with public.users", err);
