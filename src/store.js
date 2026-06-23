@@ -176,6 +176,29 @@ const MOCK_ROUTES = [
   },
 ];
 
+// ===== FIX 1: persist middleware mein avatar_url ko exclude karo =====
+// Base64 avatar string bahut badi hoti hai — localStorage ki 5MB limit exceed ho
+// jaati hai jisse silently save fail hota tha. Avatar sirf sessionStorage mein rakho.
+const authPersistConfig = {
+  name: 'auth-storage',
+  partialize: (state) => ({
+    // avatarUrl ko EXCLUDE karo persist se — separately handle hoti hai
+    user: state.user ? { ...state.user, avatarUrl: undefined } : null,
+    isAuthenticated: state.isAuthenticated,
+    activeSessions: state.activeSessions,
+  }),
+};
+
+// ===== FIX 2: Login ke baad avatar sessionStorage se restore karo =====
+const restoreAvatarToUser = (user) => {
+  if (!user?.id) return user;
+  try {
+    const cachedAvatar = sessionStorage.getItem(`avatar_${user.id}`);
+    if (cachedAvatar) return { ...user, avatarUrl: cachedAvatar };
+  } catch (e) { /* ignore */ }
+  return user;
+};
+
 // ===== AUTH STORE =====
 export const useAuthStore = create(
   persist(
@@ -375,9 +398,13 @@ export const useAuthStore = create(
         address: data.address,
         aadharNumber: data.aadhar_number,
         panNumber: data.pan_number,
-        avatarUrl: data.avatar_url,
+        // FIX: DB se fresh avatar_url lo, aur sessionStorage se bhi try karo
+        avatarUrl: data.avatar_url || null,
         createdAt: data.created_at,
       };
+
+      // Restore avatar from sessionStorage if available (set during last session)
+      const userWithAvatar = restoreAvatarToUser(user);
 
       const newSession = {
         deviceId: uuidv4().slice(0, 8),
@@ -388,7 +415,7 @@ export const useAuthStore = create(
       };
 
       set({
-        user,
+        user: userWithAvatar,
         isAuthenticated: true,
         activeSessions: [...activeSessions, newSession],
         isLoading: false
@@ -444,11 +471,34 @@ export const useAuthStore = create(
 
       if (error) throw error;
 
-      // Update local state with the newly saved values
+      // FIX 3: updateProfile — DB se confirmed data use karo, avatar alag handle karo
+      // Isse ensure hota hai ki local state = DB state (no mismatch)
       const updatedUser = {
         ...user,
-        ...updates
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        bloodGroup: data.blood_group,
+        dob: data.dob,
+        age: data.age ? String(data.age) : '',
+        gender: data.gender,
+        address: data.address,
+        aadharNumber: data.aadhar_number,
+        panNumber: data.pan_number,
+        // avatarUrl persist mein nahi jaata (FIX 1 se exclude hai)
+        // sessionStorage mein store karo separately
+        avatarUrl: updates.avatarUrl || data.avatar_url || user.avatarUrl,
       };
+
+      // Base64 avatar ko sessionStorage mein store karo (localStorage safe nahi)
+      if (updates.avatarUrl) {
+        try {
+          sessionStorage.setItem(`avatar_${user.id}`, updates.avatarUrl);
+        } catch (storageErr) {
+          console.warn('Avatar storage failed (too large?), using DB URL instead');
+          updatedUser.avatarUrl = data.avatar_url || user.avatarUrl;
+        }
+      }
 
       set({ user: updatedUser });
       return { success: true };
@@ -478,9 +528,7 @@ export const useAuthStore = create(
 
       clearError: () => set({ error: null }),
     }),
-    {
-      name: 'auth-storage',
-    }
+    authPersistConfig  // FIX 1: avatar exclude karne wala config
   )
 );
 
