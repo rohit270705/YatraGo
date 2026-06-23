@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Calendar, ArrowRight, Clock, Users, Luggage, Car, Filter, Bus, X, SlidersHorizontal } from 'lucide-react';
 import { useBookingStore, useVehicleStore } from '../store';
@@ -14,7 +14,7 @@ const VEHICLE_TYPES = [
 
 export default function SearchPage() {
   const navigate = useNavigate();
-  const { searchRoutes, searchResults, routes } = useBookingStore();
+  const { searchRoutes, searchResults, routes, fetchAllRoutes } = useBookingStore();
   const { vehicles } = useVehicleStore();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -22,13 +22,21 @@ export default function SearchPage() {
   const [selectedVehicleType, setSelectedVehicleType] = useState('all');
   const [sortBy, setSortBy] = useState('price'); // price, seats, departure
   const [hasSearched, setHasSearched] = useState(false);
+  
+  useEffect(() => {
+    if (fetchAllRoutes) fetchAllRoutes();
+  }, [fetchAllRoutes]);
+  
+  const [isLoading, setIsLoading] = useState(false);
 
   const getVehicle = (vehicleId) => vehicles.find(v => v.id === vehicleId);
 
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
-    searchRoutes(from, to, date);
+    setIsLoading(true);
+    await searchRoutes(from, to, date);
     setHasSearched(true);
+    setIsLoading(false);
   };
 
   // Filter routes by vehicle type, then sort
@@ -88,6 +96,7 @@ export default function SearchPage() {
         <p>Find the perfect ride for your journey — choose your preferred vehicle</p>
       </div>
 
+      {isLoading && <div className="loading-spinner">Loading routes...</div>}
       {/* Search Form */}
       <div className="glass-card" style={{ padding: 'var(--space-xl)', marginBottom: 'var(--space-lg)' }}>
         <form onSubmit={handleSearch}>

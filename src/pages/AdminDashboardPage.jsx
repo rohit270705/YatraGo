@@ -4,28 +4,27 @@ import {
   XCircle, AlertTriangle, Eye, Ban, DollarSign, FileCheck, BarChart3,
   Bike, UserCheck, UserX, Clock, Search, MapPin, Star, Zap, Filter
 } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 import { useVehicleStore, useBookingStore, useWalletStore, useToastStore, useRentalStore } from '../store';
 
-// Mock active platform users
-const MOCK_USERS = [
-  { id: 'u1', name: 'Arjun Mehta', email: 'arjun.mehta@gmail.com', phone: '+91 98765 43210', role: 'passenger', status: 'active', joinDate: '2026-01-15', lastActive: '2 min ago', bookings: 12, city: 'Mumbai' },
-  { id: 'u2', name: 'Priya Sharma', email: 'priya.s@yahoo.com', phone: '+91 87654 32109', role: 'passenger', status: 'active', joinDate: '2026-02-20', lastActive: '5 min ago', bookings: 8, city: 'Pune' },
-  { id: 'u3', name: 'Rajesh Kumar', email: 'rajesh.k@gmail.com', phone: '+91 76543 21098', role: 'owner', status: 'active', joinDate: '2025-11-10', lastActive: '10 min ago', bookings: 0, city: 'Mumbai', vehicles: 1 },
-  { id: 'u4', name: 'Sneha Patel', email: 'sneha.p@outlook.com', phone: '+91 65432 10987', role: 'passenger', status: 'active', joinDate: '2026-03-05', lastActive: '1 hour ago', bookings: 5, city: 'Bangalore' },
-  { id: 'u5', name: 'Vikram Singh', email: 'vikram.s@gmail.com', phone: '+91 54321 09876', role: 'agent', status: 'active', joinDate: '2025-09-15', lastActive: '15 min ago', bookings: 47, city: 'Delhi' },
-  { id: 'u6', name: 'Ananya Iyer', email: 'ananya.i@gmail.com', phone: '+91 43210 98765', role: 'passenger', status: 'active', joinDate: '2026-04-12', lastActive: '30 min ago', bookings: 3, city: 'Chennai' },
-  { id: 'u7', name: 'Rahul Desai', email: 'rahul.d@hotmail.com', phone: '+91 32109 87654', role: 'passenger', status: 'inactive', joinDate: '2025-12-01', lastActive: '5 days ago', bookings: 15, city: 'Ahmedabad' },
-  { id: 'u8', name: 'Kavita Nair', email: 'kavita.n@gmail.com', phone: '+91 21098 76543', role: 'passenger', status: 'active', joinDate: '2026-05-18', lastActive: '45 min ago', bookings: 2, city: 'Hyderabad' },
-  { id: 'u9', name: 'Suresh Travels Pvt Ltd', email: 'suresh@sureshtravels.in', phone: '+91 10987 65432', role: 'owner', status: 'active', joinDate: '2025-08-20', lastActive: '20 min ago', bookings: 0, city: 'Delhi', vehicles: 1 },
-  { id: 'u10', name: 'KPN Travels', email: 'booking@kpn.co.in', phone: '+91 09876 54321', role: 'owner', status: 'active', joinDate: '2025-10-05', lastActive: '1 hour ago', bookings: 0, city: 'Chennai', vehicles: 1 },
-  { id: 'u11', name: 'Amit Desai', email: 'amit.d@gmail.com', phone: '+91 99001 12233', role: 'owner', status: 'active', joinDate: '2026-01-28', lastActive: '3 hours ago', bookings: 0, city: 'Ahmedabad', vehicles: 1 },
-  { id: 'u12', name: 'Meena Krishnan', email: 'meena.k@gmail.com', phone: '+91 88112 23344', role: 'passenger', status: 'active', joinDate: '2026-06-01', lastActive: '8 min ago', bookings: 1, city: 'Goa' },
-  { id: 'u13', name: 'Rohit Joshi', email: 'rohit.j@gmail.com', phone: '+91 77223 34455', role: 'passenger', status: 'suspended', joinDate: '2025-07-14', lastActive: '2 weeks ago', bookings: 22, city: 'Jaipur' },
-  { id: 'u14', name: 'Divya Reddy', email: 'divya.r@outlook.com', phone: '+91 66334 45566', role: 'agent', status: 'active', joinDate: '2026-02-10', lastActive: '25 min ago', bookings: 31, city: 'Hyderabad' },
-  { id: 'u15', name: 'Nitin Gupta', email: 'nitin.g@gmail.com', phone: '+91 55445 56677', role: 'passenger', status: 'active', joinDate: '2026-05-25', lastActive: '12 min ago', bookings: 4, city: 'Mumbai' },
-];
+// Mock users removed
 
 export default function AdminDashboardPage() {
+  const [users, setUsers] = useState([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const { data, error } = await supabase.from('users').select('*');
+        if (!error && data) setUsers(data);
+      } catch (err) {} finally {
+        setIsLoadingUsers(false);
+      }
+    };
+    fetchUsers();
+  }, []);
+
   const { vehicles, approveVehicle, rejectVehicle, getPendingApprovals, fetchVehicles } = useVehicleStore();
   const { bookings } = useBookingStore();
   const { transactions } = useWalletStore();
@@ -53,7 +52,7 @@ export default function AdminDashboardPage() {
 
   // Filtered Users
   const filteredUsers = useMemo(() => {
-    let list = MOCK_USERS;
+    let list = users;
     if (userFilter !== 'all') {
       if (userFilter === 'active') list = list.filter(u => u.status === 'active');
       else if (userFilter === 'inactive') list = list.filter(u => u.status === 'inactive' || u.status === 'suspended');
@@ -107,11 +106,11 @@ export default function AdminDashboardPage() {
     return combined;
   }, [vehicles, rentalVehicles, vehicleTabFilter]);
 
-  const activeUserCount = MOCK_USERS.filter(u => u.status === 'active').length;
+  const activeUserCount = users.filter(u => u.status === 'active').length;
 
   const sections = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
-    { id: 'users', label: `Users (${MOCK_USERS.length})`, icon: Users },
+    { id: 'users', label: `Users (${users.length})`, icon: Users },
     { id: 'all-vehicles', label: `All Vehicles (${totalAllVehicles})`, icon: Car },
     { id: 'approvals', label: `Approvals (${pendingVehicles.length})`, icon: FileCheck },
     { id: 'bookings', label: 'Bookings', icon: Ticket },
@@ -181,7 +180,7 @@ export default function AdminDashboardPage() {
               <div className="stat-card-icon teal"><Users size={22} /></div>
               <div className="stat-card-label">Active Users</div>
               <div className="stat-card-value">{activeUserCount}</div>
-              <div className="stat-card-change positive">of {MOCK_USERS.length} total</div>
+              <div className="stat-card-change positive">of {users.length} total</div>
             </div>
             <div className="stat-card">
               <div className="stat-card-icon blue"><Car size={22} /></div>
@@ -249,11 +248,11 @@ export default function AdminDashboardPage() {
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
               {[
-                { label: 'Passengers', count: MOCK_USERS.filter(u => u.role === 'passenger').length, icon: '🧳', color: 'rgba(27, 153, 139, 0.12)' },
-                { label: 'Agents', count: MOCK_USERS.filter(u => u.role === 'agent').length, icon: '💼', color: 'rgba(155, 89, 182, 0.12)' },
-                { label: 'Vehicle Owners', count: MOCK_USERS.filter(u => u.role === 'owner').length, icon: '🚗', color: 'rgba(52, 152, 219, 0.12)' },
+                { label: 'Passengers', count: users.filter(u => u.role === 'passenger').length, icon: '🧳', color: 'rgba(27, 153, 139, 0.12)' },
+                { label: 'Agents', count: users.filter(u => u.role === 'agent').length, icon: '💼', color: 'rgba(155, 89, 182, 0.12)' },
+                { label: 'Vehicle Owners', count: users.filter(u => u.role === 'owner').length, icon: '🚗', color: 'rgba(52, 152, 219, 0.12)' },
                 { label: 'Active Now', count: activeUserCount, icon: '🟢', color: 'rgba(46, 204, 113, 0.12)' },
-                { label: 'Suspended', count: MOCK_USERS.filter(u => u.status === 'suspended').length, icon: '🔴', color: 'rgba(231, 76, 60, 0.12)' },
+                { label: 'Suspended', count: users.filter(u => u.status === 'suspended').length, icon: '🔴', color: 'rgba(231, 76, 60, 0.12)' },
               ].map(item => (
                 <div key={item.label} style={{
                   background: item.color, borderRadius: 'var(--radius-md)',
@@ -319,9 +318,9 @@ export default function AdminDashboardPage() {
           {/* User Stats Row */}
           <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
             {[
-              { label: 'Active', count: MOCK_USERS.filter(u => u.status === 'active').length, color: 'var(--color-accent-green)' },
-              { label: 'Inactive', count: MOCK_USERS.filter(u => u.status === 'inactive').length, color: 'var(--color-text-tertiary)' },
-              { label: 'Suspended', count: MOCK_USERS.filter(u => u.status === 'suspended').length, color: 'var(--color-accent-red)' },
+              { label: 'Active', count: users.filter(u => u.status === 'active').length, color: 'var(--color-accent-green)' },
+              { label: 'Inactive', count: users.filter(u => u.status === 'inactive').length, color: 'var(--color-text-tertiary)' },
+              { label: 'Suspended', count: users.filter(u => u.status === 'suspended').length, color: 'var(--color-accent-red)' },
             ].map(s => (
               <div key={s.label} style={{
                 background: 'var(--color-surface-elevated)', borderRadius: 'var(--radius-md)',
@@ -585,7 +584,7 @@ export default function AdminDashboardPage() {
             <div className="stat-card">
               <div className="stat-card-icon green"><Wallet size={22} /></div>
               <div className="stat-card-label">Total Platform Balance</div>
-              <div className="stat-card-value">₹{(MOCK_USERS.reduce((sum, u) => sum + (u.bookings * 1500 + 5000), 0)).toLocaleString()}</div>
+              <div className="stat-card-value">₹{(users.reduce((sum, u) => sum + (u.bookings * 1500 + 5000), 0)).toLocaleString()}</div>
             </div>
             <div className="stat-card">
               <div className="stat-card-icon amber"><DollarSign size={22} /></div>
@@ -607,7 +606,7 @@ export default function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {MOCK_USERS.map(u => {
+                {users.map(u => {
                   const mockBalance = (u.bookings * 1500) + 5000;
                   const mockTxnCount = u.bookings * 2 + 1;
                   return (
