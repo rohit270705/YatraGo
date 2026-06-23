@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { UserCircle, Mail, Phone, MapPin, Edit2, Check, ShieldCheck, CreditCard, Calendar, Activity } from 'lucide-react';
 import { useAuthStore, useToastStore } from '../store';
 
 export default function ProfilePage() {
   const { user, updateProfile, linkGoogleAccount } = useAuthStore();
   const { addToast } = useToastStore();
+  const location = useLocation();
   
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,6 +42,15 @@ export default function ProfilePage() {
       });
     }
   }, [user]);
+
+  useEffect(() => {
+    if (location.state?.message) {
+      addToast(location.state.message, 'info');
+      setIsEditing(true);
+      // Clean up the state so it doesn't fire again on re-render
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, addToast]);
 
   const parseDateToCalculateAge = (val) => {
     if (!val) return '';

@@ -49,8 +49,17 @@ function ToastContainer() {
 
 // ===== Protected Route =====
 function ProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const location = useLocation();
+
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  const isProfileIncomplete = user && (!user.phone || !user.dob || !user.bloodGroup);
+
+  if (isProfileIncomplete && location.pathname !== '/profile') {
+    return <Navigate to="/profile" replace state={{ message: "Please complete your profile details first." }} />;
+  }
+
   return children;
 }
 
@@ -360,7 +369,7 @@ export default function App() {
             .from('users')
             .select('*')
             .eq('email', authUser.email)
-            .single();
+            .maybeSingle();
           if (!existingUser) {
             const intendedRole = localStorage.getItem('oauth_intended_role') || 'passenger';
             localStorage.removeItem('oauth_intended_role'); // Clean up
