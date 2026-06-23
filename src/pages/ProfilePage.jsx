@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UserCircle, Mail, Phone, MapPin, Edit2, Check, ShieldCheck, CreditCard, Calendar, Activity } from 'lucide-react';
 import { useAuthStore, useToastStore } from '../store';
+import { supabase } from '../supabaseClient';
 
 export default function ProfilePage() {
   const { user, updateProfile, linkGoogleAccount } = useAuthStore();
@@ -11,6 +12,7 @@ export default function ProfilePage() {
   
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLinked, setIsGoogleLinked] = useState(false);
   
   const [form, setForm] = useState({
     name: '',
@@ -49,8 +51,19 @@ export default function ProfilePage() {
       addToast(location.state.message, 'info');
       setIsEditing(true);
       // Clean up the state so it doesn't fire again on re-render
-      window.history.replaceState({}, document.title);
+      // But keep fromIncomplete flag so we know they need to complete it
+      const newState = { ...location.state };
+      delete newState.message;
+      window.history.replaceState(newState, document.title);
     }
+    
+    // Check if Google is linked via Supabase session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.app_metadata?.provider === 'google' || 
+          session?.user?.app_metadata?.providers?.includes('google')) {
+        setIsGoogleLinked(true);
+      }
+    });
   }, [location.state, addToast]);
 
   const parseDateToCalculateAge = (val) => {
@@ -112,6 +125,12 @@ export default function ProfilePage() {
   };
 
   const handleSave = async () => {
+    // If they came from the "incomplete profile" redirect, force them to fill mandatory fields
+    if (location.state?.fromIncomplete && (!form.phone || !form.dob || !form.bloodGroup)) {
+      addToast('Please complete Phone Number, Date of Birth, and Blood Group first.', 'error');
+      return;
+    }
+
     setIsLoading(true);
     const res = await updateProfile(form);
     setIsLoading(false);
@@ -240,7 +259,7 @@ export default function ProfilePage() {
           </div>
           
           <div style={{ marginTop: 24 }}>
-            {user.avatarUrl && user.avatarUrl.includes('google') ? (
+            {isGoogleLinked ? (
               <button className="btn btn-secondary btn-full" style={{ display: 'flex', justifyContent: 'center', gap: '8px', opacity: 0.7 }} disabled>
                  <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
