@@ -361,8 +361,10 @@ export default function App() {
             .select('*')
             .eq('email', authUser.email)
             .single();
-
           if (!existingUser) {
+            const intendedRole = localStorage.getItem('oauth_intended_role') || 'passenger';
+            localStorage.removeItem('oauth_intended_role'); // Clean up
+            
             // New Google User - create their profile
             const { data: newUser, error } = await supabase
               .from('users')
@@ -370,7 +372,7 @@ export default function App() {
                 email: authUser.email,
                 name: authUser.user_metadata?.full_name || 'Google User',
                 avatar_url: authUser.user_metadata?.avatar_url || null,
-                role: 'passenger',
+                role: intendedRole,
                 email_verified: true
               }])
               .select()

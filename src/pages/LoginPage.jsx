@@ -10,7 +10,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('passenger');
+  const [selectedRole, setSelectedRole] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const roles = [
@@ -22,6 +22,10 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!selectedRole) {
+      addToast('Please select your role first.', 'error');
+      return;
+    }
     clearError();
     setIsLoading(true);
 
@@ -150,7 +154,13 @@ export default function LoginPage() {
           </form>
 
           <div style={{ marginTop: 24 }}>
-            <button type="button" onClick={() => useAuthStore.getState().signInWithGoogle()} className="btn" style={{ 
+            <button type="button" onClick={() => {
+              if (!selectedRole) {
+                addToast('Please select your role first.', 'error');
+                return;
+              }
+              useAuthStore.getState().signInWithGoogle(selectedRole);
+            }} className="btn" style={{ 
               width: '100%', 
               background: 'white', 
               color: 'var(--color-bg-primary)', 

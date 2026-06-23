@@ -243,9 +243,12 @@ export const useAuthStore = create(
     }
   },
 
-  signInWithGoogle: async () => {
+  signInWithGoogle: async (role = null) => {
     try {
       set({ isLoading: true, error: null });
+      if (role) {
+        localStorage.setItem('oauth_intended_role', role);
+      }
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -264,9 +267,12 @@ export const useAuthStore = create(
     }
   },
 
-  linkGoogleAccount: async () => {
+  linkGoogleAccount: async (role = null) => {
     try {
       set({ isLoading: true, error: null });
+      if (role) {
+        localStorage.setItem('oauth_intended_role', role);
+      }
       
       // Check if there's an active Supabase Auth session first
       const { data: sessionData } = await supabase.auth.getSession();

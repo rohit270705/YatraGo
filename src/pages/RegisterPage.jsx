@@ -13,7 +13,7 @@ export default function RegisterPage() {
 
   const [form, setForm] = useState({
     name: '', email: '', phone: '', password: '', confirmPassword: '',
-    role: 'passenger', bloodGroup: '', aadharNumber: '', panNumber: '',
+    role: '', bloodGroup: '', aadharNumber: '', panNumber: '',
     dob: '', address: '', avatarUrl: ''
   });
 
@@ -23,6 +23,10 @@ export default function RegisterPage() {
 
   const handleStep1 = (e) => {
     e.preventDefault();
+    if (!form.role) {
+      addToast('Please select a role (Passenger, Agent, or Owner).', 'error');
+      return;
+    }
     if (!/^[a-zA-Z]+(\s+[a-zA-Z]+){2,}$/.test(form.name.trim())) {
       addToast('Please enter your full name (First, Middle, and Last name).', 'error');
       return;
@@ -73,7 +77,11 @@ export default function RegisterPage() {
   };
 
   const handleGoogleAuth = () => {
-    useAuthStore.getState().signInWithGoogle();
+    if (!form.role) {
+      addToast('Please select your role first from the dropdown.', 'error');
+      return;
+    }
+    useAuthStore.getState().signInWithGoogle(form.role);
   };
 
   return (
@@ -132,6 +140,16 @@ export default function RegisterPage() {
 
               <form onSubmit={handleStep1}>
                 <div className="form-group">
+                  <label className="form-label">I am a</label>
+                  <select className="form-select" value={form.role} onChange={e => updateForm('role', e.target.value)}>
+                    <option value="" disabled>Select your role</option>
+                    <option value="passenger">Passenger</option>
+                    <option value="agent">Travel Agent</option>
+                    <option value="owner">Vehicle Owner</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
                   <label className="form-label">Full Name (First Middle Last)</label>
                   <div className="form-input-icon-wrapper">
                     <User className="form-input-icon" size={20} />
@@ -182,15 +200,6 @@ export default function RegisterPage() {
               <p className="auth-subtitle">Step 2: Verification details</p>
 
               <form onSubmit={handleStep2}>
-                <div className="form-group">
-                  <label className="form-label">I am a</label>
-                  <select className="form-select" value={form.role} onChange={e => updateForm('role', e.target.value)}>
-                    <option value="passenger">Passenger</option>
-                    <option value="agent">Travel Agent</option>
-                    <option value="owner">Vehicle Owner</option>
-                  </select>
-                </div>
-
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Blood Group</label>
