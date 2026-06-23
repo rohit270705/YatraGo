@@ -46,7 +46,7 @@ export default function SearchPage() {
     // Vehicle type filter
     if (selectedVehicleType !== 'all') {
       base = base.filter(route => {
-        const vehicle = getVehicle(route.vehicleId);
+        const vehicle = route.vehicle;
         return vehicle?.type === selectedVehicleType;
       });
     }
@@ -64,13 +64,13 @@ export default function SearchPage() {
         sorted.sort((a, b) => b.availableSeats - a.availableSeats);
         break;
       case 'departure':
-        sorted.sort((a, b) => a.departureTime.localeCompare(b.departureTime));
+        sorted.sort((a, b) => (a.departureTime || '').localeCompare(b.departureTime || ''));
         break;
       default:
         break;
     }
     return sorted;
-  }, [hasSearched, searchResults, routes, selectedVehicleType, sortBy, vehicles]);
+  }, [hasSearched, searchResults, routes, selectedVehicleType, sortBy]);
 
   // Count trips per vehicle type for badges
   const typeCounts = useMemo(() => {
@@ -79,13 +79,13 @@ export default function SearchPage() {
     VEHICLE_TYPES.forEach(vt => {
       if (vt.id !== 'all') {
         counts[vt.id] = base.filter(r => {
-          const v = getVehicle(r.vehicleId);
+          const v = r.vehicle;
           return v?.type === vt.id;
         }).length;
       }
     });
     return counts;
-  }, [hasSearched, searchResults, routes, vehicles]);
+  }, [hasSearched, searchResults, routes]);
 
   const cities = ['Mumbai', 'Pune', 'Bangalore', 'Goa', 'Delhi', 'Jaipur', 'Nashik', 'Mysore', 'Ahmedabad', 'Chennai', 'Hyderabad', 'Chandigarh', 'Agra', 'Surat'];
 
@@ -266,7 +266,7 @@ export default function SearchPage() {
           </div>
         ) : (
           displayRoutes.map(route => {
-            const vehicle = getVehicle(route.vehicleId);
+            const vehicle = route.vehicle;
             const vehicleEmoji = vehicle?.type === 'Bus' ? '🚌'
               : vehicle?.type === 'Mini Bus' ? '🚐'
               : vehicle?.type === 'Tempo Traveller' ? '🚎'
