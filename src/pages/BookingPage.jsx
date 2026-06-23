@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   MapPin, Calendar, Clock, Car, User, Heart, CreditCard, Luggage,
@@ -9,12 +9,18 @@ import { useBookingStore, useVehicleStore, useWalletStore, useAuthStore, useToas
 export default function BookingPage() {
   const { routeId } = useParams();
   const navigate = useNavigate();
-  const { routes, createBooking } = useBookingStore();
+  const { routes, fetchAllRoutes, createBooking } = useBookingStore();
   const { vehicles } = useVehicleStore();
   const { balance } = useWalletStore();
   const { user } = useAuthStore();
   const { addToast } = useToastStore();
   const { currentAgent, addAgentBooking } = useAgentStore();
+
+  useEffect(() => {
+    if (routes.length === 0 && fetchAllRoutes) {
+      fetchAllRoutes();
+    }
+  }, [routes.length, fetchAllRoutes]);
 
   const route = routes.find(r => r.id === routeId);
   const vehicle = route ? vehicles.find(v => v.id === route.vehicleId) : null;

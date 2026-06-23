@@ -29,6 +29,27 @@ const restoreAvatarToUser = (user) => {
 };
 
 // ===== AUTH STORE =====
+
+const mapRoute = (r) => ({
+  id: r.id,
+  vehicleId: r.vehicle_id,
+  from: r.from_city,
+  to: r.to_city,
+  stops: r.stops || [],
+  departureTime: r.departure_time,
+  arrivalTime: r.arrival_time,
+  date: r.journey_date,
+  price: r.price,
+  availableSeats: r.available_seats,
+  luggageAvailable: r.luggage_available,
+  vehicle: r.vehicles ? {
+    id: r.vehicles.id,
+    type: r.vehicles.type,
+    registrationNumber: r.vehicles.registration_number,
+    ownerId: r.vehicles.owner_id
+  } : null
+});
+
 export const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -518,7 +539,7 @@ export const useBookingStore = create(
       fetchAllRoutes: async () => {
     try {
       const { data, error } = await supabase.from('routes').select('*, vehicles(*)');
-      if (!error && data) set({ routes: data });
+      if (!error && data) set({ routes: data.map(mapRoute) });
     } catch(err) {}
   },
       searchRoutes: async (from, to, date) => {
@@ -531,8 +552,9 @@ export const useBookingStore = create(
       const { data, error } = await query;
       if (error) throw error;
       
-      set({ searchResults: data || [] });
-      return data || [];
+      const mapped = (data || []).map(mapRoute);
+      set({ searchResults: mapped });
+      return mapped;
     } catch (err) {
       console.error('Search error:', err);
       set({ searchResults: [] });
