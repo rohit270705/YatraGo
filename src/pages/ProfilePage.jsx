@@ -131,6 +131,14 @@ export default function ProfilePage() {
       return;
     }
 
+    if (form.panNumber) {
+      const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+      if (!panRegex.test(form.panNumber)) {
+        addToast('Invalid PAN Number format. Example: ABCDE1234F', 'error');
+        return;
+      }
+    }
+
     setIsLoading(true);
     const res = await updateProfile(form);
     setIsLoading(false);
