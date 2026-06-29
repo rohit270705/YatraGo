@@ -1321,9 +1321,10 @@ export const useVehicleStore = create((set, get) => ({
         return { success: true };
       }
 
-      const { error } = await supabase.from('vehicles')
-        .update({ approved: true, is_active: true })
-        .eq('id', vehicleId);
+      const { error } = await supabase.rpc('approve_vehicle_admin', { 
+        target_vehicle_id: vehicleId,
+        secret_key: 'yatrago_super_admin_secret_2026'
+      });
         
       if (error) throw error;
 
@@ -1386,9 +1387,10 @@ export const useVehicleStore = create((set, get) => ({
         return { success: true };
       }
 
-      const { error } = await supabase.from('vehicles')
-        .delete()
-        .eq('id', vehicleId);
+      const { error } = await supabase.rpc('reject_vehicle_admin', { 
+        target_vehicle_id: vehicleId,
+        secret_key: 'yatrago_super_admin_secret_2026'
+      });
         
       if (error) throw error;
 
