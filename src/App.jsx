@@ -87,16 +87,7 @@ function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to={roleHome[user.role] || '/dashboard'} replace />;
   }
 
-  const isProfileIncomplete = user && (!user.phone || !user.dob || !user.bloodGroup);
-  if (isProfileIncomplete && location.pathname !== '/profile') {
-    return (
-      <Navigate
-        to="/profile"
-        replace
-        state={{ fromIncomplete: true, message: 'Please complete your profile details first.' }}
-      />
-    );
-  }
+
 
   return children;
 }
