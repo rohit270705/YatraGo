@@ -6,7 +6,7 @@ import {
   Briefcase, TruckIcon, ClipboardList, FileCheck, CreditCard, BarChart3,
   Home, Map, Bike
 } from 'lucide-react';
-import { useAuthStore, useToastStore, useNotificationStore } from './store';
+import { useAuthStore, useToastStore, useNotificationStore, usePlatformStore } from './store';
 import { supabase } from './supabaseClient';
 
 // ===== Pages =====
@@ -417,6 +417,11 @@ function AppLayout({ children }) {
 // ===== Main App =====
 export default function App() {
   const { user, isAuthenticated } = useAuthStore();
+  const fetchSettings = usePlatformStore(s => s.fetchSettings);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {

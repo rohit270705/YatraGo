@@ -4,7 +4,8 @@ import {
   MapPin, Calendar, Clock, Car, User, Heart, CreditCard, Luggage,
   CheckCircle, ArrowRight, AlertCircle, Wallet, Shield
 } from 'lucide-react';
-import { useBookingStore, useVehicleStore, useWalletStore, useAuthStore, useToastStore, useAgentStore } from '../store';
+import { useBookingStore, useVehicleStore, useWalletStore, useAuthStore, useToastStore, useAgentStore, usePlatformStore } from '../store';
+import { supabase } from '../supabaseClient';
 
 export default function BookingPage() {
   const { routeId } = useParams();
@@ -42,6 +43,9 @@ export default function BookingPage() {
   const [isBooking, setIsBooking] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState(null);
   const [customerPaymentMode, setCustomerPaymentMode] = useState('cash');
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [promoCode, setPromoCode] = useState(null);
+  const [promoDiscount, setPromoDiscount] = useState(0);
 
   const updatePassenger = (id, field, value) => {
     setPassengers(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
@@ -88,12 +92,19 @@ export default function BookingPage() {
   const luggageCost = extraLuggage * 10;
   
   const baseTotal = totalTicketPrice + luggageCost;
-  const commissionAmount = isAgent ? Math.round(baseTotal * 0.05) : 0;
-  const totalAmount = baseTotal + commissionAmount;
+  const commissionRate = (usePlatformStore.getState().settings?.agent_commission_rate || 5) / 100;
+  const commissionAmount = isAgent ? Math.round(baseTotal * commissionRate) : 0;
+  
+  let totalAmount = baseTotal + commissionAmount;
+  let discountAmount = 0;
+  if (promoDiscount > 0) {
+    discountAmount = Math.round((totalAmount * promoDiscount) / 100);
+    totalAmount -= discountAmount;
+  }
 
   const handleBook = async () => {
     setIsBooking(true);
-    const result = await createBooking(routeId, passengers, totalLuggageKg, isAgent, currentAgent?.id, customerPaymentMode);
+    const result = await createBooking(routeId, passengers, totalLuggageKg, isAgent, currentAgent?.id, customerPaymentMode, promoDiscount, promoCode);
     setIsBooking(false);
 
     if (result && result.error) {
@@ -464,6 +475,29 @@ export default function BookingPage() {
                     {totalLuggageKg}kg total • {freeLuggageLimit}kg free
                     {extraLuggage > 0 && ` • ${extraLuggage}kg extra (₹${luggageCost})`}
                   </div>
+                </div>
+              </div>
+
+              {/* PROMO CODE SECTION */}
+              <div style={{ marginTop: 12, padding: 16, background: 'var(--color-surface)', borderRadius: 'var(--radius-md)' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Have a Promo Code?</div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input type="text" className="form-input" style={{ flex: 1, textTransform: 'uppercase' }} placeholder="Enter code" value={promoCodeInput} onChange={e => setPromoCodeInput(e.target.value.toUpperCase())} disabled={promoCode !== null} />
+                  {promoCode ? (
+                    <button className="btn btn-secondary" onClick={() => { setPromoCode(null); setPromoDiscount(0); setPromoCodeInput(''); }}>Remove</button>
+                  ) : (
+                    <button className="btn btn-primary" onClick={async () => {
+                      if (!promoCodeInput) return;
+                      const { data, error } = await supabase.from('promo_codes').select('*').eq('code', promoCodeInput).eq('is_active', true).single();
+                      if (error || !data || data.current_uses >= data.max_uses || (data.expires_at && new Date(data.expires_at) < new Date())) {
+                        addToast('Invalid, expired, or fully used promo code', 'error');
+                      } else {
+                        setPromoDiscount(data.discount_percent);
+                        setPromoCode(promoCodeInput);
+                        addToast(`${data.discount_percent}% discount applied!`, 'success');
+                      }
+                    }}>Apply</button>
+                  )}
                 </div>
               </div>
 

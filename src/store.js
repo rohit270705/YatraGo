@@ -656,7 +656,37 @@ export const useAuthStore = create(
 );
 
 
-// ===== WALLET STORE =====
+// ==========================================
+// 2B. PLATFORM SETTINGS STORE
+// ==========================================
+export const usePlatformStore = create((set, get) => ({
+  settings: {
+    agent_commission_rate: 5,
+    owner_platform_fee: 15,
+    withdrawal_fee: 0,
+  },
+  isLoading: false,
+  fetchSettings: async () => {
+    set({ isLoading: true });
+    try {
+      const { data, error } = await supabase.from('platform_settings').select('*');
+      if (error) throw error;
+      if (data && data.length > 0) {
+        const parsedSettings = {};
+        data.forEach(row => { parsedSettings[row.key] = Number(row.value); });
+        set({ settings: { ...get().settings, ...parsedSettings } });
+      }
+    } catch (error) {
+      console.error('Error fetching platform settings:', error);
+    } finally {
+      set({ isLoading: false });
+    }
+  }
+}));
+
+// ==========================================
+// 3. WALLET STORE
+// ==========================================
 export const useWalletStore = create(
   persist(
     (set, get) => ({
@@ -940,7 +970,7 @@ export const useBookingStore = create(
     return results;
   },
 
-  createBooking: async (routeId, passengers, totalLuggageKg, isAgentBooking = false, agentId = null, customerPaymentMode = 'wallet') => {
+  createBooking: async (routeId, passengers, totalLuggageKg, isAgentBooking = false, agentId = null, customerPaymentMode = 'wallet', promoDiscount = 0, promoCode = null) => {
     try {
       const user = useAuthStore.getState().user;
       if (!user) return { error: 'Not authenticated' };
@@ -967,8 +997,14 @@ export const useBookingStore = create(
       // Agent commission
       let commissionAmount = 0;
       if (isAgentBooking) {
-        commissionAmount = Math.round(totalAmount * 0.05);
+        const commissionRate = (usePlatformStore.getState().settings.agent_commission_rate || 5) / 100;
+        commissionAmount = Math.round(totalAmount * commissionRate);
         totalAmount += commissionAmount;
+      }
+
+      // Promo Discount
+      if (promoDiscount > 0) {
+        totalAmount -= Math.round((totalAmount * promoDiscount) / 100);
       }
 
       // For the two-step booking flow, we don't deduct money immediately.
@@ -991,6 +1027,10 @@ export const useBookingStore = create(
 
       if (insertError) {
         throw insertError;
+      }
+
+      if (promoCode) {
+        await supabase.rpc('apply_promo_code', { target_code: promoCode });
       }
 
       // Format for local state
