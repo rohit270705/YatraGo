@@ -401,8 +401,10 @@ export const useAuthStore = create(
           lastActive: new Date().toISOString(),
         };
 
+        const adminUserWithAvatar = restoreAvatarToUser(adminUser);
+
         set({
-          user: adminUser,
+          user: adminUserWithAvatar,
           isAuthenticated: true,
           isLoading: false,
           activeSessions: [newSession]
