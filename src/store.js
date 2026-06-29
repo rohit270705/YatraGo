@@ -2146,6 +2146,17 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  fetchAdminConversations: async () => {
+    const { data, error } = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('type', 'support');
+      
+    if (!error && data) {
+      set({ conversations: data });
+    }
+  },
+
   fetchMessages: async (conversationId) => {
     const { data, error } = await supabase
       .from('messages')
