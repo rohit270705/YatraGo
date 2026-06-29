@@ -13,6 +13,9 @@ export default function WalletPage() {
   const [amount, setAmount] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [filterType, setFilterType] = useState('all');
+  const [selectedPayment, setSelectedPayment] = useState('Debit/Credit Card');
+  const [bankAccount, setBankAccount] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -27,6 +30,12 @@ export default function WalletPage() {
     if (!amt || amt <= 0) {
       addToast('Enter a valid amount', 'warning');
       return;
+    }
+    if (selectedPayment === 'Net Banking') {
+      if (!bankAccount || !ifscCode) {
+        addToast('Please enter Bank Account Number and IFSC Code', 'warning');
+        return;
+      }
     }
     setIsAdding(true);
     
@@ -204,21 +213,38 @@ export default function WalletPage() {
                   { icon: CreditCard, label: 'Debit/Credit Card', desc: '•••• 4242' },
                   { icon: Smartphone, label: 'UPI', desc: 'user@upi' },
                   { icon: Building2, label: 'Net Banking', desc: 'All banks supported' },
-                ].map((method, i) => (
-                  <label key={i} style={{
-                    display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
-                    background: i === 0 ? 'rgba(27, 153, 139, 0.08)' : 'var(--color-surface)',
-                    borderRadius: 'var(--radius-md)', cursor: 'pointer',
-                    border: i === 0 ? '1px solid rgba(27, 153, 139, 0.3)' : 'var(--border-subtle)',
-                  }}>
-                    <input type="radio" name="payment" defaultChecked={i === 0} />
-                    <method.icon size={20} color="var(--color-text-secondary)" />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{method.label}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>{method.desc}</div>
+                ].map((method, i) => {
+                  const isSelected = selectedPayment === method.label;
+                  return (
+                    <div key={i}>
+                      <label style={{
+                        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+                        background: isSelected ? 'rgba(27, 153, 139, 0.08)' : 'var(--color-surface)',
+                        borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                        border: isSelected ? '1px solid rgba(27, 153, 139, 0.3)' : 'var(--border-subtle)',
+                      }}>
+                        <input type="radio" name="payment" checked={isSelected} onChange={() => setSelectedPayment(method.label)} />
+                        <method.icon size={20} color="var(--color-text-secondary)" />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{method.label}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>{method.desc}</div>
+                        </div>
+                      </label>
+                      {isSelected && method.label === 'Net Banking' && (
+                        <div className="animate-slide-up" style={{ marginTop: 12, padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                          <div className="form-group" style={{ marginBottom: 12 }}>
+                            <label className="form-label">Bank Account Number</label>
+                            <input type="text" className="form-input" placeholder="e.g. 1234567890" value={bankAccount} onChange={e => setBankAccount(e.target.value)} />
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label">IFSC Code</label>
+                            <input type="text" className="form-input" placeholder="e.g. HDFC0001234" value={ifscCode} onChange={e => setIfscCode(e.target.value.toUpperCase())} />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </label>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
