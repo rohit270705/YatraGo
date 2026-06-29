@@ -3,7 +3,178 @@ import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from './supabaseClient';
 
-// ===== MOCK DATA REMOVED =====
+// ===== MOCK DATA =====
+const MOCK_VEHICLES = [
+  {
+    id: 'v1',
+    registrationNumber: 'MH-12-AB-1234',
+    type: 'SUV',
+    seatingCapacity: 7,
+    luggageCapacity: 60,
+    ownerId: 'owner1',
+    ownerName: 'Rajesh Kumar',
+    approved: true,
+    isActive: true,
+    puc: { number: 'PUC-2025-4432', validUntil: '2026-12-15', status: 'valid' },
+    driverLicense: { number: 'MH-DL-9988776', validUntil: '2027-03-20', holder: 'Rajesh Kumar' },
+    insurance: { number: 'INS-7744-MH', validUntil: '2026-09-10', provider: 'ICICI Lombard' },
+    journeyHistory: [
+      { id: 'j1', from: 'Mumbai', to: 'Pune', date: '2026-06-10', passengers: 5, status: 'completed' },
+      { id: 'j2', from: 'Pune', to: 'Lonavala', date: '2026-06-08', passengers: 4, status: 'completed' },
+      { id: 'j3', from: 'Mumbai', to: 'Nashik', date: '2026-06-05', passengers: 6, status: 'completed' },
+      { id: 'j4', from: 'Nashik', to: 'Mumbai', date: '2026-06-03', passengers: 3, status: 'completed' },
+      { id: 'j5', from: 'Mumbai', to: 'Goa', date: '2026-05-28', passengers: 7, status: 'completed' },
+    ],
+    currentLocation: { lat: 19.076, lng: 72.8777, updatedAt: new Date().toISOString() }
+  },
+  {
+    id: 'v2',
+    registrationNumber: 'MH-04-CD-5678',
+    type: 'Sedan',
+    seatingCapacity: 4,
+    luggageCapacity: 35,
+    ownerId: 'owner2',
+    ownerName: 'Priya Sharma',
+    approved: true,
+    isActive: true,
+    puc: { number: 'PUC-2025-8821', validUntil: '2026-11-30', status: 'valid' },
+    driverLicense: { number: 'MH-DL-5566334', validUntil: '2028-01-15', holder: 'Priya Sharma' },
+    insurance: { number: 'INS-3322-MH', validUntil: '2026-08-20', provider: 'Bajaj Allianz' },
+    journeyHistory: [
+      { id: 'j6', from: 'Pune', to: 'Mumbai', date: '2026-06-11', passengers: 3, status: 'completed' },
+      { id: 'j7', from: 'Mumbai', to: 'Pune', date: '2026-06-09', passengers: 4, status: 'completed' },
+      { id: 'j8', from: 'Pune', to: 'Satara', date: '2026-06-06', passengers: 2, status: 'completed' },
+    ],
+    currentLocation: { lat: 18.5204, lng: 73.8567, updatedAt: new Date().toISOString() }
+  },
+  {
+    id: 'v3',
+    registrationNumber: 'KA-01-EF-9012',
+    type: 'Mini Bus',
+    seatingCapacity: 14,
+    luggageCapacity: 120,
+    ownerId: 'owner3',
+    ownerName: 'Vikram Patel',
+    approved: true,
+    isActive: true,
+    puc: { number: 'PUC-2025-1100', validUntil: '2026-07-01', status: 'expiring_soon' },
+    driverLicense: { number: 'KA-DL-7788990', validUntil: '2027-06-10', holder: 'Vikram Patel' },
+    insurance: { number: 'INS-9900-KA', validUntil: '2026-12-25', provider: 'New India Assurance' },
+    journeyHistory: [],
+    currentLocation: { lat: 12.9716, lng: 77.5946, updatedAt: new Date().toISOString() }
+  },
+  {
+    id: 'v4',
+    registrationNumber: 'GJ-05-GH-3456',
+    type: 'Tempo Traveller',
+    seatingCapacity: 12,
+    luggageCapacity: 90,
+    ownerId: 'owner4',
+    ownerName: 'Amit Desai',
+    approved: false,
+    isActive: false,
+    puc: { number: 'PUC-2026-2233', validUntil: '2027-02-15', status: 'valid' },
+    driverLicense: { number: 'GJ-DL-1122334', validUntil: '2027-08-30', holder: 'Amit Desai' },
+    insurance: { number: 'INS-5566-GJ', validUntil: '2027-01-10', provider: 'SBI General' },
+    journeyHistory: [],
+    currentLocation: null
+  },
+  {
+    id: 'v5',
+    registrationNumber: 'DL-01-BU-7890',
+    type: 'Bus',
+    seatingCapacity: 40,
+    luggageCapacity: 200,
+    ownerId: 'owner5',
+    ownerName: 'Suresh Travels Pvt Ltd',
+    approved: true,
+    isActive: true,
+    puc: { number: 'PUC-2026-5501', validUntil: '2027-04-20', status: 'valid' },
+    driverLicense: { number: 'DL-DL-3344556', validUntil: '2028-02-10', holder: 'Ramesh Yadav' },
+    insurance: { number: 'INS-8800-DL', validUntil: '2027-03-15', provider: 'United India Insurance' },
+    journeyHistory: [
+      { id: 'j9', from: 'Delhi', to: 'Jaipur', date: '2026-06-11', passengers: 35, status: 'completed' },
+      { id: 'j10', from: 'Jaipur', to: 'Delhi', date: '2026-06-10', passengers: 38, status: 'completed' },
+      { id: 'j11', from: 'Delhi', to: 'Agra', date: '2026-06-08', passengers: 32, status: 'completed' },
+      { id: 'j12', from: 'Delhi', to: 'Chandigarh', date: '2026-06-06', passengers: 28, status: 'completed' },
+      { id: 'j13', from: 'Delhi', to: 'Jaipur', date: '2026-06-04', passengers: 40, status: 'completed' },
+    ],
+    currentLocation: { lat: 28.6139, lng: 77.2090, updatedAt: new Date().toISOString() }
+  },
+  {
+    id: 'v6',
+    registrationNumber: 'TN-07-BU-2345',
+    type: 'Bus',
+    seatingCapacity: 32,
+    luggageCapacity: 160,
+    ownerId: 'owner6',
+    ownerName: 'KPN Travels',
+    approved: true,
+    isActive: true,
+    puc: { number: 'PUC-2026-6612', validUntil: '2027-01-30', status: 'valid' },
+    driverLicense: { number: 'TN-DL-9900112', validUntil: '2027-11-05', holder: 'Murugan S' },
+    insurance: { number: 'INS-1122-TN', validUntil: '2026-10-18', provider: 'Oriental Insurance' },
+    journeyHistory: [
+      { id: 'j14', from: 'Bangalore', to: 'Chennai', date: '2026-06-11', passengers: 30, status: 'completed' },
+      { id: 'j15', from: 'Chennai', to: 'Bangalore', date: '2026-06-09', passengers: 28, status: 'completed' },
+      { id: 'j16', from: 'Bangalore', to: 'Hyderabad', date: '2026-06-07', passengers: 25, status: 'completed' },
+    ],
+    currentLocation: { lat: 12.9716, lng: 77.5946, updatedAt: new Date().toISOString() }
+  }
+];
+
+const MOCK_ROUTES = [
+  {
+    id: 'r1', vehicleId: 'v1', from: 'Mumbai', to: 'Pune', stops: ['Lonavala', 'Khandala'],
+    departureTime: '06:00', arrivalTime: '10:00', date: '2026-06-15', price: 650,
+    availableSeats: 4, luggageAvailable: 30
+  },
+  {
+    id: 'r2', vehicleId: 'v2', from: 'Pune', to: 'Mumbai', stops: ['Khandala'],
+    departureTime: '08:00', arrivalTime: '11:30', date: '2026-06-15', price: 550,
+    availableSeats: 2, luggageAvailable: 15
+  },
+  {
+    id: 'r3', vehicleId: 'v3', from: 'Bangalore', to: 'Mysore', stops: ['Ramanagara', 'Mandya'],
+    departureTime: '07:00', arrivalTime: '10:30', date: '2026-06-15', price: 450,
+    availableSeats: 10, luggageAvailable: 80
+  },
+  {
+    id: 'r4', vehicleId: 'v1', from: 'Mumbai', to: 'Goa', stops: ['Pune', 'Kolhapur', 'Belgaum'],
+    departureTime: '22:00', arrivalTime: '08:00', date: '2026-06-16', price: 1200,
+    availableSeats: 5, luggageAvailable: 40
+  },
+  {
+    id: 'r5', vehicleId: 'v3', from: 'Bangalore', to: 'Goa', stops: ['Hubli', 'Belgaum'],
+    departureTime: '20:00', arrivalTime: '06:00', date: '2026-06-16', price: 950,
+    availableSeats: 12, luggageAvailable: 100
+  },
+  {
+    id: 'r6', vehicleId: 'v2', from: 'Mumbai', to: 'Nashik', stops: ['Kasara', 'Igatpuri'],
+    departureTime: '09:00', arrivalTime: '12:30', date: '2026-06-17', price: 500,
+    availableSeats: 3, luggageAvailable: 20
+  },
+  {
+    id: 'r7', vehicleId: 'v5', from: 'Delhi', to: 'Jaipur', stops: ['Gurgaon', 'Neemrana', 'Behror'],
+    departureTime: '06:30', arrivalTime: '12:00', date: '2026-06-15', price: 700,
+    availableSeats: 28, luggageAvailable: 150
+  },
+  {
+    id: 'r8', vehicleId: 'v5', from: 'Mumbai', to: 'Ahmedabad', stops: ['Surat', 'Vadodara', 'Anand'],
+    departureTime: '21:00', arrivalTime: '06:30', date: '2026-06-16', price: 850,
+    availableSeats: 35, luggageAvailable: 180
+  },
+  {
+    id: 'r9', vehicleId: 'v6', from: 'Bangalore', to: 'Chennai', stops: ['Hosur', 'Krishnagiri', 'Vellore'],
+    departureTime: '23:00', arrivalTime: '05:30', date: '2026-06-15', price: 600,
+    availableSeats: 22, luggageAvailable: 120
+  },
+  {
+    id: 'r10', vehicleId: 'v6', from: 'Hyderabad', to: 'Bangalore', stops: ['Kurnool', 'Anantapur'],
+    departureTime: '20:00', arrivalTime: '06:00', date: '2026-06-16', price: 900,
+    availableSeats: 18, luggageAvailable: 100
+  },
+];
 
 // ===== FIX 1: persist middleware mein avatar_url ko exclude karo =====
 // Base64 avatar string bahut badi hoti hai — localStorage ki 5MB limit exceed ho
@@ -29,27 +200,6 @@ const restoreAvatarToUser = (user) => {
 };
 
 // ===== AUTH STORE =====
-
-const mapRoute = (r) => ({
-  id: r.id,
-  vehicleId: r.vehicle_id,
-  from: r.from_city,
-  to: r.to_city,
-  stops: r.stops || [],
-  departureTime: r.departure_time,
-  arrivalTime: r.arrival_time,
-  date: r.journey_date,
-  price: r.price,
-  availableSeats: r.available_seats,
-  luggageAvailable: r.luggage_available,
-  vehicle: r.vehicles ? {
-    id: r.vehicles.id,
-    type: r.vehicles.type,
-    registrationNumber: r.vehicles.registration_number,
-    ownerId: r.vehicles.owner_id
-  } : null
-});
-
 export const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -62,26 +212,38 @@ export const useAuthStore = create(
       register: async (userData) => {
     try {
       set({ isLoading: true, error: null });
-      // For now, we are just inserting into our custom 'users' table, not using Supabase Auth
-      const { data, error } = await supabase
+      
+      // Use Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
+            name: userData.name,
+            phone: userData.phone || null,
+            role: userData.role || 'passenger'
+          }
+        }
+      });
+
+      if (authError) throw authError;
+
+      // The trigger will handle inserting into public.users.
+      // But we need to update the remaining fields that aren't in raw_user_meta_data
+      const { data, error: updateError } = await supabase
         .from('users')
-        .insert([{
-          email: userData.email,
-          name: userData.name,
-          phone: userData.phone || null,
-          role: userData.role || 'passenger',
+        .update({
           blood_group: userData.bloodGroup || null,
           aadhar_number: userData.aadharNumber || null,
           pan_number: userData.panNumber || null,
           avatar_url: userData.avatarUrl || null,
-          dob: userData.dob || null,
-          email_verified: false,
-          phone_verified: false
-        }])
+          dob: userData.dob || null
+        })
+        .eq('id', authData.user.id)
         .select()
         .single();
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
       const user = {
         id: data.id,
@@ -211,21 +373,30 @@ export const useAuthStore = create(
         return adminUser;
       }
       
-      // In a real app with Supabase Auth, you'd use supabase.auth.signInWithPassword
-      // Since we are mocking passwords but using a real DB, we just lookup the user by email
+      // Authenticate with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (authError) {
+        throw new Error(authError.message);
+      }
+
+      // Fetch the user's public profile and verify role
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('email', email)
-        .eq('role', role || 'passenger')
-        .limit(1)
-        .maybeSingle();
+        .eq('id', authData.user.id)
+        .single();
 
       if (error) {
         throw new Error(`Supabase Error: ${error.message || JSON.stringify(error)}`);
       }
-      if (!data) {
-        throw new Error('Invalid email or role. User not found.');
+      
+      if (role && data.role !== role) {
+        await supabase.auth.signOut();
+        throw new Error('Invalid role. Please select the correct account type.');
       }
 
       const { activeSessions } = get();
@@ -294,23 +465,86 @@ export const useAuthStore = create(
       const { user } = get();
       if (!user) return { error: 'Not authenticated' };
 
-      // Map frontend camelCase fields to Supabase snake_case fields
+      // ===== AVATAR UPLOAD FIX =====
+      // Base64 string DB mein mat bhejo — Supabase Storage use karo
+      // Isse fresh login ke baad bhi photo dikhega (permanent URL)
+      let finalAvatarUrl = user.avatarUrl || null;
+
+      if (updates.avatarUrl && updates.avatarUrl.startsWith('data:')) {
+        // Base64 → Blob → Supabase Storage upload
+        try {
+          const base64Data = updates.avatarUrl.split(',')[1];
+          const mimeType = updates.avatarUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+          const byteCharacters = atob(base64Data);
+          const byteArray = new Uint8Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteArray[i] = byteCharacters.charCodeAt(i);
+          }
+          const blob = new Blob([byteArray], { type: mimeType });
+          const fileExt = mimeType.split('/')[1] || 'jpg';
+          const filePath = `avatars/${user.id}.${fileExt}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('user-avatars')
+            .upload(filePath, blob, { upsert: true, contentType: mimeType });
+
+          if (uploadError) {
+            console.warn('Avatar upload to storage failed:', uploadError.message);
+            // Fallback: sessionStorage mein rakho (sirf is session ke liye)
+            try { sessionStorage.setItem(`avatar_${user.id}`, updates.avatarUrl); } catch (e) {}
+            finalAvatarUrl = updates.avatarUrl; // in-memory only
+          } else {
+            // Permanent public URL milega — har login pe kaam karega
+            const { data: urlData } = supabase.storage
+              .from('user-avatars')
+              .getPublicUrl(filePath);
+            finalAvatarUrl = urlData.publicUrl;
+            // sessionStorage bhi update karo for instant display
+            try { sessionStorage.setItem(`avatar_${user.id}`, finalAvatarUrl); } catch (e) {}
+          }
+        } catch (convErr) {
+          console.warn('Avatar conversion error:', convErr);
+          finalAvatarUrl = user.avatarUrl;
+        }
+      } else if (updates.avatarUrl && !updates.avatarUrl.startsWith('data:')) {
+        // Already a URL (e.g. Google avatar) — use directly
+        finalAvatarUrl = updates.avatarUrl;
+      }
+
+      // Map camelCase → snake_case for DB
+      // Convert DOB from DD/MM/YYYY or DD-MM-YYYY to YYYY-MM-DD for PostgreSQL
+      let formattedDob = null;
+      if (updates.dob) {
+        const dobStr = updates.dob.trim();
+        // Try DD/MM/YYYY or DD-MM-YYYY
+        const parts = dobStr.split(/[\/\-]/);
+        if (parts.length === 3 && parts[0].length <= 2) {
+          // DD/MM/YYYY → YYYY-MM-DD
+          formattedDob = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+        } else {
+          // Already YYYY-MM-DD or other format, pass as-is
+          formattedDob = dobStr;
+        }
+      }
+
       const dbUpdates = {
         name: updates.name,
         email: updates.email,
         phone: updates.phone,
         blood_group: updates.bloodGroup,
-        dob: updates.dob,
-        age: updates.age,
+        dob: formattedDob,
+        age: updates.age ? parseInt(updates.age) : null,
         gender: updates.gender,
         address: updates.address,
         aadhar_number: updates.aadharNumber,
         pan_number: updates.panNumber,
-        avatar_url: updates.avatarUrl,
+        avatar_url: finalAvatarUrl,  // permanent Storage URL, not base64
       };
 
-      // Remove undefined values
-      Object.keys(dbUpdates).forEach(key => dbUpdates[key] === undefined && delete dbUpdates[key]);
+      // undefined values hata do
+      Object.keys(dbUpdates).forEach(
+        key => dbUpdates[key] === undefined && delete dbUpdates[key]
+      );
 
       const { data, error } = await supabase
         .from('users')
@@ -321,8 +555,7 @@ export const useAuthStore = create(
 
       if (error) throw error;
 
-      // FIX 3: updateProfile — DB se confirmed data use karo, avatar alag handle karo
-      // Isse ensure hota hai ki local state = DB state (no mismatch)
+      // DB se confirmed data use karo local state mein
       const updatedUser = {
         ...user,
         name: data.name,
@@ -335,20 +568,8 @@ export const useAuthStore = create(
         address: data.address,
         aadharNumber: data.aadhar_number,
         panNumber: data.pan_number,
-        // avatarUrl persist mein nahi jaata (FIX 1 se exclude hai)
-        // sessionStorage mein store karo separately
-        avatarUrl: updates.avatarUrl || data.avatar_url || user.avatarUrl,
+        avatarUrl: data.avatar_url || finalAvatarUrl,
       };
-
-      // Base64 avatar ko sessionStorage mein store karo (localStorage safe nahi)
-      if (updates.avatarUrl) {
-        try {
-          sessionStorage.setItem(`avatar_${user.id}`, updates.avatarUrl);
-        } catch (storageErr) {
-          console.warn('Avatar storage failed (too large?), using DB URL instead');
-          updatedUser.avatarUrl = data.avatar_url || user.avatarUrl;
-        }
-      }
 
       set({ user: updatedUser });
       return { success: true };
@@ -370,7 +591,10 @@ export const useAuthStore = create(
     return user?.emailVerified && user?.phoneVerified;
   },
 
-  logout: () => set({ user: null, isAuthenticated: false, activeSessions: [], error: null }),
+  logout: async () => {
+    await supabase.auth.signOut();
+    set({ user: null, isAuthenticated: false, activeSessions: [], error: null });
+  },
 
   removeSession: (deviceId) => set(state => ({
     activeSessions: state.activeSessions.filter(s => s.deviceId !== deviceId)
@@ -531,77 +755,26 @@ export const useWalletStore = create(
 export const useBookingStore = create(
   persist(
     (set, get) => ({
-      routes: [],
+      routes: MOCK_ROUTES,
       bookings: [],
       searchResults: [],
       reviews: [],
 
-      fetchAllRoutes: async () => {
-    try {
-      // Fetch separately to avoid PostgREST schema cache issues with newly added foreign keys
-      const [routesRes, vehiclesRes] = await Promise.all([
-        supabase.from('routes').select('*'),
-        supabase.from('vehicles').select('*')
-      ]);
-      
-      if (!routesRes.error && routesRes.data) {
-        const vehiclesMap = {};
-        if (vehiclesRes.data) {
-          vehiclesRes.data.forEach(v => {
-            vehiclesMap[v.id] = v;
-          });
-        }
-        
-        const mappedRoutes = routesRes.data.map(r => {
-          // manually attach vehicle to bypass join issue
-          if (r.vehicle_id && vehiclesMap[r.vehicle_id]) {
-            r.vehicles = vehiclesMap[r.vehicle_id];
-          }
-          return mapRoute(r);
-        });
-        
-        set({ routes: mappedRoutes });
-      }
-    } catch(err) {
-      console.error('fetchAllRoutes error:', err);
-    }
-  },
-      searchRoutes: async (from, to, date) => {
-    try {
-      let query = supabase.from('routes').select('*');
-      if (from) query = query.ilike('from_city', `%${from}%`);
-      if (to) query = query.ilike('to_city', `%${to}%`);
-      if (date) query = query.eq('journey_date', date);
+      searchRoutes: (from, to, date) => {
+    const vehicles = useVehicleStore.getState().vehicles || [];
+    const results = MOCK_ROUTES.filter(r => {
+      // Find the vehicle for this route
+      const vehicle = vehicles.find(v => v.id === (r.vehicle_id || r.vehicleId));
+      // Only show routes if vehicle exists and is approved
+      if (!vehicle || !vehicle.approved) return false;
 
-      const [routesRes, vehiclesRes] = await Promise.all([
-        query,
-        supabase.from('vehicles').select('*')
-      ]);
-
-      if (routesRes.error) throw routesRes.error;
-      
-      const vehiclesMap = {};
-      if (vehiclesRes.data) {
-        vehiclesRes.data.forEach(v => {
-          vehiclesMap[v.id] = v;
-        });
-      }
-      
-      const data = routesRes.data || [];
-      data.forEach(r => {
-        if (r.vehicle_id && vehiclesMap[r.vehicle_id]) {
-          r.vehicles = vehiclesMap[r.vehicle_id];
-        }
-      });
-      
-      const mapped = data.map(mapRoute);
-      set({ searchResults: mapped });
-      return mapped;
-    } catch (err) {
-      console.error('Search error:', err);
-      set({ searchResults: [] });
-      return [];
-    }
+      const matchFrom = !from || r.from.toLowerCase().includes(from.toLowerCase());
+      const matchTo = !to || r.to.toLowerCase().includes(to.toLowerCase());
+      const matchDate = !date || r.date === date;
+      return matchFrom && matchTo && (matchDate || !date);
+    });
+    set({ searchResults: results });
+    return results;
   },
 
   createBooking: async (routeId, passengers, totalLuggageKg, isAgentBooking = false, agentId = null, customerPaymentMode = 'wallet') => {
@@ -609,16 +782,10 @@ export const useBookingStore = create(
       const user = useAuthStore.getState().user;
       if (!user) return { error: 'Not authenticated' };
 
-      // Fetch the real route
-      const { data: routeData, error: routeErr } = await supabase.from('routes').select('*').eq('id', routeId).single();
-      if (routeErr || !routeData) return { error: 'Route not found' };
-      
-      // manually fetch vehicle
-      const { data: vData } = await supabase.from('vehicles').select('*').eq('id', routeData.vehicle_id).single();
-      if (vData) routeData.vehicles = vData;
-      
-      const route = mapRoute(routeData); // Ensure mapped format for price calculation
-      if (routeErr || !route) return { error: 'Route not found' };
+      const route = MOCK_ROUTES.find(r => r.id === routeId);
+      if (!route) return { error: 'Route not found' };
+
+      const vehicle = MOCK_VEHICLES.find(v => v.id === route.vehicle_id || v.id === route.vehicleId);
 
       const calculatePassengerPrice = (ageStr) => {
         const age = parseInt(ageStr) || 0;
@@ -628,17 +795,23 @@ export const useBookingStore = create(
       };
 
       const totalTicketPrice = passengers.reduce((sum, p) => sum + calculatePassengerPrice(p.age), 0);
+
       const freeLuggageLimit = passengers.length * 15;
       const extraLuggage = Math.max(0, totalLuggageKg - freeLuggageLimit);
-      const luggageCost = extraLuggage * 10;
+      const luggageCost = extraLuggage * 10; // ₹10 per extra kg
       let totalAmount = totalTicketPrice + luggageCost;
 
+      // Agent commission
       let commissionAmount = 0;
       if (isAgentBooking) {
         commissionAmount = Math.round(totalAmount * 0.05);
         totalAmount += commissionAmount;
       }
 
+      // For the two-step booking flow, we don't deduct money immediately.
+      // We just create a pending request for the owner to approve.
+
+      // Insert into Supabase with pending status
       const { data: booking, error: insertError } = await supabase.from('bookings').insert([{
         id: 'BK-' + uuidv4().slice(0, 8).toUpperCase(),
         user_id: user.id,
@@ -653,11 +826,34 @@ export const useBookingStore = create(
         status: 'pending_owner_approval'
       }]).select().single();
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        throw insertError;
+      }
+
+      // Format for local state
+      const localBooking = {
+        ...booking,
+        route,
+        vehicle: vehicle ? {
+          id: vehicle.id,
+          registrationNumber: vehicle.registration_number || vehicle.registrationNumber,
+          type: vehicle.type,
+          ownerName: vehicle.owner_name || vehicle.ownerName,
+        } : null,
+        passengerDetails: booking.passenger_details,
+        luggageKg: booking.luggage_kg,
+        extraLuggageCost: booking.extra_luggage_cost,
+        totalAmount: booking.total_amount,
+        commissionAmount: booking.commission_amount,
+        isAgentBooking: booking.is_agent_booking,
+        agentId: booking.agent_id,
+        customerPaymentMode: customerPaymentMode,
+        createdAt: booking.created_at,
+      };
 
       const { bookings } = get();
-      set({ bookings: [booking, ...bookings] });
-      return booking;
+      set({ bookings: [localBooking, ...bookings] });
+      return localBooking;
     } catch (err) {
       console.error('Booking error:', err);
       return { error: 'Booking failed. Please try again.' };
@@ -927,7 +1123,7 @@ const mapVehicleFromDB = (v) => ({
 });
 
 export const useVehicleStore = create((set, get) => ({
-  vehicles: [],
+  vehicles: MOCK_VEHICLES,
   isLoading: false,
 
   fetchVehicles: async () => {
@@ -939,7 +1135,7 @@ export const useVehicleStore = create((set, get) => ({
       const mappedVehicles = (data || []).map(mapVehicleFromDB);
       
       // Merge with mock vehicles for now to keep UI populated
-      const combined = mappedVehicles;
+      const combined = [...MOCK_VEHICLES, ...mappedVehicles];
       set({ vehicles: combined, isLoading: false });
     } catch (err) {
       console.error('Error fetching vehicles:', err);
