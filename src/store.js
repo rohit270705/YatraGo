@@ -178,15 +178,21 @@ const MOCK_ROUTES = [
 
 // ===== FIX 1: persist middleware mein avatar_url ko exclude karo =====
 // Base64 avatar string bahut badi hoti hai — localStorage ki 5MB limit exceed ho
-// jaati hai jisse silently save fail hota tha. Avatar sirf sessionStorage mein rakho.
+// jaati hai. Avatar URL agar normal string hai toh save karo, base64 hai toh exclude karo.
 const authPersistConfig = {
   name: 'auth-storage',
-  partialize: (state) => ({
-    // avatarUrl ko EXCLUDE karo persist se — separately handle hoti hai
-    user: state.user ? { ...state.user, avatarUrl: undefined } : null,
-    isAuthenticated: state.isAuthenticated,
-    activeSessions: state.activeSessions,
-  }),
+  partialize: (state) => {
+    let persistUser = state.user ? { ...state.user } : null;
+    if (persistUser && persistUser.avatarUrl && persistUser.avatarUrl.startsWith('data:')) {
+      // Exclude massive base64 strings to avoid QuotaExceededError
+      persistUser.avatarUrl = undefined;
+    }
+    return {
+      user: persistUser,
+      isAuthenticated: state.isAuthenticated,
+      activeSessions: state.activeSessions,
+    };
+  },
 };
 
 // ===== FIX 2: Login ke baad avatar sessionStorage se restore karo =====
