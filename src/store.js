@@ -340,8 +340,36 @@ export const useAuthStore = create(
 
       // Super Admin Override
       if (email.trim().toLowerCase() === 'admin@yatrago.com' && password.trim() === 'YRohit@372729#') {
-        const adminUser = {
-          id: 'a1b2c3d4-e5f6-4a1b-8c9d-0123456789ab',
+        const adminId = 'a1b2c3d4-e5f6-4a1b-8c9d-0123456789ab';
+        
+        // Try to fetch saved admin profile from database
+        const { data: dbAdmin } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', adminId)
+          .maybeSingle();
+
+        const adminUser = dbAdmin ? {
+          id: dbAdmin.id,
+          email: dbAdmin.email,
+          name: dbAdmin.name,
+          phone: dbAdmin.phone,
+          role: dbAdmin.role || 'admin',
+          emailVerified: dbAdmin.email_verified ?? true,
+          phoneVerified: dbAdmin.phone_verified ?? true,
+          bloodGroup: dbAdmin.blood_group,
+          dob: dbAdmin.dob,
+          age: dbAdmin.age,
+          gender: dbAdmin.gender,
+          address: dbAdmin.address,
+          aadharNumber: dbAdmin.aadhar_number,
+          panNumber: dbAdmin.pan_number,
+          avatarUrl: dbAdmin.avatar_url,
+          wallet: 9999999,
+          createdAt: dbAdmin.created_at,
+        } : {
+          // Fallback if admin row doesn't exist yet in DB
+          id: adminId,
           email: 'admin@yatraGo.com',
           name: 'Super Admin',
           phone: '9999999999',
@@ -352,6 +380,19 @@ export const useAuthStore = create(
           createdAt: new Date().toISOString()
         };
         
+        // If admin doesn't exist in DB, create the row so future profile saves persist
+        if (!dbAdmin) {
+          await supabase.from('users').insert([{
+            id: adminId,
+            email: 'admin@yatraGo.com',
+            name: 'Super Admin',
+            phone: '9999999999',
+            role: 'admin',
+            email_verified: true,
+            phone_verified: true
+          }]).select().maybeSingle();
+        }
+
         const newSession = {
           deviceId: 'admin-device',
           deviceName: navigator.userAgent.includes('Windows') ? 'Windows PC' : 'Admin Device',
