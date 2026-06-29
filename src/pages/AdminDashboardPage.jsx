@@ -508,18 +508,29 @@ export default function AdminDashboardPage() {
                     </div>
                     <div className="doc-status-grid">
                       {[
-                        { name: 'PUC Certificate', num: vehicle.puc?.number, expiry: vehicle.puc?.validUntil },
-                        { name: 'Driving License', num: vehicle.driverLicense?.number, expiry: vehicle.driverLicense?.validUntil },
-                        { name: 'Insurance', num: vehicle.insurance?.number, expiry: vehicle.insurance?.validUntil },
+                        { name: 'RC Book', num: vehicle.documents?.rc?.number, expiry: null, photoUrl: vehicle.documents?.rc?.photoUrl },
+                        { name: 'PUC Certificate', num: vehicle.documents?.puc?.number, expiry: vehicle.documents?.puc?.validUntil, photoUrl: vehicle.documents?.puc?.photoUrl },
+                        { name: 'Driving License', num: vehicle.documents?.dl?.number, expiry: vehicle.documents?.dl?.validUntil, photoUrl: vehicle.documents?.dl?.photoUrl },
                       ].map((doc, i) => (
-                        <div key={i} className="doc-status-item">
-                          <div className="doc-icon" style={{ background: 'rgba(27, 153, 139, 0.12)', color: 'var(--color-accent-teal-light)' }}>
-                            <FileCheck size={18} />
+                        <div key={i} className="doc-status-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
+                          <div style={{ display: 'flex', gap: 12, alignItems: 'center', width: '100%' }}>
+                            <div className="doc-icon" style={{ background: 'rgba(27, 153, 139, 0.12)', color: 'var(--color-accent-teal-light)' }}>
+                              <FileCheck size={18} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div className="doc-name">{doc.name}</div>
+                              <div className="doc-expiry">{doc.num || 'N/A'} {doc.expiry ? `• Exp: ${doc.expiry}` : ''}</div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="doc-name">{doc.name}</div>
-                            <div className="doc-expiry">{doc.num || 'N/A'} • Exp: {doc.expiry || 'N/A'}</div>
-                          </div>
+                          {doc.photoUrl ? (
+                            <div style={{ width: '100%', height: 120, borderRadius: 'var(--radius-md)', overflow: 'hidden', background: 'var(--color-surface-hover)', cursor: 'pointer' }} onClick={() => window.open(doc.photoUrl, '_blank')}>
+                              <img src={doc.photoUrl} alt={doc.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} title="Click to view full size" />
+                            </div>
+                          ) : (
+                            <div style={{ width: '100%', padding: '12px', textAlign: 'center', background: 'var(--color-surface-hover)', borderRadius: 'var(--radius-md)', fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+                              No photo uploaded
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
