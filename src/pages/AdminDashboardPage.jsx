@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   ShieldCheck, Users, Car, Ticket, Wallet, TrendingUp, CheckCircle,
   XCircle, AlertTriangle, Eye, Ban, DollarSign, FileCheck, BarChart3,
-  Bike, UserCheck, UserX, Clock, Search, MapPin, Star, Zap, Filter
+  Bike, UserCheck, UserX, Clock, Search, MapPin, Star, Zap, Filter, Plus, Calendar
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useVehicleStore, useBookingStore, useWalletStore, useToastStore, useRentalStore } from '../store';
@@ -146,12 +146,54 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (user) => {
+    const status = user?.status || 'active';
+    let badge;
     switch (status) {
-      case 'active': return <span className="badge badge-success" style={{ fontSize: '0.6rem' }}><UserCheck size={10} /> Active</span>;
-      case 'inactive': return <span className="badge badge-secondary" style={{ fontSize: '0.6rem' }}><UserX size={10} /> Inactive</span>;
-      case 'suspended': return <span className="badge badge-danger" style={{ fontSize: '0.6rem' }}><Ban size={10} /> Suspended</span>;
-      default: return <span className="badge">{status}</span>;
+      case 'active': badge = <span className="badge badge-success" style={{ fontSize: '0.6rem' }}><UserCheck size={10} /> Active</span>; break;
+      case 'inactive': badge = <span className="badge badge-secondary" style={{ fontSize: '0.6rem' }}><UserX size={10} /> Inactive</span>; break;
+      case 'suspended': badge = <span className="badge badge-danger" style={{ fontSize: '0.6rem' }}><Ban size={10} /> Suspended</span>; break;
+      default: badge = <span className="badge">{status}</span>; break;
+    }
+
+    if (user?.role === 'agent' && user?.kyc_verified) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+          {badge}
+          <span className="badge badge-primary" style={{ fontSize: '0.55rem', background: 'rgba(52, 152, 219, 0.15)', color: 'var(--color-accent-blue)' }}><CheckCircle size={8} /> KYC Verified</span>
+        </div>
+      );
+    }
+    return badge;
+  };
+
+  const handleUserStatusChange = async (userId, newStatus) => {
+    try {
+      const { error } = await supabase.rpc('update_user_status_admin', {
+        target_user_id: userId,
+        new_status: newStatus,
+        secret_key: 'yatrago_super_admin_secret_2026'
+      });
+      if (error) throw error;
+      setUsers(users.map(u => u.id === userId ? { ...u, status: newStatus } : u));
+      addToast(`User marked as ${newStatus}`, 'success');
+    } catch (err) {
+      addToast(err.message, 'error');
+    }
+  };
+
+  const handleVerifyKYC = async (userId, isVerified) => {
+    try {
+      const { error } = await supabase.rpc('update_user_kyc_admin', {
+        target_user_id: userId,
+        is_verified: isVerified,
+        secret_key: 'yatrago_super_admin_secret_2026'
+      });
+      if (error) throw error;
+      setUsers(users.map(u => u.id === userId ? { ...u, kyc_verified: isVerified } : u));
+      addToast(`Agent KYC ${isVerified ? 'Verified' : 'Unverified'}`, 'success');
+    } catch (err) {
+      addToast(err.message, 'error');
     }
   };
 
@@ -346,6 +388,7 @@ export default function AdminDashboardPage() {
                   <th>Status</th>
                   <th>Last Active</th>
                   <th>Joined</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -371,12 +414,34 @@ export default function AdminDashboardPage() {
                       {user.city}
                     </td>
                     <td style={{ fontWeight: 600 }}>{user.bookings}</td>
-                    <td>{getStatusBadge(user.status)}</td>
+                    <td>{getStatusBadge(user)}</td>
                     <td style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>
                       <Clock size={12} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: 3 }} />
                       {user.lastActive}
                     </td>
                     <td style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>{user.joinDate}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {(!user.status || user.status === 'active') ? (
+                          <button className="btn btn-sm" style={{ background: 'rgba(231, 76, 60, 0.15)', color: 'var(--color-accent-red)', border: 'none', padding: '4px 8px', fontSize: '0.75rem' }}
+                            onClick={() => handleUserStatusChange(user.id, 'suspended')}>
+                            Suspend
+                          </button>
+                        ) : (
+                          <button className="btn btn-sm" style={{ background: 'rgba(46, 204, 113, 0.15)', color: 'var(--color-accent-green)', border: 'none', padding: '4px 8px', fontSize: '0.75rem' }}
+                            onClick={() => handleUserStatusChange(user.id, 'active')}>
+                            Activate
+                          </button>
+                        )}
+                        
+                        {user.role === 'agent' && (
+                          <button className="btn btn-sm" style={{ background: 'rgba(52, 152, 219, 0.15)', color: 'var(--color-accent-blue)', border: 'none', padding: '4px 8px', fontSize: '0.75rem' }}
+                            onClick={() => handleVerifyKYC(user.id, !user.kyc_verified)}>
+                            {user.kyc_verified ? 'Unverify KYC' : 'Verify KYC'}
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
