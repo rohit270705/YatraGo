@@ -3,12 +3,13 @@ import {
   Car, Plus, Calendar, MapPin, DollarSign, AlertTriangle, CheckCircle,
   Shield, Upload, Clock, Users, Luggage, TrendingUp, Bell, Trash2, Camera, Image, X, FileText, UploadCloud
 } from 'lucide-react';
-import { useVehicleStore, useBookingStore, useToastStore, useAuthStore } from '../store';
+import { useVehicleStore, useBookingStore, useToastStore, useAuthStore, useWalletStore } from '../store';
 
 export default function OwnerDashboardPage() {
   const { user } = useAuthStore();
   const { vehicles, fetchVehicles, createVehicle, deleteVehicle, isLoading } = useVehicleStore();
   const { bookings, approveBooking, rejectBooking } = useBookingStore();
+  const { balance, withdrawals, requestWithdrawal } = useWalletStore();
   const { addToast } = useToastStore();
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [showRouteModal, setShowRouteModal] = useState(false);
@@ -18,11 +19,15 @@ export default function OwnerDashboardPage() {
   // Document Upload State
   const [showDocUpload, setShowDocUpload] = useState(null);
   const [docForm, setDocForm] = useState({
-    rcNumber: '', rcPhoto: null,
+    rcNumber: '', rcValidUntil: '', rcPhoto: null,
     pucNumber: '', pucValidUntil: '', pucPhoto: null,
     dlNumber: '', dlHolderName: '', dlValidUntil: '', dlPhoto: null
   });
   const [docPreviews, setDocPreviews] = useState({ rc: null, puc: null, dl: null });
+
+  // Withdrawal State
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawForm, setWithdrawForm] = useState({ amount: '', bankAccount: '', ifscCode: '' });
 
   useEffect(() => {
     fetchVehicles();
@@ -216,6 +221,26 @@ export default function OwnerDashboardPage() {
     }
   };
 
+  const handleRequestWithdrawal = async (e) => {
+    e.preventDefault();
+    const amount = Number(withdrawForm.amount);
+    if (!amount || amount <= 0) return addToast('Enter a valid amount', 'error');
+    if (amount > balance) return addToast('Insufficient wallet balance', 'error');
+    if (!withdrawForm.bankAccount || !withdrawForm.ifscCode) return addToast('Enter bank details', 'error');
+
+    setIsSubmitting(true);
+    const result = await requestWithdrawal(amount, withdrawForm.bankAccount, withdrawForm.ifscCode);
+    setIsSubmitting(false);
+
+    if (result.success) {
+      addToast('Withdrawal requested successfully! Admin will process it soon.', 'success');
+      setShowWithdrawModal(false);
+      setWithdrawForm({ amount: '', bankAccount: '', ifscCode: '' });
+    } else {
+      addToast(result.error || 'Failed to request withdrawal', 'error');
+    }
+  };
+
   const vehiclesNeedingDocs = activeVehicles.filter(v => !v.documentsSubmitted && v.approved);
 
   return (
@@ -277,6 +302,50 @@ export default function OwnerDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Wallet & Withdrawals */}
+      <div style={{ marginTop: 24, marginBottom: 24, background: '#fff', borderRadius: 'var(--radius-lg)', padding: 24, border: '1px solid var(--color-border-subtle)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div>
+            <h3 style={{ fontWeight: 700, margin: 0 }}>Wallet & Withdrawals</h3>
+            <div style={{ color: 'var(--color-text-tertiary)', fontSize: '0.9rem' }}>Available Balance: <strong style={{ color: 'var(--color-accent-green)', fontSize: '1.1rem' }}>₹{balance.toLocaleString()}</strong></div>
+          </div>
+          <button className="btn btn-primary" onClick={() => setShowWithdrawModal(true)} disabled={balance <= 0}>
+            <DollarSign size={18} /> Request Withdrawal
+          </button>
+        </div>
+
+        {withdrawals?.length > 0 && (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Bank Account</th>
+                  <th>IFSC</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {withdrawals.slice(0, 5).map(w => (
+                  <tr key={w.id}>
+                    <td>{new Date(w.created_at).toLocaleDateString()}</td>
+                    <td style={{ fontWeight: 600 }}>₹{w.amount.toLocaleString()}</td>
+                    <td>{w.bank_account}</td>
+                    <td>{w.ifsc_code}</td>
+                    <td>
+                      <span className={`badge badge-${w.status === 'approved' ? 'success' : w.status === 'rejected' ? 'error' : 'warning'}`}>
+                        {w.status.toUpperCase()}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Action Buttons */}
       <div style={{ display: 'flex', gap: 12, margin: '24px 0' }}>
@@ -797,6 +866,50 @@ export default function OwnerDashboardPage() {
                   ) : (
                     <><UploadCloud size={16} /> Submit Documents</>
                   )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Withdrawal Modal */}
+      {showWithdrawModal && (
+        <div className="modal-backdrop" onClick={() => !isSubmitting && setShowWithdrawModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+            <div className="modal-header">
+              <h3 className="modal-title">Request Withdrawal</h3>
+              <button className="modal-close" onClick={() => !isSubmitting && setShowWithdrawModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleRequestWithdrawal}>
+              <div className="form-group">
+                <label className="form-label">Available Balance</label>
+                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-accent-green)' }}>
+                  ₹{balance.toLocaleString()}
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Amount to Withdraw (₹)</label>
+                <input type="number" className="form-input" required min="1" max={balance}
+                  value={withdrawForm.amount}
+                  onChange={e => setWithdrawForm({...withdrawForm, amount: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Bank Account Number</label>
+                <input type="text" className="form-input" required
+                  value={withdrawForm.bankAccount}
+                  onChange={e => setWithdrawForm({...withdrawForm, bankAccount: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">IFSC Code</label>
+                <input type="text" className="form-input" required style={{ textTransform: 'uppercase' }}
+                  value={withdrawForm.ifscCode}
+                  onChange={e => setWithdrawForm({...withdrawForm, ifscCode: e.target.value.toUpperCase()})} />
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowWithdrawModal(false)} disabled={isSubmitting}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? 'Processing...' : 'Submit Request'}
                 </button>
               </div>
             </form>

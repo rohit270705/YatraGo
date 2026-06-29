@@ -662,6 +662,7 @@ export const useWalletStore = create(
     (set, get) => ({
       balance: 0,
       transactions: [],
+      withdrawals: [],
       isLoading: false,
 
       initializeWallet: async (userId) => {
@@ -701,7 +702,19 @@ export const useWalletStore = create(
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
-      set({ balance: wallet.balance, transactions: txns || [], isLoading: false });
+      // Fetch withdrawals
+      const { data: withdrawalsList } = await supabase
+        .from('withdrawals')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      set({ 
+        balance: wallet.balance, 
+        transactions: txns || [], 
+        withdrawals: withdrawalsList || [], 
+        isLoading: false 
+      });
     } catch (err) {
       console.error('Wallet init error:', err);
       set({ isLoading: false });
@@ -792,6 +805,107 @@ export const useWalletStore = create(
       return false;
     }
   },
+
+  requestWithdrawal: async (amount, bankAccount, ifscCode) => {
+    try {
+      set({ isLoading: true });
+      const user = useAuthStore.getState().user;
+      if (!user) return { success: false, error: 'Not logged in' };
+
+      const { balance, transactions, withdrawals } = get();
+      if (balance < amount) return { success: false, error: 'Insufficient balance' };
+
+      const newBalance = balance - amount;
+
+      // 1. Create withdrawal request
+      const { data: withdrawal, error: wError } = await supabase.from('withdrawals').insert([{
+        user_id: user.id,
+        amount,
+        bank_account: bankAccount,
+        ifsc_code: ifscCode,
+        status: 'pending'
+      }]).select().single();
+      if (wError) throw wError;
+
+      // 2. Deduct from wallet
+      await supabase.from('wallets').update({ balance: newBalance }).eq('user_id', user.id);
+
+      // 3. Log transaction
+      const { data: txn } = await supabase.from('wallet_transactions').insert([{
+        user_id: user.id,
+        type: 'WITHDRAWAL_REQUEST',
+        amount: -amount,
+        description: `Withdrawal request to ${bankAccount}`,
+        balance_before: balance,
+        balance_after: newBalance
+      }]).select().single();
+
+      set({ 
+        balance: newBalance, 
+        transactions: [txn, ...transactions],
+        withdrawals: [withdrawal, ...withdrawals],
+        isLoading: false
+      });
+      return { success: true };
+    } catch (err) {
+      console.error('Withdrawal error:', err);
+      set({ isLoading: false });
+      return { success: false, error: err.message };
+    }
+  },
+
+  // ===== ADMIN FUNCTIONS =====
+  fetchAllWithdrawals: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('withdrawals')
+        .select('*, user:users(name, email, role)')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      set({ withdrawals: data || [] });
+    } catch (err) {
+      console.error('Error fetching all withdrawals:', err);
+    }
+  },
+
+  approveWithdrawal: async (withdrawalId) => {
+    try {
+      const { error } = await supabase.rpc('approve_withdrawal_admin', {
+        target_withdrawal_id: withdrawalId,
+        secret_key: 'yatrago_super_admin_secret_2026'
+      });
+      if (error) throw error;
+      
+      set(state => ({
+        withdrawals: state.withdrawals.map(w => w.id === withdrawalId ? { ...w, status: 'approved' } : w)
+      }));
+      return { success: true };
+    } catch (err) {
+      console.error('Error approving withdrawal:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  rejectWithdrawal: async (withdrawal) => {
+    try {
+      const { error } = await supabase.rpc('reject_withdrawal_admin', {
+        target_withdrawal_id: withdrawal.id,
+        target_user_id: withdrawal.user_id,
+        refund_amount: withdrawal.amount,
+        secret_key: 'yatrago_super_admin_secret_2026'
+      });
+      if (error) throw error;
+      
+      set(state => ({
+        withdrawals: state.withdrawals.map(w => w.id === withdrawal.id ? { ...w, status: 'rejected' } : w)
+      }));
+      return { success: true };
+    } catch (err) {
+      console.error('Error rejecting withdrawal:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
 }),
     {
       name: 'wallet-storage',

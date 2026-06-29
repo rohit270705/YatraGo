@@ -27,7 +27,7 @@ export default function AdminDashboardPage() {
 
   const { vehicles, approveVehicle, rejectVehicle, getPendingApprovals, fetchVehicles } = useVehicleStore();
   const { bookings } = useBookingStore();
-  const { transactions } = useWalletStore();
+  const { transactions, withdrawals, fetchAllWithdrawals, approveWithdrawal, rejectWithdrawal } = useWalletStore();
   const { rentalVehicles, activeRentals } = useRentalStore();
   const { addToast } = useToastStore();
   const [activeSection, setActiveSection] = useState('overview');
@@ -37,7 +37,8 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     fetchVehicles();
-  }, [fetchVehicles]);
+    fetchAllWithdrawals();
+  }, [fetchVehicles, fetchAllWithdrawals]);
 
   const pendingVehicles = getPendingApprovals();
   const activeVehicles = vehicles.filter(v => v.approved && v.isActive);
@@ -602,6 +603,57 @@ export default function AdminDashboardPage() {
               <div className="stat-card-label">Agent Commissions</div>
               <div className="stat-card-value">₹{(totalCommissions + 4500).toLocaleString()}</div>
             </div>
+          </div>
+
+          <h4 style={{ fontWeight: 600, marginBottom: 12 }}>Pending Withdrawal Requests</h4>
+          <div className="data-table-wrapper" style={{ marginBottom: 32 }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>User</th>
+                  <th>Amount</th>
+                  <th>Bank Details</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {withdrawals?.filter(w => w.status === 'pending').length > 0 ? (
+                  withdrawals.filter(w => w.status === 'pending').map(w => (
+                    <tr key={w.id}>
+                      <td>{new Date(w.created_at).toLocaleDateString()}</td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{w.user?.name || 'Unknown User'}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>{w.user?.email || w.user_id}</div>
+                      </td>
+                      <td style={{ fontWeight: 700, color: 'var(--color-accent-teal)' }}>₹{w.amount.toLocaleString()}</td>
+                      <td>
+                        <div style={{ fontSize: '0.85rem' }}>A/C: {w.bank_account}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>IFSC: {w.ifsc_code}</div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button className="btn btn-sm" style={{ background: 'rgba(46, 204, 113, 0.15)', color: 'var(--color-accent-green)', border: 'none' }}
+                            onClick={async () => {
+                              const res = await approveWithdrawal(w.id);
+                              if (res.success) addToast('Withdrawal approved', 'success');
+                              else addToast(res.error, 'error');
+                            }}>Approve</button>
+                          <button className="btn btn-sm" style={{ background: 'rgba(231, 76, 60, 0.15)', color: 'var(--color-accent-red)', border: 'none' }}
+                            onClick={async () => {
+                              const res = await rejectWithdrawal(w);
+                              if (res.success) addToast('Withdrawal rejected', 'success');
+                              else addToast(res.error, 'error');
+                            }}>Reject</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr><td colSpan="5" style={{ textAlign: 'center', padding: 24, color: 'var(--color-text-tertiary)' }}>No pending withdrawal requests</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
           
           <h4 style={{ fontWeight: 600, marginBottom: 12 }}>User Wallet Balances</h4>
