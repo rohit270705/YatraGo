@@ -48,9 +48,42 @@ export default function FoodDiscovery({ destination }) {
         </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
-        {cuisines.map(dish => (
-          <div key={dish.id} style={{ 
+      {/* Platform-curated dishes (no host_recommendation_id) */}
+      {cuisines.filter(d => !d.host_recommendation_id).length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            🍽️ Famous Local Dishes
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+            {cuisines.filter(d => !d.host_recommendation_id).map(dish => renderDishCard(dish))}
+          </div>
+        </div>
+      )}
+
+      {/* Host-recommended dishes (have host_recommendation_id) */}
+      {cuisines.filter(d => d.host_recommendation_id).length > 0 && (
+        <div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            ⭐ Recommended by Local Hosts
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+            {cuisines.filter(d => d.host_recommendation_id).map(dish => renderDishCard(dish))}
+          </div>
+        </div>
+      )}
+
+      {/* If all dishes are platform-curated and no host recommendations yet */}
+      {cuisines.filter(d => d.host_recommendation_id).length === 0 && cuisines.length > 0 && (
+        <div style={{ marginTop: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(27,153,139,0.04)', fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+          💡 Local host food recommendations will appear here once hosts are registered at this destination.
+        </div>
+      )}
+    </div>
+  );
+
+  function renderDishCard(dish) {
+    return (
+      <div key={dish.id} style={{ 
             background: 'var(--color-surface)', 
             borderRadius: 'var(--radius-md)', 
             overflow: 'hidden',
@@ -94,8 +127,6 @@ export default function FoodDiscovery({ destination }) {
               )}
             </div>
           </div>
-        ))}
-      </div>
-    </div>
-  );
+    );
+  }
 }

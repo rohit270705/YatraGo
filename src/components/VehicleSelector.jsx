@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Car, Users, Briefcase, CheckCircle2 } from 'lucide-react';
+import { Car, Users, Briefcase, CheckCircle2, Star } from 'lucide-react';
 import { useVehicleStore } from '../store';
+
+const VEHICLE_CATEGORIES = ['All', 'Bus', 'Rented Car', 'Van', 'Mini Bus', 'Mini Van'];
 
 export default function VehicleSelector({ onSelect, selectedVehicleId }) {
   const { getActiveVehicles, fetchVehicles } = useVehicleStore();
   const [vehicles, setVehicles] = useState([]);
+  const [categoryFilter, setCategoryFilter] = useState('All');
   
   useEffect(() => {
     fetchVehicles().then(() => {
@@ -12,9 +15,31 @@ export default function VehicleSelector({ onSelect, selectedVehicleId }) {
     });
   }, [fetchVehicles]);
 
+  const filtered = categoryFilter === 'All'
+    ? vehicles
+    : vehicles.filter(v => (v.vehicle_category || v.type || 'Bus') === categoryFilter);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {vehicles.map(v => (
+      {/* Category Filter Chips */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {VEHICLE_CATEGORIES.map(cat => (
+          <button
+            key={cat}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCategoryFilter(cat); }}
+            style={{
+              padding: '4px 12px', borderRadius: 16, border: 'none', cursor: 'pointer',
+              fontSize: '0.75rem', fontWeight: 600, transition: 'all 0.2s',
+              background: categoryFilter === cat ? 'var(--color-primary)' : 'var(--color-surface-hover)',
+              color: categoryFilter === cat ? 'white' : 'var(--color-text-secondary)',
+            }}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {filtered.map(v => (
         <div 
           key={v.id} 
           onClick={() => onSelect(v)}
@@ -50,7 +75,7 @@ export default function VehicleSelector({ onSelect, selectedVehicleId }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <h4 style={{ margin: 0, fontSize: '1rem' }}>{v.name}</h4>
               <span style={{ fontSize: '0.7rem', padding: '2px 8px', background: 'var(--color-surface-hover)', borderRadius: 12, color: 'var(--color-text-secondary)' }}>
-                {v.type}
+                {v.vehicle_category || v.type || 'Bus'}
               </span>
             </div>
             
@@ -60,18 +85,23 @@ export default function VehicleSelector({ onSelect, selectedVehicleId }) {
             
             <div style={{ display: 'flex', gap: 12, fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Users size={14} /> {v.capacity || 4} Seats
+                <Users size={14} /> {v.capacity || v.seatingCapacity || 4} Seats
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Briefcase size={14} /> {v.luggage_capacity_kg || 20}kg
+                <Briefcase size={14} /> {v.luggage_capacity_kg || v.luggageCapacityKg || 20}kg
               </div>
+              {(v.rating_avg > 0 || v.ratingAvg > 0) && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#f59e0b' }}>
+                  <Star size={14} fill="#f59e0b" /> {(v.rating_avg || v.ratingAvg || 0).toFixed(1)}
+                </div>
+              )}
             </div>
           </div>
         </div>
       ))}
-      {vehicles.length === 0 && (
+      {filtered.length === 0 && (
         <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-secondary)', border: '1px dashed var(--border-subtle)', borderRadius: 8 }}>
-          No vehicles currently available.
+          No vehicles available{categoryFilter !== 'All' ? ` in "${categoryFilter}" category` : ''}.
         </div>
       )}
     </div>

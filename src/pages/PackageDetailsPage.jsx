@@ -151,12 +151,7 @@ export default function PackageDetailsPage() {
         {/* Customization & Booking Panel */}
         <div>
           <div className="glass-card" style={{ padding: 24, position: 'sticky', top: 80 }}>
-            <div style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>Package Base Price</div>
-            <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-primary)', marginBottom: 24 }}>
-              ₹{pkg.base_price?.toLocaleString()}
-            </div>
-            
-            <h4 style={{ marginBottom: 12, fontSize: '1rem' }}>Customize Trip</h4>
+            <h4 style={{ marginBottom: 16, fontSize: '1rem' }}>Customize Trip</h4>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
               <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer' }}>
@@ -202,6 +197,47 @@ export default function PackageDetailsPage() {
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* ===== TRANSPARENT PRICING BREAKDOWN ===== */}
+            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 20, marginBottom: 20 }}>
+              <h4 style={{ marginBottom: 12, fontSize: '0.95rem' }}>Price Breakdown</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.875rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Base Package</span>
+                  <span>₹{(pkg.base_price || 0).toLocaleString()}</span>
+                </div>
+                {selectedVehicle && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--color-text-secondary)' }}>Vehicle ({selectedVehicle.vehicle_category || selectedVehicle.type || 'Bus'})</span>
+                    <span>₹{(selectedVehicle.price || selectedVehicle.fare || 0).toLocaleString()}</span>
+                  </div>
+                )}
+                {includeStay && selectedAccommodation && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--color-text-secondary)' }}>Stay ({selectedAccommodation.name}) × {pkg.duration_nights}N</span>
+                    <span>₹{((selectedAccommodation.price_per_night || 0) * (pkg.duration_nights || 1)).toLocaleString()}</span>
+                  </div>
+                )}
+                <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 8, display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '1.1rem' }}>
+                  <span>Total</span>
+                  <span style={{ color: 'var(--color-primary)' }}>
+                    ₹{(
+                      (pkg.base_price || 0) +
+                      (selectedVehicle ? (selectedVehicle.price || selectedVehicle.fare || 0) : 0) +
+                      (includeStay && selectedAccommodation ? (selectedAccommodation.price_per_night || 0) * (pkg.duration_nights || 1) : 0)
+                    ).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* ===== CANCELLATION POLICY ===== */}
+            <div style={{ padding: '12px 16px', background: 'rgba(16,185,129,0.06)', borderRadius: 8, marginBottom: 20, fontSize: '0.75rem', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+              <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--color-text)' }}>✅ Fair Cancellation Policy</div>
+              <div>• <strong>Transport:</strong> ₹30 deduction only if cancelled within 24hrs of departure</div>
+              <div>• <strong>Stay & food:</strong> Fully refundable on cancellation</div>
+              <div>• <strong>All other cases:</strong> 100% refund, no questions asked</div>
             </div>
 
             <button className="btn btn-primary" style={{ width: '100%', padding: '16px 0', fontSize: '1.1rem' }} onClick={handleBook}>
