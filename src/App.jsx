@@ -6,6 +6,7 @@ import {
   Briefcase, TruckIcon, ClipboardList, FileCheck, CreditCard, BarChart3,
   Home, Map, Bike, Palmtree
 } from 'lucide-react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { useAuthStore, useToastStore, useNotificationStore, usePlatformStore } from './store';
 import { supabase } from './supabaseClient';
 
@@ -484,6 +485,7 @@ export default function App() {
 
   return (
     <HashRouter>
+      <SpeedInsights />
       <ToastContainer />
       <Routes>
         {/* Public Auth Routes */}
