@@ -2381,3 +2381,122 @@ export const useChatStore = create((set, get) => ({
     }
   }
 }));
+
+// ==========================================
+// 12. HOLIDAY PACKAGES STORE
+// ==========================================
+export const usePackageStore = create((set, get) => ({
+  packages: [],
+  isLoading: false,
+  
+  fetchPackages: async () => {
+    set({ isLoading: true });
+    try {
+      const { data, error } = await supabase.from('holiday_packages').select('*');
+      if (error) throw error;
+      if (data) set({ packages: data });
+    } catch (err) {
+      console.error('Error fetching packages:', err);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  getPackage: (id) => get().packages.find(p => p.id === id),
+  
+  createPackage: async (pkg) => {
+    try {
+      const { data, error } = await supabase.from('holiday_packages').insert([pkg]).select().single();
+      if (error) throw error;
+      set(state => ({ packages: [...state.packages, data] }));
+      return { success: true, data };
+    } catch (err) {
+      console.error('Error creating package:', err);
+      return { success: false, error: err.message };
+    }
+  }
+}));
+
+// ==========================================
+// 13. ACCOMMODATIONS STORE
+// ==========================================
+export const useAccommodationStore = create((set, get) => ({
+  accommodations: [],
+  isLoading: false,
+  
+  fetchAccommodations: async (destination = null) => {
+    set({ isLoading: true });
+    try {
+      let query = supabase.from('accommodations').select('*').eq('status', 'approved');
+      if (destination) {
+        query = query.ilike('destination', `%${destination}%`);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      if (data) set({ accommodations: data });
+    } catch (err) {
+      console.error('Error fetching accommodations:', err);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  fetchHostAccommodations: async (hostId) => {
+    try {
+      const { data, error } = await supabase.from('accommodations').select('*').eq('host_id', hostId);
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error fetching host accommodations:', err);
+      return [];
+    }
+  },
+  
+  createAccommodation: async (acc) => {
+    try {
+      const { data, error } = await supabase.from('accommodations').insert([acc]).select().single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (err) {
+      console.error('Error creating accommodation:', err);
+      return { success: false, error: err.message };
+    }
+  }
+}));
+
+// ==========================================
+// 14. LOCAL CUISINES STORE
+// ==========================================
+export const useFoodStore = create((set, get) => ({
+  cuisines: [],
+  isLoading: false,
+  
+  fetchCuisines: async (destination = null) => {
+    set({ isLoading: true });
+    try {
+      let query = supabase.from('local_cuisines').select('*');
+      if (destination) {
+        query = query.ilike('destination', `%${destination}%`);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      if (data) set({ cuisines: data });
+    } catch (err) {
+      console.error('Error fetching cuisines:', err);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  createCuisine: async (cuisine) => {
+    try {
+      const { data, error } = await supabase.from('local_cuisines').insert([cuisine]).select().single();
+      if (error) throw error;
+      set(state => ({ cuisines: [...state.cuisines, data] }));
+      return { success: true, data };
+    } catch (err) {
+      console.error('Error creating cuisine:', err);
+      return { success: false, error: err.message };
+    }
+  }
+}));

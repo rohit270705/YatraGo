@@ -3,7 +3,7 @@ import {
   ShieldCheck, Users, Car, Ticket, Wallet, TrendingUp, CheckCircle,
   XCircle, AlertTriangle, Eye, Ban, DollarSign, FileCheck, BarChart3,
   Bike, UserCheck, UserX, Clock, Search, MapPin, Star, Zap, Filter, Plus, Calendar,
-  Settings, Headphones, Tag
+  Settings, Headphones, Tag, Home
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useVehicleStore, useBookingStore, useWalletStore, useToastStore, useRentalStore, usePlatformStore, useChatStore, useAuthStore } from '../store';
@@ -42,12 +42,14 @@ export default function AdminDashboardPage() {
   const [promoCodes, setPromoCodes] = useState([]);
   const [selectedChatId, setSelectedChatId] = useState(null);
   const [adminReply, setAdminReply] = useState('');
+  const [pendingStays, setPendingStays] = useState([]);
 
   useEffect(() => {
     fetchVehicles();
     fetchAllWithdrawals();
     fetchAdminConversations();
     fetchPromoCodes();
+    fetchPendingStays();
   }, [fetchVehicles, fetchAllWithdrawals, fetchAdminConversations]);
 
   useEffect(() => {
@@ -61,6 +63,30 @@ export default function AdminDashboardPage() {
       const { data, error } = await supabase.from('promo_codes').select('*').order('created_at', { ascending: false });
       if (!error && data) setPromoCodes(data);
     } catch (e) {}
+  };
+
+  const fetchPendingStays = async () => {
+    try {
+      const { data, error } = await supabase.from('accommodations').select('*').order('created_at', { ascending: false });
+      if (!error && data) setPendingStays(data);
+    } catch (e) {}
+  };
+
+  const handleStayAction = async (id, newStatus) => {
+    try {
+      const { error } = await supabase.rpc('admin_manage_accommodations', {
+        action: 'update_status',
+        target_id: id,
+        new_status: newStatus,
+        secret_key: 'yatrago_super_admin_secret_2026'
+      });
+      if (!error) {
+        addToast(`Homestay ${newStatus}!`, 'success');
+        fetchPendingStays();
+      }
+    } catch (e) {
+      addToast('Failed to update status', 'error');
+    }
   };
 
   const pendingVehicles = getPendingApprovals();
@@ -140,6 +166,7 @@ export default function AdminDashboardPage() {
     { id: 'bookings', label: 'Bookings', icon: Ticket },
     { id: 'wallets', label: 'Wallets', icon: Wallet },
     { id: 'promos', label: 'Promos', icon: Tag },
+    { id: 'homestays', label: `Homestays (${pendingStays.filter(s => s.status === 'pending').length})`, icon: Home },
     { id: 'support', label: 'Help Desk', icon: Headphones },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -849,6 +876,53 @@ export default function AdminDashboardPage() {
               </tbody>
             </table>
           </div>
+        </>
+      )}
+      {/* ===== HOMESTAYS APPROVAL ===== */}
+      {activeSection === 'homestays' && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <h3 style={{ fontWeight: 700 }}>Pay-and-Stay Homestay Listings</h3>
+          </div>
+          {pendingStays.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon"><Home size={36} /></div>
+              <h3>No homestay listings yet</h3>
+            </div>
+          ) : (
+            <div className="route-grid">
+              {pendingStays.map(stay => (
+                <div key={stay.id} className="glass-card" style={{ padding: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                    <h4 style={{ margin: 0 }}>{stay.name}</h4>
+                    <span style={{ 
+                      fontSize: '0.7rem', padding: '3px 10px', borderRadius: 20, fontWeight: 600,
+                      background: stay.status === 'approved' ? 'rgba(16,185,129,0.1)' : stay.status === 'rejected' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
+                      color: stay.status === 'approved' ? '#10b981' : stay.status === 'rejected' ? '#ef4444' : '#f59e0b'
+                    }}>{stay.status}</span>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>
+                    <strong>Type:</strong> {stay.type} &bull; <strong>Budget:</strong> {stay.budget_category}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>
+                    <strong>Destination:</strong> {stay.destination} &bull; <strong>Price:</strong> ₹{stay.price_per_night}/night
+                  </div>
+                  {stay.description && <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 4 }}>{stay.description}</p>}
+                  {stay.house_rules && <p style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', fontStyle: 'italic' }}>Rules: {stay.house_rules}</p>}
+                  {stay.status === 'pending' && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                      <button className="btn btn-primary btn-sm" onClick={() => handleStayAction(stay.id, 'approved')}>
+                        <CheckCircle size={14} /> Approve
+                      </button>
+                      <button className="btn btn-secondary btn-sm" style={{ color: '#ef4444' }} onClick={() => handleStayAction(stay.id, 'rejected')}>
+                        <XCircle size={14} /> Reject
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
       {/* ===== PROMOS ===== */}

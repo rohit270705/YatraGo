@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Search, Ticket, Wallet, Car, Package, Users, ShieldCheck,
   LogOut, Menu, X, MapPin, UserCircle, Settings, Bell, ChevronRight,
   Briefcase, TruckIcon, ClipboardList, FileCheck, CreditCard, BarChart3,
-  Home, Map, Bike
+  Home, Map, Bike, Palmtree
 } from 'lucide-react';
 import { useAuthStore, useToastStore, useNotificationStore, usePlatformStore } from './store';
 import { supabase } from './supabaseClient';
@@ -31,6 +31,9 @@ import DailyReportPage from './pages/DailyReportPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import ChatWidget from './components/ChatWidget';
+import PackagesPage from './pages/PackagesPage';
+import PackageDetailsPage from './pages/PackageDetailsPage';
+import HostDashboardPage from './pages/HostDashboardPage';
 
 // ===== FIX 4: mapDbUser moved outside — no longer re-created on every render =====
 const mapDbUser = (data) => ({
@@ -106,6 +109,8 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/search', label: 'Search Trips', icon: Search },
     { path: '/bookings', label: 'My Bookings', icon: Ticket },
     { path: '/wallet', label: 'Wallet', icon: Wallet },
+    { path: '/packages', label: 'Holiday Packages', icon: Palmtree },
+    { path: '/host', label: 'My Homestay', icon: Home },
     { path: '/rentals', label: 'Rent Bike/Scooty', icon: Bike },
     { path: '/vehicles', label: 'Vehicles', icon: Car },
     { path: '/parcel', label: 'Send Parcel', icon: Package },
@@ -492,6 +497,9 @@ export default function App() {
         <Route path="/vehicles" element={<ProtectedRoute><AppLayout><VehiclesPage /></AppLayout></ProtectedRoute>} />
         <Route path="/vehicle/:vehicleId" element={<ProtectedRoute><AppLayout><VehicleDetailPage /></AppLayout></ProtectedRoute>} />
         <Route path="/daily-report" element={<ProtectedRoute><AppLayout><DailyReportPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/packages" element={<ProtectedRoute><AppLayout><PackagesPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/package/:packageId" element={<ProtectedRoute><AppLayout><PackageDetailsPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/host" element={<ProtectedRoute><AppLayout><HostDashboardPage /></AppLayout></ProtectedRoute>} />
 
         {/* Passenger-only Routes */}
         <Route path="/dashboard" element={
