@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, User, Phone, Car, ShieldCheck, Briefcase } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, Phone, Car, ShieldCheck, Briefcase, Key } from 'lucide-react';
 import { useAuthStore, useToastStore } from '../store';
+import { supabase } from '../supabaseClient';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -12,6 +13,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Forgot Password State
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotStep, setForgotStep] = useState(1);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -54,6 +63,65 @@ export default function LoginPage() {
     } else {
       // Error is handled by the store and displayed via the `error` state variable
       addToast('Login failed. Please check your credentials.', 'error');
+    }
+  };
+
+  const handleSendResetOtp = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail) {
+      addToast('Please enter your email address', 'error');
+      return;
+    }
+    
+    setIsResetting(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail);
+      if (error) throw error;
+      
+      addToast('OTP sent to your email. Please check your inbox.', 'success');
+      setForgotStep(2);
+    } catch (err) {
+      addToast(err.message, 'error');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  const handleVerifyAndReset = async (e) => {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      addToast('Password must be at least 6 characters', 'error');
+      return;
+    }
+    
+    setIsResetting(true);
+    try {
+      // 1. Verify OTP
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
+        email: forgotEmail,
+        token: otp,
+        type: 'recovery' // Or 'magiclink' depending on Supabase email templates, but recovery is standard for reset
+      });
+      
+      if (verifyError) throw verifyError;
+      
+      // 2. Update Password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (updateError) throw updateError;
+      
+      addToast('Password reset successfully! You can now login.', 'success');
+      setShowForgot(false);
+      setForgotStep(1);
+      setForgotEmail('');
+      setOtp('');
+      setNewPassword('');
+    } catch (err) {
+      addToast(err.message, 'error');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -113,7 +181,68 @@ export default function LoginPage() {
             ))}
           </div>
 
-          <form onSubmit={handleSubmit}>
+          {showForgot ? (
+            <div className="forgot-password-container">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Reset Password</h3>
+                <button type="button" onClick={() => setShowForgot(false)} style={{ background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer', fontSize: '0.9rem' }}>
+                  Back to Login
+                </button>
+              </div>
+
+              {forgotStep === 1 ? (
+                <form onSubmit={handleSendResetOtp}>
+                  <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: 16 }}>
+                    Enter your registered email address and we'll send you an OTP to reset your password.
+                  </p>
+                  <div className="form-group">
+                    <label className="form-label">Email Address</label>
+                    <div className="form-input-icon-wrapper">
+                      <Mail className="form-input-icon" size={20} />
+                      <input
+                        type="email" className="form-input" placeholder="you@example.com"
+                        value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} required
+                      />
+                    </div>
+                  </div>
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={isResetting}>
+                    {isResetting ? 'Sending OTP...' : 'Send OTP'}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleVerifyAndReset}>
+                  <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: 16 }}>
+                    Enter the 6-digit OTP sent to {forgotEmail} and set your new password.
+                  </p>
+                  <div className="form-group">
+                    <label className="form-label">OTP Code</label>
+                    <div className="form-input-icon-wrapper">
+                      <Key className="form-input-icon" size={20} />
+                      <input
+                        type="text" className="form-input" placeholder="Enter 6-digit OTP"
+                        value={otp} onChange={e => setOtp(e.target.value)} required
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">New Password</label>
+                    <div className="form-input-icon-wrapper">
+                      <Lock className="form-input-icon" size={20} />
+                      <input
+                        type="password" className="form-input" placeholder="New Password (min 6 chars)"
+                        value={newPassword} onChange={e => setNewPassword(e.target.value)} required
+                      />
+                    </div>
+                  </div>
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={isResetting}>
+                    {isResetting ? 'Resetting...' : 'Verify & Reset Password'}
+                  </button>
+                </form>
+              )}
+            </div>
+          ) : (
+            <>
+              <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label className="form-label">Email Address</label>
               <div className="form-input-icon-wrapper">
@@ -130,7 +259,12 @@ export default function LoginPage() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Password</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className="form-label">Password</label>
+                <button type="button" onClick={() => setShowForgot(true)} style={{ background: 'none', border: 'none', color: 'var(--color-accent-teal)', cursor: 'pointer', fontSize: '0.85rem', padding: 0, marginBottom: '8px' }}>
+                  Forgot Password?
+                </button>
+              </div>
               <div className="form-input-icon-wrapper" style={{ position: 'relative' }}>
                 <Lock className="form-input-icon" size={20} />
                 <input
@@ -186,6 +320,8 @@ export default function LoginPage() {
             Don't have an account?{' '}
             <Link to="/register">Create one</Link>
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>
