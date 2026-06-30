@@ -3,10 +3,14 @@ import {
   ShieldCheck, Users, Car, Ticket, Wallet, TrendingUp, CheckCircle,
   XCircle, AlertTriangle, Eye, Ban, DollarSign, FileCheck, BarChart3,
   Bike, UserCheck, UserX, Clock, Search, MapPin, Star, Zap, Filter, Plus, Calendar,
-  Settings, Headphones, Tag, Home
+  Settings, Headphones, Tag, Home, MessageSquare
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-import { useVehicleStore, useBookingStore, useWalletStore, useToastStore, useRentalStore, usePlatformStore, useChatStore, useAuthStore } from '../store';
+import { useVehicleStore, useBookingStore, useWalletStore, useToastStore, useRentalStore, usePlatformStore, useChatStore, useAuthStore, usePromoStore, useSupportStore } from '../store';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, PieChart, Pie, Cell
+} from 'recharts';
 
 // Mock users removed
 
@@ -29,8 +33,9 @@ export default function AdminDashboardPage() {
   const { vehicles, approveVehicle, rejectVehicle, getPendingApprovals, fetchVehicles } = useVehicleStore();
   const { bookings } = useBookingStore();
   const { transactions, withdrawals, fetchAllWithdrawals, approveWithdrawal, rejectWithdrawal } = useWalletStore();
-  const { settings } = usePlatformStore();
-  const { conversations, messages, fetchAdminConversations, sendMessage } = useChatStore();
+  const { settings, fetchSettings, updateSetting } = usePlatformStore();
+  const { promos, fetchPromos, createPromo, updatePromoStatus } = usePromoStore();
+  const { tickets, fetchAllTickets, addMessage, updateTicketStatus } = useSupportStore();
   const { user: currentUser } = useAuthStore();
   const { rentalVehicles, activeRentals } = useRentalStore();
   const { addToast } = useToastStore();
@@ -39,18 +44,18 @@ export default function AdminDashboardPage() {
   const [userSearch, setUserSearch] = useState('');
   const [vehicleTabFilter, setVehicleTabFilter] = useState('all');
   const [localSettings, setLocalSettings] = useState({});
-  const [promoCodes, setPromoCodes] = useState([]);
-  const [selectedChatId, setSelectedChatId] = useState(null);
+  const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [adminReply, setAdminReply] = useState('');
   const [pendingStays, setPendingStays] = useState([]);
 
   useEffect(() => {
     fetchVehicles();
     fetchAllWithdrawals();
-    fetchAdminConversations();
-    fetchPromoCodes();
+    fetchPromos();
+    fetchAllTickets();
     fetchPendingStays();
-  }, [fetchVehicles, fetchAllWithdrawals, fetchAdminConversations]);
+    fetchSettings();
+  }, [fetchVehicles, fetchAllWithdrawals, fetchPromos, fetchAllTickets, fetchSettings]);
 
   useEffect(() => {
     if (settings) {
@@ -58,12 +63,6 @@ export default function AdminDashboardPage() {
     }
   }, [settings]);
 
-  const fetchPromoCodes = async () => {
-    try {
-      const { data, error } = await supabase.from('promo_codes').select('*').order('created_at', { ascending: false });
-      if (!error && data) setPromoCodes(data);
-    } catch (e) {}
-  };
 
   const fetchPendingStays = async () => {
     try {
@@ -337,34 +336,34 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Analytics Chart */}
-          <div className="glass-card" style={{ marginBottom: 24 }}>
+          <div className="glass-card" style={{ marginBottom: 24, height: 350 }}>
             <h3 style={{ fontWeight: 700, marginBottom: 16 }}>
               <TrendingUp size={20} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
               Booking Volume (Last 7 Days)
             </h3>
-            <div style={{ height: 200, display: 'flex', alignItems: 'flex-end', gap: 12, padding: '20px 0', borderBottom: '1px solid var(--color-border)' }}>
-              {[
-                { day: 'Mon', vol: 45, max: 120 },
-                { day: 'Tue', vol: 52, max: 120 },
-                { day: 'Wed', vol: 38, max: 120 },
-                { day: 'Thu', vol: 65, max: 120 },
-                { day: 'Fri', vol: 89, max: 120 },
-                { day: 'Sat', vol: 110, max: 120 },
-                { day: 'Sun', vol: 95, max: 120 },
-              ].map((d, i) => (
-                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                  <div style={{
-                    width: '100%',
-                    maxWidth: 40,
-                    height: `${(d.vol / d.max) * 150}px`,
-                    background: 'var(--gradient-primary)',
-                    borderRadius: '4px 4px 0 0',
-                    transition: 'height 1s ease-out'
-                  }} title={`${d.vol} bookings`} />
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-tertiary)' }}>{d.day}</div>
-                </div>
-              ))}
-            </div>
+            <ResponsiveContainer width="100%" height="80%">
+              <BarChart data={[
+                { day: 'Mon', vol: 45 },
+                { day: 'Tue', vol: 52 },
+                { day: 'Wed', vol: 38 },
+                { day: 'Thu', vol: 65 },
+                { day: 'Fri', vol: 89 },
+                { day: 'Sat', vol: 110 },
+                { day: 'Sun', vol: 95 },
+              ]}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} />
+                <YAxis axisLine={false} tickLine={false} />
+                <RechartsTooltip cursor={{ fill: 'rgba(52, 152, 219, 0.1)' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                <Bar dataKey="vol" fill="#3498db" radius={[4, 4, 0, 0]}>
+                  {
+                    [45, 52, 38, 65, 89, 110, 95].map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry > 80 ? '#2ecc71' : '#3498db'} />
+                    ))
+                  }
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
 
           {/* User Breakdown */}
@@ -929,24 +928,30 @@ export default function AdminDashboardPage() {
       {activeSection === 'promos' && (
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-            <h3 style={{ fontWeight: 700 }}>Promo Codes & Discounts</h3>
+            <h3 style={{ fontWeight: 700 }}><Tag size={20} style={{ display: 'inline', marginRight: 8 }} /> Promo Codes</h3>
             <button className="btn btn-primary" onClick={async () => {
               const code = prompt('Enter new promo code (e.g. SUMMER20):');
               if (!code) return;
-              const discount = prompt('Enter discount percentage (1-100):');
-              if (!discount) return;
+              const type = prompt('Enter discount type (percentage/fixed):', 'percentage');
+              if (!type) return;
+              const amount = prompt('Enter discount amount/percent:');
+              if (!amount) return;
+              const limit = prompt('Enter usage limit (e.g. 100):', '100');
               
-              const { error } = await supabase.rpc('admin_manage_promo', {
-                action: 'create',
-                target_code: code.toUpperCase(),
-                p_discount_percent: Number(discount),
-                p_max_uses: 100,
-                secret_key: 'yatrago_super_admin_secret_2026'
-              });
-              if (error) addToast(error.message, 'error');
-              else {
-                addToast('Promo created', 'success');
-                fetchPromoCodes();
+              const newPromo = {
+                code: code.toUpperCase(),
+                discount_type: type,
+                discount_amount: Number(amount),
+                usage_limit: limit ? Number(limit) : null,
+                times_used: 0,
+                is_active: true
+              };
+
+              const res = await createPromo(newPromo);
+              if (res.success) {
+                addToast('Promo created successfully', 'success');
+              } else {
+                addToast(res.error, 'error');
               }
             }}>
               <Plus size={18} /> Create Promo
@@ -964,11 +969,13 @@ export default function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {promoCodes.map(p => (
+                {promos.map(p => (
                   <tr key={p.id}>
                     <td style={{ fontWeight: 700, letterSpacing: 1 }}>{p.code}</td>
-                    <td style={{ fontWeight: 600, color: 'var(--color-accent-green)' }}>{p.discount_percent}% OFF</td>
-                    <td>{p.current_uses} / {p.max_uses}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--color-accent-green)' }}>
+                      {p.discount_type === 'percentage' ? `${p.discount_amount}% OFF` : `₹${p.discount_amount} OFF`}
+                    </td>
+                    <td>{p.times_used} / {p.usage_limit || '∞'}</td>
                     <td>
                       <span className={`badge ${p.is_active ? 'badge-success' : 'badge-secondary'}`}>
                         {p.is_active ? 'Active' : 'Disabled'}
@@ -976,19 +983,14 @@ export default function AdminDashboardPage() {
                     </td>
                     <td>
                       <button className="btn btn-sm" style={{ background: 'var(--color-bg-secondary)', border: 'none' }}
-                        onClick={async () => {
-                          await supabase.rpc('admin_manage_promo', { action: 'toggle', target_code: p.code, secret_key: 'yatrago_super_admin_secret_2026' });
-                          fetchPromoCodes();
+                        onClick={() => {
+                          updatePromoStatus(p.id, !p.is_active);
+                          addToast(`Promo ${p.is_active ? 'disabled' : 'enabled'}`, 'success');
                         }}>Toggle</button>
-                      <button className="btn btn-sm" style={{ background: 'rgba(231,76,60,0.15)', color: 'var(--color-accent-red)', border: 'none', marginLeft: 8 }}
-                        onClick={async () => {
-                          await supabase.rpc('admin_manage_promo', { action: 'delete', target_code: p.code, secret_key: 'yatrago_super_admin_secret_2026' });
-                          fetchPromoCodes();
-                        }}>Delete</button>
                     </td>
                   </tr>
                 ))}
-                {promoCodes.length === 0 && (
+                {promos.length === 0 && (
                   <tr><td colSpan="5" style={{ textAlign: 'center', padding: 24, color: 'var(--color-text-tertiary)' }}>No promo codes exist yet.</td></tr>
                 )}
               </tbody>
@@ -1000,64 +1002,89 @@ export default function AdminDashboardPage() {
       {/* ===== SUPPORT HELP DESK ===== */}
       {activeSection === 'support' && (
         <div style={{ display: 'flex', gap: 24, height: '600px', background: 'var(--color-bg-primary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-          <div style={{ width: 300, borderRight: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ width: 350, borderRight: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: 16, borderBottom: '1px solid var(--color-border)', fontWeight: 700 }}>
-              Active Tickets ({conversations.length})
+              <Headphones size={18} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
+              Support Tickets ({tickets.length})
             </div>
             <div style={{ flex: 1, overflowY: 'auto' }}>
-              {conversations.map(c => (
-                <div key={c.id} 
-                  onClick={() => setSelectedChatId(c.id)}
+              {tickets.map(t => (
+                <div key={t.id} 
+                  onClick={() => setSelectedTicketId(t.id)}
                   style={{ 
                     padding: 16, borderBottom: '1px solid var(--color-border)', cursor: 'pointer',
-                    background: selectedChatId === c.id ? 'var(--color-bg-secondary)' : 'transparent'
+                    background: selectedTicketId === t.id ? 'var(--color-bg-secondary)' : 'transparent'
                   }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{c.title || 'User Support'}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>{new Date(c.created_at).toLocaleString()}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{t.subject}</div>
+                    <span className={`badge ${
+                      t.status === 'open' ? 'badge-primary' : 
+                      t.status === 'in_progress' ? 'badge-warning' : 
+                      'badge-success'
+                    }`} style={{ fontSize: '0.6rem' }}>{t.status}</span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>User ID: {t.user_id.slice(0, 8)}...</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>{new Date(t.created_at).toLocaleString()}</div>
                 </div>
               ))}
-              {conversations.length === 0 && (
-                <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)' }}>No active support tickets.</div>
+              {tickets.length === 0 && (
+                <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)' }}>No support tickets exist.</div>
               )}
             </div>
           </div>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            {selectedChatId ? (
+            {selectedTicketId ? (
               <>
-                <div style={{ padding: 16, borderBottom: '1px solid var(--color-border)', fontWeight: 700 }}>
-                  Chat ID: {selectedChatId.slice(0,8)}...
+                <div style={{ padding: 16, borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontWeight: 700 }}>Ticket ID: {selectedTicketId.slice(0,8)}...</div>
+                  <select 
+                    className="form-input" 
+                    style={{ width: 'auto', padding: '4px 8px' }}
+                    value={tickets.find(t => t.id === selectedTicketId)?.status || 'open'}
+                    onChange={(e) => {
+                      updateTicketStatus(selectedTicketId, e.target.value);
+                      addToast('Ticket status updated', 'success');
+                    }}
+                  >
+                    <option value="open">Open</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="closed">Closed</option>
+                  </select>
                 </div>
                 <div style={{ flex: 1, padding: 16, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {messages.filter(m => m.conversation_id === selectedChatId).map(m => (
-                    <div key={m.id} style={{ 
-                      alignSelf: m.sender_id === currentUser?.id ? 'flex-end' : 'flex-start',
-                      background: m.sender_id === currentUser?.id ? 'var(--gradient-primary)' : 'var(--color-bg-secondary)',
-                      color: m.sender_id === currentUser?.id ? 'white' : 'inherit',
+                  {(tickets.find(t => t.id === selectedTicketId)?.messages_json || []).map((m, idx) => (
+                    <div key={idx} style={{ 
+                      alignSelf: m.sender_role === 'admin' ? 'flex-end' : 'flex-start',
+                      background: m.sender_role === 'admin' ? 'var(--gradient-primary)' : 'var(--color-bg-secondary)',
+                      color: m.sender_role === 'admin' ? 'white' : 'inherit',
                       padding: '10px 14px', borderRadius: 12, maxWidth: '80%'
                     }}>
-                      <div style={{ fontSize: '0.9rem' }}>{m.content}</div>
-                      <div style={{ fontSize: '0.65rem', opacity: 0.7, marginTop: 4, textAlign: 'right' }}>{new Date(m.created_at).toLocaleTimeString()}</div>
+                      <div style={{ fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>{m.content}</div>
+                      <div style={{ fontSize: '0.65rem', opacity: 0.7, marginTop: 4, textAlign: 'right' }}>
+                        {m.sender_role === 'admin' ? 'Admin' : 'User'} &bull; {new Date(m.timestamp).toLocaleTimeString()}
+                      </div>
                     </div>
                   ))}
                 </div>
                 <div style={{ padding: 16, borderTop: '1px solid var(--color-border)', display: 'flex', gap: 12 }}>
                   <input type="text" className="form-input" style={{ flex: 1 }} placeholder="Type reply..." value={adminReply} onChange={e => setAdminReply(e.target.value)} onKeyDown={e => {
                     if (e.key === 'Enter' && adminReply.trim()) {
-                      sendMessage(selectedChatId, adminReply);
+                      addMessage(selectedTicketId, { sender_role: 'admin', content: adminReply, timestamp: new Date().toISOString() });
                       setAdminReply('');
                     }
                   }} />
                   <button className="btn btn-primary" onClick={() => {
                     if (adminReply.trim()) {
-                      sendMessage(selectedChatId, adminReply);
+                      addMessage(selectedTicketId, { sender_role: 'admin', content: adminReply, timestamp: new Date().toISOString() });
                       setAdminReply('');
                     }
-                  }}>Send</button>
+                  }}><MessageSquare size={16} /> Send</button>
                 </div>
               </>
             ) : (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-tertiary)' }}>
-                Select a ticket to view conversation
+                Select a ticket to view messages
               </div>
             )}
           </div>
@@ -1073,25 +1100,31 @@ export default function AdminDashboardPage() {
             <div>
               <label className="form-label">Agent Commission Rate (%)</label>
               <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Percentage commission rate for agents when they book tickets.</div>
-              <input type="number" className="form-input" value={localSettings.agent_commission_rate || ''} onChange={e => setLocalSettings({...localSettings, agent_commission_rate: e.target.value})} />
+              <input type="number" className="form-input" value={localSettings.AGENT_COMMISSION_PERCENT || ''} onChange={e => setLocalSettings({...localSettings, AGENT_COMMISSION_PERCENT: e.target.value})} />
             </div>
             
             <div>
-              <label className="form-label">Owner Platform Fee (%)</label>
-              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Percentage fee deducted from owner payouts.</div>
-              <input type="number" className="form-input" value={localSettings.owner_platform_fee || ''} onChange={e => setLocalSettings({...localSettings, owner_platform_fee: e.target.value})} />
+              <label className="form-label">Owner Platform Fee Flat (₹)</label>
+              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Fixed flat fee deducted from owner payouts per booking.</div>
+              <input type="number" className="form-input" value={localSettings.PLATFORM_FEE_FIXED || ''} onChange={e => setLocalSettings({...localSettings, PLATFORM_FEE_FIXED: e.target.value})} />
             </div>
 
             <div>
-              <label className="form-label">Withdrawal Flat Fee (₹)</label>
-              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Flat fee charged on wallet withdrawals.</div>
-              <input type="number" className="form-input" value={localSettings.withdrawal_fee || ''} onChange={e => setLocalSettings({...localSettings, withdrawal_fee: e.target.value})} />
+              <label className="form-label">Cancellation Fee Max (₹)</label>
+              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Max transport deduction for cancellations within 24 hours.</div>
+              <input type="number" className="form-input" value={localSettings.CANCELLATION_FEE_MAX || ''} onChange={e => setLocalSettings({...localSettings, CANCELLATION_FEE_MAX: e.target.value})} />
+            </div>
+            
+            <div>
+              <label className="form-label">Support Email</label>
+              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Official email address for user support.</div>
+              <input type="email" className="form-input" value={localSettings.SUPPORT_EMAIL || ''} onChange={e => setLocalSettings({...localSettings, SUPPORT_EMAIL: e.target.value})} />
             </div>
 
             <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={async () => {
               try {
                 for (const [key, val] of Object.entries(localSettings)) {
-                  await supabase.rpc('update_platform_setting_admin', { setting_key: key, new_value: Number(val), secret_key: 'yatrago_super_admin_secret_2026' });
+                  await updateSetting(key, val);
                 }
                 addToast('Settings updated successfully!', 'success');
               } catch (e) { addToast('Error updating settings', 'error'); }

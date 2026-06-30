@@ -4,6 +4,7 @@ import { ArrowLeft, MapPin, Calendar, Clock, Star, Info, Check, X, Car, Home, In
 import { usePackageStore, useAuthStore, useToastStore, useAccommodationStore } from '../store';
 import VehicleSelector from '../components/VehicleSelector';
 import FoodDiscovery from '../components/FoodDiscovery';
+import ReviewSection from '../components/ReviewSection';
 
 export default function PackageDetailsPage() {
   const { packageId } = useParams();
@@ -146,6 +147,8 @@ export default function PackageDetailsPage() {
           {activeTab === 'food' && (
             <FoodDiscovery destination={pkg.destinations?.[0]} />
           )}
+
+          <ReviewSection targetType="package" targetId={pkg.id} />
         </div>
 
         {/* Customization & Booking Panel */}

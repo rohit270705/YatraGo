@@ -689,8 +689,15 @@ export default function OwnerDashboardPage() {
 
             <div className="form-group">
               <label className="form-label">Select Vehicle</label>
-              <select className="form-select">
-                {myVehicles.map(v => <option key={v.id} value={v.id}>{v.registrationNumber} ({v.type})</option>)}
+              <select className="form-select" defaultValue="">
+                {myVehicles.length === 0 ? (
+                  <option value="" disabled>No vehicles registered (Please add one first)</option>
+                ) : (
+                  <>
+                    <option value="" disabled>Select a vehicle...</option>
+                    {myVehicles.map(v => <option key={v.id} value={v.id}>{v.registrationNumber} ({v.type})</option>)}
+                  </>
+                )}
               </select>
             </div>
 

@@ -661,9 +661,10 @@ export const useAuthStore = create(
 // ==========================================
 export const usePlatformStore = create((set, get) => ({
   settings: {
-    agent_commission_rate: 5,
-    owner_platform_fee: 15,
-    withdrawal_fee: 0,
+    AGENT_COMMISSION_PERCENT: 5.0,
+    PLATFORM_FEE_FIXED: 0,
+    SUPPORT_EMAIL: 'support@yatrago.com',
+    CANCELLATION_FEE_MAX: 30.0,
   },
   isLoading: false,
   fetchSettings: async () => {
@@ -673,13 +674,36 @@ export const usePlatformStore = create((set, get) => ({
       if (error) throw error;
       if (data && data.length > 0) {
         const parsedSettings = {};
-        data.forEach(row => { parsedSettings[row.key] = Number(row.value); });
+        data.forEach(row => { 
+          // Parse as number if possible, else string
+          const numValue = Number(row.setting_value);
+          parsedSettings[row.setting_key] = isNaN(numValue) ? row.setting_value : numValue;
+        });
         set({ settings: { ...get().settings, ...parsedSettings } });
       }
     } catch (error) {
       console.error('Error fetching platform settings:', error);
     } finally {
       set({ isLoading: false });
+    }
+  },
+  updateSetting: async (key, value) => {
+    try {
+      const strValue = String(value);
+      const { error } = await supabase.from('platform_settings').upsert({ setting_key: key, setting_value: strValue, updated_at: new Date().toISOString() });
+      if (error) throw error;
+      
+      const numValue = Number(value);
+      set(state => ({
+        settings: {
+          ...state.settings,
+          [key]: isNaN(numValue) ? strValue : numValue
+        }
+      }));
+      return true;
+    } catch (error) {
+      console.error('Error updating platform setting:', error);
+      return false;
     }
   }
 }));
@@ -2496,6 +2520,193 @@ export const useFoodStore = create((set, get) => ({
       return { success: true, data };
     } catch (err) {
       console.error('Error creating cuisine:', err);
+      return { success: false, error: err.message };
+    }
+  }
+}));
+
+// ==========================================
+// 15. PROMO CODES STORE
+// ==========================================
+export const usePromoStore = create((set, get) => ({
+  promos: [],
+  isLoading: false,
+  
+  fetchPromos: async () => {
+    set({ isLoading: true });
+    try {
+      const { data, error } = await supabase.from('promo_codes').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      set({ promos: data || [] });
+    } catch (err) {
+      console.error('Error fetching promos:', err);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  createPromo: async (promo) => {
+    try {
+      const { data, error } = await supabase.from('promo_codes').insert([promo]).select().single();
+      if (error) throw error;
+      set(state => ({ promos: [data, ...state.promos] }));
+      return { success: true, data };
+    } catch (err) {
+      console.error('Error creating promo:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  updatePromoStatus: async (id, isActive) => {
+    try {
+      const { error } = await supabase.from('promo_codes').update({ is_active: isActive }).eq('id', id);
+      if (error) throw error;
+      set(state => ({
+        promos: state.promos.map(p => p.id === id ? { ...p, is_active: isActive } : p)
+      }));
+      return true;
+    } catch (err) {
+      console.error('Error updating promo:', err);
+      return false;
+    }
+  }
+}));
+
+// ==========================================
+// 16. SUPPORT TICKETS STORE
+// ==========================================
+export const useSupportStore = create((set, get) => ({
+  tickets: [],
+  isLoading: false,
+  
+  fetchAllTickets: async () => {
+    set({ isLoading: true });
+    try {
+      const { data, error } = await supabase.from('support_tickets').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      set({ tickets: data || [] });
+    } catch (err) {
+      console.error('Error fetching all tickets:', err);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  fetchUserTickets: async (userId) => {
+    set({ isLoading: true });
+    try {
+      const { data, error } = await supabase.from('support_tickets').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+      if (error) throw error;
+      set({ tickets: data || [] });
+    } catch (err) {
+      console.error('Error fetching user tickets:', err);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+  
+  createTicket: async (ticket) => {
+    try {
+      const { data, error } = await supabase.from('support_tickets').insert([ticket]).select().single();
+      if (error) throw error;
+      set(state => ({ tickets: [data, ...state.tickets] }));
+      return { success: true, data };
+    } catch (err) {
+      console.error('Error creating ticket:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  addMessage: async (ticketId, message) => {
+    try {
+      const ticket = get().tickets.find(t => t.id === ticketId);
+      if (!ticket) throw new Error("Ticket not found");
+      
+      const newMessages = [...(ticket.messages_json || []), message];
+      
+      const { data, error } = await supabase.from('support_tickets')
+        .update({ messages_json: newMessages, updated_at: new Date().toISOString() })
+        .eq('id', ticketId)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      set(state => ({
+        tickets: state.tickets.map(t => t.id === ticketId ? data : t)
+      }));
+      return { success: true };
+    } catch (err) {
+      console.error('Error adding message:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  updateTicketStatus: async (ticketId, status) => {
+    try {
+      const { data, error } = await supabase.from('support_tickets')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', ticketId)
+        .select()
+        .single();
+        
+      if (error) throw error;
+      set(state => ({
+        tickets: state.tickets.map(t => t.id === ticketId ? data : t)
+      }));
+      return true;
+    } catch (err) {
+      console.error('Error updating status:', err);
+      return false;
+    }
+  }
+}));
+
+// ==========================================
+// 17. REVIEWS STORE
+// ==========================================
+export const useReviewStore = create((set, get) => ({
+  reviews: [],
+  isLoading: false,
+
+  fetchReviews: async (targetType, targetId) => {
+    set({ isLoading: true });
+    try {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select(`
+          id, target_type, target_id, rating, comment, created_at,
+          users ( id, name, avatar_url )
+        `)
+        .eq('target_type', targetType)
+        .eq('target_id', targetId)
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      set({ reviews: data || [] });
+    } catch (err) {
+      console.error('Error fetching reviews:', err);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  addReview: async (review) => {
+    try {
+      const { data, error } = await supabase
+        .from('reviews')
+        .insert([review])
+        .select(`
+          id, target_type, target_id, rating, comment, created_at,
+          users ( id, name, avatar_url )
+        `)
+        .single();
+        
+      if (error) throw error;
+      set(state => ({ reviews: [data, ...state.reviews] }));
+      return { success: true, data };
+    } catch (err) {
+      console.error('Error adding review:', err);
       return { success: false, error: err.message };
     }
   }

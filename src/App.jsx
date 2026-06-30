@@ -34,6 +34,7 @@ import ChatWidget from './components/ChatWidget';
 import PackagesPage from './pages/PackagesPage';
 import PackageDetailsPage from './pages/PackageDetailsPage';
 import HostDashboardPage from './pages/HostDashboardPage';
+import SupportTicketsPage from './pages/SupportTicketsPage';
 
 // ===== FIX 4: mapDbUser moved outside — no longer re-created on every render =====
 const mapDbUser = (data) => ({
@@ -115,6 +116,7 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/vehicles', label: 'Vehicles', icon: Car },
     { path: '/parcel', label: 'Send Parcel', icon: Package },
     { path: '/tracking', label: 'Live Tracking', icon: Map },
+    { path: '/support', label: 'Support Help Desk', icon: ClipboardList },
   ];
 
   const agentLinks = [
@@ -124,6 +126,7 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/bookings', label: 'All Bookings', icon: Ticket },
     { path: '/daily-report', label: 'Daily Report', icon: ClipboardList },
     { path: '/wallet', label: 'Wallet', icon: Wallet },
+    { path: '/support', label: 'Support Help Desk', icon: ClipboardList },
   ];
 
   const ownerLinks = [
