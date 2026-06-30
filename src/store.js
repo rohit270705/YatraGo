@@ -509,6 +509,22 @@ export const useAuthStore = create(
     set(state => ({ user: { ...state.user, emailVerified: true } }));
   },
   
+  setPassword: async (newPassword) => {
+    try {
+      set({ isLoading: true, error: null });
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      if (error) throw error;
+      set({ isLoading: false });
+      return { success: true };
+    } catch (err) {
+      console.error('Error setting password:', err);
+      set({ error: err.message, isLoading: false });
+      return { error: err.message };
+    }
+  },
+
   updateProfile: async (updates) => {
     try {
       const { user } = get();

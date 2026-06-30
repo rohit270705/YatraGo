@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { UserCircle, Mail, Phone, MapPin, Edit2, Check, ShieldCheck, CreditCard, Calendar, Activity } from 'lucide-react';
+import { UserCircle, Mail, Phone, MapPin, Edit2, Check, ShieldCheck, CreditCard, Calendar, Activity, Key } from 'lucide-react';
 import { useAuthStore, useToastStore } from '../store';
 import { supabase } from '../supabaseClient';
 
 export default function ProfilePage() {
-  const { user, updateProfile, linkGoogleAccount } = useAuthStore();
+  const { user, updateProfile, linkGoogleAccount, setPassword } = useAuthStore();
   const { addToast } = useToastStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -13,6 +13,8 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLinked, setIsGoogleLinked] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [isSettingPassword, setIsSettingPassword] = useState(false);
   
   const [form, setForm] = useState({
     name: '',
@@ -159,6 +161,22 @@ export default function ProfilePage() {
     }
   };
 
+  const handleSetPassword = async () => {
+    if (newPassword.length < 6) {
+      addToast('Password must be at least 6 characters long', 'error');
+      return;
+    }
+    
+    setIsSettingPassword(true);
+    const res = await setPassword(newPassword);
+    setIsSettingPassword(false);
+    
+    if (res.success) {
+      addToast('Password set successfully! You can now login with Email & Password.', 'success');
+      setNewPassword('');
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -287,6 +305,31 @@ export default function ProfilePage() {
                   </svg>
                 Link Google Account
               </button>
+            )}
+
+            {isGoogleLinked && (
+              <div style={{ marginTop: 24, padding: 16, backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
+                <h4 style={{ fontSize: '0.9rem', marginBottom: 12, color: 'var(--color-text-secondary)' }}>Set Password for Email Login</h4>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 12 }}>
+                  Set a password so you can login using your email directly, without Google.
+                </p>
+                <div className="form-group" style={{ marginBottom: 12 }}>
+                  <div className="form-input-icon-wrapper">
+                    <Key className="form-input-icon" size={18} />
+                    <input type="password" className="form-input" 
+                      placeholder="New Password (min 6 chars)"
+                      value={newPassword} onChange={e => setNewPassword(e.target.value)} 
+                    />
+                  </div>
+                </div>
+                <button 
+                  className="btn btn-primary btn-full" 
+                  onClick={handleSetPassword} 
+                  disabled={isSettingPassword || newPassword.length < 6}
+                >
+                  {isSettingPassword ? 'Setting...' : 'Set Password'}
+                </button>
+              </div>
             )}
           </div>
         </div>
