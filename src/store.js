@@ -251,6 +251,39 @@ export const useAuthStore = create(
 
       if (updateError) throw updateError;
 
+      if (userData.role === 'driver') {
+        let licensePhotoUrl = null;
+        if (userData.licensePhoto) {
+          const fileExt = userData.licensePhoto.name.split('.').pop();
+          const fileName = `${authData.user.id}/license_${Math.random()}.${fileExt}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('driver_documents')
+            .upload(fileName, userData.licensePhoto);
+            
+          if (!uploadError && uploadData) {
+            const { data: publicUrlData } = supabase.storage
+              .from('driver_documents')
+              .getPublicUrl(fileName);
+            licensePhotoUrl = publicUrlData.publicUrl;
+          }
+        }
+        
+        const age = userData.dob ? new Date().getFullYear() - new Date(userData.dob).getFullYear() : 25;
+        
+        // Insert into driver_profiles
+        const { error: profileError } = await supabase.from('driver_profiles').insert([{
+          id: authData.user.id,
+          name: userData.name,
+          age: age,
+          blood_group: userData.bloodGroup || 'O+',
+          license_number: userData.licenseNumber || `DL-${Date.now()}`,
+          license_validity: userData.licenseValidity || new Date().toISOString(),
+          license_photo_url: licensePhotoUrl
+        }]);
+        
+        if (profileError) console.error('Error creating driver profile:', profileError);
+      }
+
       const user = {
         id: data.id,
         email: data.email,

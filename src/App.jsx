@@ -24,6 +24,7 @@ import LiveTrackingPage from './pages/LiveTrackingPage';
 import ParcelPage from './pages/ParcelPage';
 import AgentDashboardPage from './pages/AgentDashboardPage';
 import OwnerDashboardPage from './pages/OwnerDashboardPage';
+import DriverDashboardPage from './pages/DriverDashboardPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import DeviceSessionsPage from './pages/DeviceSessionsPage';
 import RentalPage from './pages/RentalPage';
@@ -86,6 +87,7 @@ function ProtectedRoute({ children, allowedRoles }) {
       admin: '/admin',
       agent: '/agent',
       owner: '/owner',
+      driver: '/driver',
       passenger: '/dashboard',
     };
     return <Navigate to={roleHome[user.role] || '/dashboard'} replace />;
@@ -146,10 +148,18 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/wallet', label: 'Wallets', icon: Wallet },
   ];
 
+  const driverLinks = [
+    { path: '/driver', label: 'Driver Dashboard', icon: LayoutDashboard },
+    { path: '/profile', label: 'My Profile', icon: UserCircle },
+    { path: '/bookings', label: 'Assigned Trips', icon: MapPin },
+    { path: '/wallet', label: 'Earnings', icon: Wallet },
+  ];
+
   const links =
     role === 'agent' ? agentLinks
     : role === 'owner' ? ownerLinks
     : role === 'admin' ? adminLinks
+    : role === 'driver' ? driverLinks
     : passengerLinks;
 
   const handleNav = (path) => {
@@ -177,6 +187,7 @@ function Sidebar({ isOpen, onClose }) {
             {role === 'agent' ? 'Agent Portal'
               : role === 'owner' ? 'Owner Portal'
               : role === 'admin' ? 'Admin Panel'
+              : role === 'driver' ? 'Driver Portal'
               : 'Navigation'}
           </div>
           {links.map(link => (
@@ -250,6 +261,11 @@ function BottomNav() {
       { path: '/owner', label: 'Dashboard', icon: Home },
       { path: '/vehicles', label: 'Vehicles', icon: Car },
       { path: '/bookings', label: 'Bookings', icon: Ticket },
+      { path: '/wallet', label: 'Earnings', icon: Wallet },
+    ]
+    : role === 'driver' ? [
+      { path: '/driver', label: 'Dashboard', icon: Home },
+      { path: '/bookings', label: 'Trips', icon: MapPin },
       { path: '/wallet', label: 'Earnings', icon: Wallet },
     ]
     : [
@@ -503,6 +519,8 @@ export default function App() {
         <Route path="/packages" element={<ProtectedRoute><AppLayout><PackagesPage /></AppLayout></ProtectedRoute>} />
         <Route path="/package/:packageId" element={<ProtectedRoute><AppLayout><PackageDetailsPage /></AppLayout></ProtectedRoute>} />
         <Route path="/host" element={<ProtectedRoute><AppLayout><HostDashboardPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AppLayout><AdminDashboardPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/driver" element={<ProtectedRoute allowedRoles={['driver']}><AppLayout><DriverDashboardPage /></AppLayout></ProtectedRoute>} />
 
         {/* Passenger-only Routes */}
         <Route path="/dashboard" element={

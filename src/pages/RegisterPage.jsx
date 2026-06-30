@@ -24,7 +24,8 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     name: '', email: '', phone: '', password: '', confirmPassword: '',
     role: '', bloodGroup: '', aadharNumber: '', panNumber: '',
-    dob: '', address: '', avatarUrl: ''
+    dob: '', address: '', avatarUrl: '',
+    licenseNumber: '', licenseValidity: '', licensePhoto: null
   });
 
   const updateForm = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
@@ -54,6 +55,13 @@ export default function RegisterPage() {
       const reader = new FileReader();
       reader.onloadend = () => updateForm('avatarUrl', reader.result);
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleLicenseUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      updateForm('licensePhoto', file);
     }
   };
 
@@ -156,6 +164,7 @@ export default function RegisterPage() {
                     <option value="passenger">Passenger</option>
                     <option value="agent">Travel Agent</option>
                     <option value="owner">Vehicle Owner</option>
+                    <option value="driver">Driver</option>
                   </select>
                 </div>
 
@@ -268,6 +277,32 @@ export default function RegisterPage() {
                 <label className="form-label">Full Address</label>
                 <input type="text" className="form-input" placeholder="Enter your full residential address" value={form.address} onChange={(e) => updateForm('address', e.target.value)} required />
               </div>
+
+              {form.role === 'driver' && (
+                <>
+                  <div className="form-divider" />
+                  <h3 style={{ fontSize: '1.1rem', marginBottom: '16px' }}>Driver License Details</h3>
+                  <div className="form-group">
+                    <label className="form-label">Driving License Number</label>
+                    <div className="form-input-icon-wrapper">
+                      <CreditCard className="form-input-icon" size={20} />
+                      <input type="text" className="form-input" placeholder="e.g. MH1420110062821"
+                        value={form.licenseNumber} onChange={e => updateForm('licenseNumber', e.target.value)}
+                        required />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">License Validity Date</label>
+                      <input type="date" className="form-input" value={form.licenseValidity} onChange={(e) => updateForm('licenseValidity', e.target.value)} required />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">License Photo</label>
+                      <input type="file" accept="image/*" onChange={handleLicenseUpload} className="form-input" style={{ padding: '8px' }} required />
+                    </div>
+                  </div>
+                </>
+              )}
 
                 <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
                   <button type="button" className="btn btn-secondary btn-lg" onClick={() => setStep(1)}>
