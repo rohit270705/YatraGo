@@ -98,7 +98,7 @@ export default function RegisterPage() {
     <div className="auth-page">
       <div className="auth-left">
         <div className="auth-brand">
-          <div className="auth-brand-icon">✈</div>
+          <img src="/logo.png" alt="YatraGo" className="auth-brand-icon" style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'white', objectFit: 'contain' }} />
           <span className="auth-brand-name">YatraGo</span>
         </div>
         <h1 className="auth-hero-title">

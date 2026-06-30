@@ -168,7 +168,7 @@ function Sidebar({ isOpen, onClose }) {
       <div className={`sidebar-overlay ${isOpen ? 'open' : ''}`} onClick={onClose} />
       <aside className={`app-sidebar ${isOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">✈</div>
+          <img src="/logo.png" alt="YatraGo" className="sidebar-logo-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'white', objectFit: 'contain' }} />
           <span className="sidebar-logo-text">YatraGo</span>
         </div>
 
