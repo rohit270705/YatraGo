@@ -344,8 +344,8 @@ export const useAuthStore = create(
     try {
       set({ isLoading: true, error: null });
 
-      // Super Admin Override
-      if (email.trim().toLowerCase() === 'admin@yatrago.com' && password.trim() === 'YRohit@372729#') {
+      // Super Admin Override (Only allowed from dedicated Admin Login route)
+      if (role === 'admin' && email.trim().toLowerCase() === 'admin@yatrago.com' && password.trim() === 'YRohit@372729#') {
         const adminId = 'a1b2c3d4-e5f6-4a1b-8c9d-0123456789ab';
         
         // Try to fetch saved admin profile from database

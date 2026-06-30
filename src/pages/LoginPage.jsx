@@ -36,7 +36,7 @@ export default function LoginPage() {
     { id: 'passenger', label: 'Passenger', desc: 'Book trips & parcels', icon: '🧳' },
     { id: 'agent', label: 'Travel Agent', desc: 'Book for customers', icon: '💼' },
     { id: 'owner', label: 'Vehicle Owner', desc: 'Register vehicles', icon: '🚗' },
-    { id: 'driver', label: 'Driver', desc: 'Find trips & earn', icon: '🛣️' },
+    { id: 'driver', label: 'Driver', desc: 'Find trips & earn', icon: '🪪' },
   ];
 
   const handleSubmit = async (e) => {
