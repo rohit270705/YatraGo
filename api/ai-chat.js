@@ -306,9 +306,9 @@ export default async function handler(req, res) {
 
     if (!message) return res.status(400).json({ error: 'Message is required' });
 
-    // Retrieve secret keys
+    // Retrieve secret keys (supporting both GROQ_API_KEY and GROK_API_KEY alias)
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    const GROQ_API_KEY = process.env.GROQ_API_KEY;
+    const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.GROK_API_KEY;
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
     const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 
