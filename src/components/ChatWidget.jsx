@@ -1,112 +1,225 @@
 import { useState, useRef, useEffect } from 'react';
 import { useChatStore, useAuthStore } from '../store';
-import { MessageSquare, X, Send, Bot, User, Minimize2 } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, Ticket, ChevronDown } from 'lucide-react';
+
+const LANGUAGES = [
+  { code: 'en', label: 'EN' },
+  { code: 'hi', label: 'हि' },
+  { code: 'mr', label: 'मर' },
+  { code: 'hinglish', label: 'HE' },
+];
 
 export default function ChatWidget() {
-  const { 
-    isChatOpen, toggleChat, closeChat, activeConversationId, 
-    conversations, messages, sendMessage, startSupportChat,
-    fetchConversations, setupRealtimeSubscription, cleanupRealtimeSubscription
-  } = useChatStore();
   const { user } = useAuthStore();
-  
+  const {
+    isChatOpen, toggleChat, closeChat,
+    aiMessages, isTyping, sessionId,
+    detectedLanguage, manualLanguage,
+    sendUserMessage, initAiChat, setLanguage,
+    raiseTicketFromChat
+  } = useChatStore();
+
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
 
-  // Initialize DB conversations and realtime sub
+  // Auto-scroll on new messages or typing
   useEffect(() => {
-    if (user) {
-      fetchConversations();
-      setupRealtimeSubscription();
-      return () => cleanupRealtimeSubscription();
+    if (isChatOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [user, fetchConversations, setupRealtimeSubscription, cleanupRealtimeSubscription]);
+  }, [aiMessages, isTyping, isChatOpen]);
 
-  // Auto-scroll to bottom of messages
+  // Initialize chat session when opened
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isChatOpen]);
+    if (isChatOpen && user && !sessionId) {
+      initAiChat();
+    }
+  }, [isChatOpen, user, sessionId, initAiChat]);
 
-  // If chat is not open, show just the floating button
+  // Focus input when chat opens
+  useEffect(() => {
+    if (isChatOpen) {
+      setTimeout(() => inputRef.current?.focus(), 300);
+    }
+  }, [isChatOpen]);
+
+  // Don't show for admin
+  if (user?.role === 'admin') return null;
+
+  // Floating button when closed
   if (!isChatOpen) {
     return (
-      <button 
-        className="chat-floating-btn" 
-        onClick={() => {
-          if (!activeConversationId) startSupportChat();
-          toggleChat();
-        }}
+      <button
+        className="chat-floating-btn"
+        onClick={toggleChat}
+        aria-label="Open YatraGo Assistant"
       >
         <MessageSquare size={24} />
       </button>
     );
   }
 
-  const activeConv = conversations.find(c => c.id === activeConversationId);
-  const activeMessages = messages.filter(m => m.conversationId === activeConversationId);
-
   const handleSend = (e) => {
-    e.preventDefault();
-    if (!inputText.trim() || !activeConv) return;
-    sendMessage(activeConv.id, inputText, user?.id || 'guest');
+    e?.preventDefault();
+    const text = inputText.trim();
+    if (!text || isTyping) return;
+    sendUserMessage(text);
     setInputText('');
   };
 
-  const getChatTitle = () => {
-    if (!activeConv) return 'Support Chat';
-    if (activeConv.type === 'support') return 'YatraGo Assistant';
-    return activeConv.title || 'Chat';
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
-  const isBot = activeConv?.type === 'support';
+  const handleQuickReply = (chip) => {
+    // Strip emoji prefix for cleaner message
+    const cleanText = chip.replace(/^[^\w\s]*\s*/, '').trim();
+    if (cleanText.toLowerCase().includes('raise') && cleanText.toLowerCase().includes('ticket')) {
+      raiseTicketFromChat();
+    } else {
+      sendUserMessage(chip);
+    }
+  };
+
+  const activeLang = manualLanguage || detectedLanguage || 'en';
 
   return (
     <div className="chat-widget-container">
-      {/* Header */}
+      {/* ===== HEADER ===== */}
       <div className="chat-widget-header">
         <div className="chat-header-info">
-          {isBot ? <Bot size={20} className="text-accent-teal" /> : <User size={20} className="text-accent-blue" />}
-          <span className="chat-title">{getChatTitle()}</span>
+          <Bot size={22} className="text-accent-teal" />
+          <div>
+            <span className="chat-title">YatraGo Assistant</span>
+            <span className="chat-online-dot" />
+          </div>
         </div>
+
         <div className="chat-header-actions">
+          {/* Language Toggle */}
+          <div className="chat-lang-toggle">
+            {LANGUAGES.map(lang => (
+              <button
+                key={lang.code}
+                className={`chat-lang-btn ${activeLang === lang.code ? 'active' : ''}`}
+                onClick={() => setLanguage(lang.code)}
+                title={lang.code}
+              >
+                {lang.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Raise Ticket */}
+          <button
+            className="chat-ticket-btn"
+            onClick={raiseTicketFromChat}
+            title="Raise Support Ticket"
+          >
+            <Ticket size={16} />
+          </button>
+
+          {/* Close */}
           <button className="btn-icon" onClick={closeChat}>
             <X size={18} />
           </button>
         </div>
       </div>
 
-      {/* Messages Area */}
+      {/* ===== MESSAGES ===== */}
       <div className="chat-messages">
-        {activeMessages.length === 0 ? (
-          <div className="chat-empty">No messages yet. Say hi!</div>
+        {aiMessages.length === 0 && !isTyping ? (
+          <div className="chat-welcome">
+            <Bot size={40} className="text-accent-teal" style={{ marginBottom: 12 }} />
+            <h3>Welcome to YatraGo Assistant! 🤖</h3>
+            <p>
+              {activeLang === 'hi' ? 'नमस्ते! मैं आपकी यात्रा में कैसे मदद कर सकता हूँ?' :
+               activeLang === 'mr' ? 'नमस्कार! मी तुमच्या प्रवासात कशी मदत करू शकतो?' :
+               activeLang === 'hinglish' ? 'Namaste! Main aapki travel mein kaise help kar sakta hoon?' :
+               'Hi there! How can I help you with your travel today?'}
+            </p>
+          </div>
         ) : (
-          activeMessages.map(msg => {
-            const isMe = msg.senderId === (user?.id || 'guest');
+          aiMessages.map((msg, idx) => {
+            const isUser = msg.sender === 'user';
             return (
-              <div key={msg.id} className={`chat-message ${isMe ? 'message-sent' : 'message-received'}`}>
-                <div className="message-bubble">
-                  {msg.content}
+              <div key={msg.id || idx}>
+                <div className={`chat-message ${isUser ? 'message-sent' : 'message-received'}`}>
+                  <div className="message-bubble">
+                    {msg.content}
+                  </div>
+                  <div className="message-meta">
+                    <span className="message-time">
+                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    {!isUser && msg.aiProvider && msg.aiProvider !== 'error' && (
+                      <span className="chat-ai-badge">
+                        via {msg.aiProvider === 'gemini' ? 'Gemini' : msg.aiProvider === 'groq' ? 'Llama' : msg.aiProvider === 'openai' ? 'GPT' : 'Claude'}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="message-time">
-                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
+
+                {/* Quick Reply Chips — after AI messages only */}
+                {!isUser && msg.quickReplies?.length > 0 && idx === aiMessages.length - 1 && (
+                  <div className="chat-quick-replies">
+                    {msg.quickReplies.map((chip, ci) => (
+                      <button
+                        key={ci}
+                        className="chat-quick-chip"
+                        onClick={() => handleQuickReply(chip)}
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })
         )}
+
+        {/* Typing Indicator */}
+        {isTyping && (
+          <div className="chat-message message-received">
+            <div className="message-bubble">
+              <div className="chat-typing-indicator">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
+      {/* ===== INPUT ===== */}
       <form className="chat-input-area" onSubmit={handleSend}>
-        <input 
-          type="text" 
-          placeholder="Type your message..." 
+        <input
+          ref={inputRef}
+          className="chat-input"
+          type="text"
+          placeholder={
+            activeLang === 'hi' ? 'अपना सवाल लिखें...' :
+            activeLang === 'mr' ? 'तुमचा प्रश्न लिहा...' :
+            activeLang === 'hinglish' ? 'Apna sawal likhein...' :
+            'Type your question...'
+          }
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          className="chat-input"
+          onKeyDown={handleKeyDown}
+          disabled={isTyping}
+          autoComplete="off"
         />
-        <button type="submit" className="chat-send-btn" disabled={!inputText.trim()}>
+        <button
+          type="submit"
+          className="chat-send-btn"
+          disabled={!inputText.trim() || isTyping}
+        >
           <Send size={18} />
         </button>
       </form>

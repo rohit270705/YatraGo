@@ -3,13 +3,14 @@ import {
   Car, Plus, Calendar, MapPin, DollarSign, AlertTriangle, CheckCircle,
   Shield, Upload, Clock, Users, Luggage, TrendingUp, Bell, Trash2, Camera, Image, X, FileText, UploadCloud
 } from 'lucide-react';
-import { useVehicleStore, useBookingStore, useToastStore, useAuthStore, useWalletStore } from '../store';
+import { useVehicleStore, useBookingStore, useToastStore, useAuthStore, useWalletStore, useDriverStore } from '../store';
 
 export default function OwnerDashboardPage() {
   const { user } = useAuthStore();
   const { vehicles, fetchVehicles, createVehicle, deleteVehicle, isLoading } = useVehicleStore();
   const { bookings, approveBooking, rejectBooking } = useBookingStore();
   const { balance, withdrawals, requestWithdrawal } = useWalletStore();
+  const { links: driverLinks, fetchLinks, sendLinkRequest, updateLinkStatus, availableDrivers, fetchAvailableDrivers } = useDriverStore();
   const { addToast } = useToastStore();
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [showRouteModal, setShowRouteModal] = useState(false);
@@ -31,7 +32,24 @@ export default function OwnerDashboardPage() {
 
   useEffect(() => {
     fetchVehicles();
-  }, [fetchVehicles]);
+    if (user?.id) fetchLinks(user.id, 'owner');
+    fetchAvailableDrivers(true); // true = vehicleLessOnly
+  }, [fetchVehicles, fetchLinks, user?.id]);
+
+  const [driverLicenseInput, setDriverLicenseInput] = useState('');
+
+  const handleLinkDriver = async () => {
+    if (!driverLicenseInput) return;
+    setIsSubmitting(true);
+    const res = await sendLinkRequest(user.id, driverLicenseInput);
+    if (res.success) {
+      addToast('Request sent successfully!', 'success');
+      setDriverLicenseInput('');
+    } else {
+      addToast(res.error, 'error');
+    }
+    setIsSubmitting(false);
+  };
 
   const [newVehicle, setNewVehicle] = useState({
     registrationNumber: '', modelName: '', variant: '', fuelType: 'Petrol', type: 'Hatchback', seatingCapacity: 5,
@@ -497,6 +515,113 @@ export default function OwnerDashboardPage() {
         ))}
       </div>
 
+      {/* My Drivers */}
+      <div style={{ marginTop: 24, marginBottom: 24, background: '#fff', borderRadius: 'var(--radius-lg)', padding: 24, border: '1px solid var(--color-border-subtle)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h3 style={{ fontWeight: 700, margin: 0 }}>My Drivers</h3>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input type="text" className="form-input" placeholder="Driver License No." value={driverLicenseInput} onChange={(e) => setDriverLicenseInput(e.target.value.toUpperCase())} style={{ padding: '6px 12px', minWidth: 200 }} />
+            <button className="btn btn-primary" onClick={handleLinkDriver} disabled={isSubmitting}>
+              {isSubmitting ? 'Sending...' : 'Link Driver'}
+            </button>
+          </div>
+        </div>
+        
+        {driverLinks && driverLinks.length > 0 ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Driver Name</th>
+                  <th>License Number</th>
+                  <th>Contact</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {driverLinks.map(link => (
+                  <tr key={link.id}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {link.driver_profiles?.license_photo_url ? (
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', backgroundImage: `url(${link.driver_profiles.license_photo_url})`, backgroundSize: 'cover' }} />
+                        ) : (
+                          <Users size={20} color="var(--color-text-tertiary)" />
+                        )}
+                        <span style={{ fontWeight: 600 }}>{link.driver_profiles?.name || link.users?.name || 'Unknown'}</span>
+                      </div>
+                    </td>
+                    <td>{link.driver_profiles?.license_number}</td>
+                    <td>{link.users?.phone || link.users?.email}</td>
+                    <td>
+                      <span className={`badge badge-${link.status === 'active' ? 'success' : link.status === 'rejected' ? 'error' : 'warning'}`}>
+                        {link.status.toUpperCase()}
+                      </span>
+                    </td>
+                    <td>
+                      <button className="btn btn-sm btn-secondary" onClick={() => updateLinkStatus(link.id, 'rejected', user.id, 'owner')}>
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)' }}>
+            No drivers linked yet. Enter a driver's license number to send an employment request.
+          </div>
+        )}
+      </div>
+      
+      {/* Vehicle-less Drivers Pool */}
+      <div style={{ marginBottom: 24, background: '#fff', borderRadius: 'var(--radius-lg)', padding: 24, border: '1px solid var(--color-border-subtle)' }}>
+        <h3 style={{ fontWeight: 700, margin: 0, marginBottom: 16 }}>Available Skill-Only Drivers</h3>
+        <p style={{ color: 'var(--color-text-tertiary)', fontSize: '0.9rem', marginBottom: 16 }}>
+          These drivers don't have their own vehicle. You can link them to drive your cars.
+        </p>
+        
+        {availableDrivers && availableDrivers.length > 0 ? (
+          <div className="grid">
+            {availableDrivers.map(driver => (
+              <div key={driver.id} className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {driver.license_photo_url ? (
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundImage: `url(${driver.license_photo_url})`, backgroundSize: 'cover' }} />
+                  ) : (
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Users size={20} color="var(--color-text-tertiary)" />
+                    </div>
+                  )}
+                  <div>
+                    <h4 style={{ margin: 0 }}>{driver.name || 'Driver'}</h4>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>
+                      License: {driver.license_number} <br/>
+                      {driver.license_category && <span>Cat: {driver.license_category}</span>}
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  className="btn btn-sm btn-primary"
+                  onClick={() => {
+                    setDriverLicenseInput(driver.license_number);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                >
+                  Hire
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)' }}>
+            No vehicle-less drivers available right now.
+          </div>
+        )}
+      </div>
+
       {/* Add Vehicle Modal */}
       {showAddVehicle && (
         <div className="modal-backdrop" onClick={() => setShowAddVehicle(false)}>
@@ -737,6 +862,18 @@ export default function OwnerDashboardPage() {
                 <label className="form-label">Luggage Capacity (kg)</label>
                 <input type="number" className="form-input" placeholder="e.g., 50" />
               </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Assign Driver (Optional)</label>
+              <select className="form-select" defaultValue="">
+                <option value="">No driver assigned (Self-driven / Unassigned)</option>
+                {driverLinks?.filter(l => l.status === 'active').map(link => (
+                  <option key={link.driver_profiles.id} value={link.driver_profiles.id}>
+                    {link.driver_profiles.name} ({link.driver_profiles.license_number})
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="modal-actions">

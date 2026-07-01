@@ -519,6 +519,7 @@ export default function App() {
         <Route path="/packages" element={<ProtectedRoute><AppLayout><PackagesPage /></AppLayout></ProtectedRoute>} />
         <Route path="/package/:packageId" element={<ProtectedRoute><AppLayout><PackageDetailsPage /></AppLayout></ProtectedRoute>} />
         <Route path="/host" element={<ProtectedRoute><AppLayout><HostDashboardPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/support" element={<ProtectedRoute><AppLayout><SupportTicketsPage /></AppLayout></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AppLayout><AdminDashboardPage /></AppLayout></ProtectedRoute>} />
         <Route path="/driver" element={<ProtectedRoute allowedRoles={['driver']}><AppLayout><DriverDashboardPage /></AppLayout></ProtectedRoute>} />
 

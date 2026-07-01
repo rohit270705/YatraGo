@@ -278,7 +278,9 @@ export const useAuthStore = create(
           blood_group: userData.bloodGroup || 'O+',
           license_number: userData.licenseNumber || `DL-${Date.now()}`,
           license_validity: userData.licenseValidity || new Date().toISOString(),
-          license_photo_url: licensePhotoUrl
+          license_photo_url: licensePhotoUrl,
+          has_own_vehicle: userData.hasOwnVehicle,
+          license_category: userData.licenseCategory
         }]);
         
         if (profileError) console.error('Error creating driver profile:', profileError);
@@ -2016,7 +2018,7 @@ export const useRentalStore = create(
 
       getRentalVehicle: (id) => get().rentalVehicles.find(v => v.id === id),
 
-      bookRental: async (vehicleId, duration, durationType) => {
+      bookRental: async (vehicleId, duration, durationType, driverCost = 0) => {
     const vehicle = RENTAL_VEHICLES.find(v => v.id === vehicleId);
     if (!vehicle) return { error: 'Vehicle not found' };
 
@@ -2025,12 +2027,12 @@ export const useRentalStore = create(
       : vehicle.price_per_day * duration || vehicle.pricePerDay * duration;
 
     const securityDeposit = vehicle.security_deposit || vehicle.securityDeposit;
-    const totalPayable = totalCost + securityDeposit;
+    const totalPayable = totalCost + securityDeposit + driverCost;
 
     // Deduct from wallet
     const walletSuccess = await useWalletStore.getState().deductMoney(
       totalPayable,
-      `Rental: ${vehicle.name} (${duration} ${durationType === 'hourly' ? 'hr' : 'day'}${duration > 1 ? 's' : ''}) + ₹${securityDeposit} deposit`
+      `Rental: ${vehicle.name} (${duration} ${durationType === 'hourly' ? 'hr' : 'day'}${duration > 1 ? 's' : ''}) + ₹${securityDeposit} deposit${driverCost ? ` + ₹${driverCost} driver` : ''}`
     );
 
     if (!walletSuccess) return { error: 'Insufficient wallet balance' };
@@ -2047,6 +2049,7 @@ export const useRentalStore = create(
       duration,
       durationType,
       rentalCost: totalCost,
+      driverCost,
       securityDeposit: vehicle.securityDeposit,
       totalPaid: totalPayable,
       status: 'active', // active, returned, cancelled
@@ -2191,32 +2194,178 @@ export const useNotificationStore = create((set, get) => ({
 }));
 
 export const useChatStore = create((set, get) => ({
+  // === AI Chat State ===
+  aiMessages: [],       // { id, sender: 'user'|'ai', content, createdAt, aiProvider, quickReplies }
+  isTyping: false,
+  isChatOpen: false,
+  sessionId: null,
+  detectedLanguage: 'en',
+  manualLanguage: null,
+  userContext: null,
+  messageCount: 0,
+
+  // === Peer Chat State (kept for existing peer chat features) ===
   conversations: [],
   messages: [],
-  isChatOpen: false,
   activeConversationId: null,
   realtimeSubscription: null,
 
+  // === AI Chat Actions ===
   toggleChat: () => set(state => ({ isChatOpen: !state.isChatOpen })),
+  closeChat: () => set({ isChatOpen: false }),
+
+  initAiChat: async () => {
+    const user = useAuthStore.getState().user;
+    if (!user) return;
+
+    // Dynamically import the service to avoid circular deps
+    const { buildUserContext, createChatSession } = await import('./services/aiChatService');
+
+    const context = await buildUserContext(user);
+    const lang = user.preferred_language || 'en';
+    const session = await createChatSession(user.id, user.role, lang);
+
+    set({
+      sessionId: session.id,
+      userContext: context,
+      detectedLanguage: lang,
+      aiMessages: [],
+      messageCount: 0
+    });
+  },
+
+  sendUserMessage: async (text) => {
+    const { aiMessages, sessionId, userContext, detectedLanguage, manualLanguage, messageCount } = get();
+    const user = useAuthStore.getState().user;
+    if (!text.trim() || !user) return;
+
+    const { detectLanguage, sendAiMessage, saveChatMessage } = await import('./services/aiChatService');
+
+    // Detect language from user message (unless manually overridden)
+    const lang = manualLanguage || detectLanguage(text);
+    if (!manualLanguage && lang !== detectedLanguage) {
+      set({ detectedLanguage: lang });
+    }
+
+    // Add user message to UI
+    const userMsg = {
+      id: `user-${Date.now()}`,
+      sender: 'user',
+      content: text,
+      createdAt: new Date().toISOString()
+    };
+
+    const newCount = messageCount + 1;
+    set({
+      aiMessages: [...aiMessages, userMsg],
+      isTyping: true,
+      messageCount: newCount
+    });
+
+    // Save user message to DB
+    saveChatMessage(sessionId, 'user', text);
+
+    // Call AI router
+    const activeLang = manualLanguage || lang;
+    const result = await sendAiMessage(
+      text,
+      userContext || { userName: user.name, userRole: user.role, contextText: '' },
+      [...aiMessages, userMsg],
+      activeLang,
+      newCount
+    );
+
+    // Add AI response to UI
+    const aiMsg = {
+      id: `ai-${Date.now()}`,
+      sender: 'ai',
+      content: result.reply,
+      createdAt: new Date().toISOString(),
+      aiProvider: result.aiProvider,
+      responseTimeMs: result.responseTimeMs,
+      fallbackUsed: result.fallbackUsed,
+      quickReplies: result.quickReplies || []
+    };
+
+    set(state => ({
+      aiMessages: [...state.aiMessages, aiMsg],
+      isTyping: false
+    }));
+
+    // Save AI response to DB
+    saveChatMessage(sessionId, 'ai', result.reply, {
+      aiProvider: result.aiProvider,
+      responseTimeMs: result.responseTimeMs,
+      fallbackUsed: result.fallbackUsed,
+      fallbackReason: result.fallbackReason,
+      quickReplies: result.quickReplies
+    });
+  },
+
+  setLanguage: (lang) => {
+    set({ manualLanguage: lang, detectedLanguage: lang });
+  },
+
+  raiseTicketFromChat: async () => {
+    const { aiMessages, sessionId } = get();
+    const user = useAuthStore.getState().user;
+    if (!user) return;
+
+    const { raiseSupportTicket } = await import('./services/aiChatService');
+
+    // Build issue summary from last few messages
+    const recentMsgs = aiMessages.slice(-4);
+    const summary = recentMsgs
+      .filter(m => m.sender === 'user')
+      .map(m => m.content)
+      .join(' | ')
+      .slice(0, 200) || 'User requested support from AI chat';
+
+    const result = await raiseSupportTicket(user.id, user.role, sessionId, summary);
+
+    // Add confirmation message to chat
+    const confirmMsg = {
+      id: `ai-ticket-${Date.now()}`,
+      sender: 'ai',
+      content: result.success
+        ? `✅ Support ticket raised successfully! Ticket ID: ${result.ticketId?.slice(0, 8)}...\n\nOur team will review your issue and get back to you soon. You can track your ticket in the Support Help Desk section.`
+        : `❌ Could not create support ticket. Please try going to Support Help Desk from the sidebar menu to create one manually.`,
+      createdAt: new Date().toISOString(),
+      aiProvider: null,
+      quickReplies: result.success ? ['📋 View My Tickets'] : ['🔄 Try Again']
+    };
+
+    set(state => ({
+      aiMessages: [...state.aiMessages, confirmMsg]
+    }));
+  },
+
+  clearSession: () => {
+    set({
+      aiMessages: [],
+      sessionId: null,
+      userContext: null,
+      isTyping: false,
+      messageCount: 0,
+      manualLanguage: null,
+      detectedLanguage: 'en'
+    });
+  },
+
+  // === Peer Chat Actions (preserved from existing code) ===
   openChat: (conversationId = null) => {
     set({ isChatOpen: true, activeConversationId: conversationId });
     if (conversationId) get().fetchMessages(conversationId);
   },
-  closeChat: () => set({ isChatOpen: false, activeConversationId: null }),
 
   fetchConversations: async () => {
     const user = useAuthStore.getState().user;
     if (!user) return;
-    
-    // Fetch conversations where user is participant1 or participant2
     const { data, error } = await supabase
       .from('conversations')
       .select('*')
       .or(`participant1_id.eq.${user.id},participant2_id.eq.${user.id}`);
-      
-    if (!error && data) {
-      set({ conversations: data });
-    }
+    if (!error && data) set({ conversations: data });
   },
 
   fetchAdminConversations: async () => {
@@ -2224,10 +2373,7 @@ export const useChatStore = create((set, get) => ({
       .from('conversations')
       .select('*')
       .eq('type', 'support');
-      
-    if (!error && data) {
-      set({ conversations: data });
-    }
+    if (!error && data) set({ conversations: data });
   },
 
   fetchMessages: async (conversationId) => {
@@ -2236,9 +2382,7 @@ export const useChatStore = create((set, get) => ({
       .select('*')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
-      
     if (!error && data) {
-      // Map to camelCase to match our UI
       const mapped = data.map(m => ({
         id: m.id,
         conversationId: m.conversation_id,
@@ -2250,34 +2394,11 @@ export const useChatStore = create((set, get) => ({
       set({ messages: mapped });
     }
   },
-  
+
   startSupportChat: async () => {
-    const { conversations } = get();
-    const userId = useAuthStore.getState().user?.id || 'guest';
-    
-    let supportConv = conversations.find(c => c.type === 'support' && c.participant1_id === userId);
-    
-    if (!supportConv) {
-      const newConvId = 'conv-' + uuidv4().slice(0, 8);
-      const newConv = {
-        id: newConvId,
-        type: 'support',
-        participant1_id: userId,
-        participant2_id: 'bot',
-        title: 'YatraGo Assistant'
-      };
-      
-      const { error } = await supabase.from('conversations').insert([newConv]);
-      if (!error) {
-        supportConv = newConv;
-        set({ conversations: [...conversations, supportConv] });
-        get().sendMessage(newConvId, 'Hello! I am the YatraGo Assistant. I can help you with wallet balance, ticket status, or rental issues. How can I help you today?', 'bot');
-      }
-    }
-    
-    set({ activeConversationId: supportConv.id, isChatOpen: true });
-    get().fetchMessages(supportConv.id);
-    return supportConv.id;
+    // Now just open the AI chat
+    set({ isChatOpen: true });
+    if (!get().sessionId) get().initAiChat();
   },
 
   startPeerChat: async (referenceId, ownerId, ownerName, type = 'booking') => {
@@ -2286,31 +2407,26 @@ export const useChatStore = create((set, get) => ({
     if (!userId) return null;
 
     let conv = conversations.find(c => c.reference_id === referenceId && c.participant1_id === userId);
-    
     if (!conv) {
       const newConvId = 'conv-' + uuidv4().slice(0, 8);
       conv = {
         id: newConvId,
-        type, 
+        type,
         reference_id: referenceId,
         participant1_id: userId,
         participant2_id: ownerId,
         title: `Chat with ${ownerName} (Ref: ${referenceId})`
       };
-      
       const { error } = await supabase.from('conversations').insert([conv]);
-      if (!error) {
-        set({ conversations: [...conversations, conv] });
-      }
+      if (!error) set({ conversations: [...conversations, conv] });
     }
-    
     set({ activeConversationId: conv.id, isChatOpen: true });
     get().fetchMessages(conv.id);
     return conv.id;
   },
 
   sendMessage: async (conversationId, content, senderId) => {
-    const { messages, conversations } = get();
+    const { messages } = get();
     const newMsgId = 'msg-' + uuidv4().slice(0, 8);
     const newMsg = {
       id: newMsgId,
@@ -2319,7 +2435,6 @@ export const useChatStore = create((set, get) => ({
       content,
       is_read: false
     };
-    
     const uiMsg = {
       id: newMsgId,
       conversationId,
@@ -2328,77 +2443,8 @@ export const useChatStore = create((set, get) => ({
       isRead: false,
       createdAt: new Date().toISOString()
     };
-    
-    // Optimistic update
     set({ messages: [...messages, uiMsg] });
-
     await supabase.from('messages').insert([newMsg]);
-
-    // Bot Logic
-    const conv = conversations.find(c => c.id === conversationId);
-    if (conv && conv.type === 'support' && senderId !== 'bot') {
-      setTimeout(() => get().processBotResponse(conversationId, content), 1000);
-    }
-  },
-
-  processBotResponse: (conversationId, userText) => {
-    const text = userText.toLowerCase();
-    
-    // Language Detection Helpers
-    const isMarathi = text.match(/\b(kase|ahas|ahes|kiti|aahe|ahet|majhe|ushir|vela|bhadyane|bhadya|pahije|karaycha|kasa)\b/);
-    const isHindi = text.match(/\b(kaise|kitne|mera|deri|der|kab|chahiye|karein|hain|ho)\b/);
-    const isEnglish = text.match(/\b(how|what|when|my|where|is|are|can|will|need|want|delay|late|time|wallet|balance|rent)\b/);
-    
-    let detectedLang = 'english';
-    if (isMarathi) detectedLang = 'marathi';
-    else if (isHindi) detectedLang = 'hindi';
-
-    let botReply = '';
-    
-    // --- HELLO / GREETINGS ---
-    if (text.match(/\b(namaskar|kase ahat|kasa ahes|namaste|pranam|kaise ho|hello|hi|hey)\b/)) {
-      if (detectedLang === 'marathi' || text.includes('namaskar')) botReply = "Namaskar! YatraGo madhye tumche swagat aahe. Me tumchi pravasat kashi madat karu shakto?";
-      else if (detectedLang === 'hindi' || text.includes('namaste') || text.includes('pranam')) botReply = "Namaste! YatraGo mein aapka swagat hai. Main aapki yatra mein kaise madad kar sakta hoon?";
-      else botReply = "Hello there! Welcome to YatraGo. How can I assist you with your travel today?";
-    }
-    
-    // --- WALLET / BALANCE ---
-    else if (text.match(/\b(wallet|balance|money|paise|batwa|batua|rupee|rakkam)\b/)) {
-      const balance = useWalletStore.getState().balance;
-      if (detectedLang === 'marathi') botReply = `Tumchya wallet madhye ₹${balance} ahet. Tumhi Wallet page varun ankin paise securely add karu shakta.`;
-      else if (detectedLang === 'hindi') botReply = `Aapke wallet mein ₹${balance} hain. Aap Wallet page se aur paise securely add kar sakte hain.`;
-      else botReply = `Your current wallet balance is ₹${balance}. You can add more funds securely from the Wallet page.`;
-    }
-    
-    // --- DELAY / LATE ---
-    else if (text.match(/\b(late|delay|time|ushir|deri|vela|der)\b/)) {
-      if (detectedLang === 'marathi') botReply = "Jara tumchi bus kiva vehicle late asel, tar 'My Bookings' madhye jaun 'Chat with Driver' var click kara. Number share na karta tumhi tyanchyashi bolu shakta. Tumhi Live Tracking sudha pahu shakta.";
-      else if (detectedLang === 'hindi') botReply = "Agar aapki bus ya vehicle late hai, toh 'My Bookings' mein jaakar 'Chat with Driver' par click karein. Aap bina number share kiye unse baat kar sakte hain. Live Tracking page se location bhi dekh sakte hain.";
-      else botReply = "If your bus or vehicle is late, you can go to 'My Bookings' and click 'Chat with Driver' to message them directly without sharing your phone number. You can also track the live location from the Live Tracking page.";
-    }
-    
-    // --- TICKET / BOOKING / CANCEL ---
-    else if (text.match(/\b(ticket|booking|cancel|radd|cancle)\b/)) {
-      if (detectedLang === 'marathi') botReply = "Tumhi 'My Bookings' section madhun tumche ticket pahu kiva cancel karu shakta. Cancel kelyas policy nusar thodi fee lagu shakte.";
-      else if (detectedLang === 'hindi') botReply = "Aap 'My Bookings' section se apni ticket dekh, download ya cancel kar sakte hain. Cancellation par policy ke mutabiq thodi fee lag sakti hai.";
-      else botReply = "You can view, cancel, or download your tickets directly from the 'My Bookings' section. Cancellations may incur a small fee based on the policy.";
-    }
-    
-    // --- RENTALS / BIKES ---
-    else if (text.match(/\b(rent|bike|scooty|kirae|bhadyane|bhadya|kiraya)\b/)) {
-      if (detectedLang === 'marathi') botReply = "Vehicle bhadyane ghenyasathi 'Rentals' tab madhye jaa. Laksha theva, security deposit dyava lagto jo vehicle parat kelyavar purna wapas kela jato.";
-      else if (detectedLang === 'hindi') botReply = "Vehicle kirae par lene ke liye 'Rentals' tab mein jayein. Dhyan rahe, security deposit dena hota hai jo vehicle sahi salamat wapas karne par pura refund ho jata hai.";
-      else botReply = "To rent a vehicle, go to the 'Rentals' tab. Please note that a security deposit is required and will be fully refunded upon safe return.";
-    }
-    
-    // --- ESCALATION FALLBACK (EVERY OTHER PROBLEM) ---
-    else {
-      if (detectedLang === 'marathi') botReply = "Mala maaf kara, pan mala ha prashna samajla nahi. Tumhala kontihi itar adchan aslyas, krupaya aamchya Customer Care Head la admin@yatraGo.com var mail kiva call karun sampark sadha. Te tumchi samasya nantar sodavtil.";
-      else if (detectedLang === 'hindi') botReply = "Maaf kijiye, mujhe yeh samajh nahi aaya. Agar aapko koi aur pareshani aa rahi hai, toh kripya humare Customer Care Head ko admin@yatraGo.com par mail ya call karein. Woh aapki samasya ka samadhan karenge.";
-      else botReply = "I'm sorry, I couldn't quite understand your request. If you are facing any other issue, please contact our Customer Care Head via call or email at admin@yatraGo.com. They will escalate and resolve your problem immediately.";
-    }
-
-    get().sendMessage(conversationId, botReply, 'bot');
   },
 
   setupRealtimeSubscription: () => {
@@ -2413,36 +2459,25 @@ export const useChatStore = create((set, get) => ({
         (payload) => {
           const { conversations, activeConversationId } = get();
           const newDbMsg = payload.new;
-          
-          // Check if this message belongs to any of our conversations
           const conv = conversations.find(c => c.id === newDbMsg.conversation_id);
-          
-          if (conv) {
-            // Only handle if it's not our own message (we optimistically update those)
-            if (newDbMsg.sender_id !== user.id) {
-              const uiMsg = {
-                id: newDbMsg.id,
-                conversationId: newDbMsg.conversation_id,
-                senderId: newDbMsg.sender_id,
-                content: newDbMsg.content,
-                isRead: newDbMsg.is_read,
-                createdAt: newDbMsg.created_at
-              };
-              
-              // Only add if it doesn't already exist (in case optimistic update somehow raced, though sender_id is checked)
-              set({ messages: [...get().messages, uiMsg] });
-              
-              // If chat is not open or not on this conversation, show notification
-              if (!get().isChatOpen || activeConversationId !== conv.id) {
-                const title = conv.title || (conv.type === 'support' ? 'YatraGo Assistant' : 'New Message');
-                useToastStore.getState().addToast(`New message from ${title}: ${newDbMsg.content}`, 'info');
-              }
+          if (conv && newDbMsg.sender_id !== user.id) {
+            const uiMsg = {
+              id: newDbMsg.id,
+              conversationId: newDbMsg.conversation_id,
+              senderId: newDbMsg.sender_id,
+              content: newDbMsg.content,
+              isRead: newDbMsg.is_read,
+              createdAt: newDbMsg.created_at
+            };
+            set({ messages: [...get().messages, uiMsg] });
+            if (!get().isChatOpen || activeConversationId !== conv.id) {
+              const title = conv.title || (conv.type === 'support' ? 'YatraGo Assistant' : 'New Message');
+              useToastStore.getState().addToast(`New message from ${title}: ${newDbMsg.content}`, 'info');
             }
           }
         }
       )
       .subscribe();
-      
     set({ realtimeSubscription: channel });
   },
 
@@ -2455,7 +2490,7 @@ export const useChatStore = create((set, get) => ({
   }
 }));
 
-// ==========================================
+
 // 12. HOLIDAY PACKAGES STORE
 // ==========================================
 export const usePackageStore = create((set, get) => ({
@@ -2756,6 +2791,133 @@ export const useReviewStore = create((set, get) => ({
       return { success: true, data };
     } catch (err) {
       console.error('Error adding review:', err);
+      return { success: false, error: err.message };
+    }
+  }
+}));
+
+// ==========================================
+// 18. DRIVER STORE
+// ==========================================
+export const useDriverStore = create((set, get) => ({
+  links: [], // driver_owner_link records
+  availableDrivers: [],
+  isLoading: false,
+
+  fetchAvailableDrivers: async (vehicleLessOnly = false) => {
+    try {
+      let query = supabase.from('driver_profiles').select('*');
+      if (vehicleLessOnly) {
+        query = query.eq('has_own_vehicle', false);
+      }
+      const { data, error } = await query;
+      if (!error && data) {
+        set({ availableDrivers: data });
+      }
+    } catch (err) {
+      console.error('Error fetching available drivers:', err);
+    }
+  },
+
+  searchCabs: async (fromCity, toCity) => {
+    set({ isLoading: true });
+    try {
+      let query = supabase
+        .from('driver_route_rate')
+        .select(`
+          id, from_city, to_city, rate, vehicle_details,
+          driver_profiles ( id, name, license_number, license_photo_url )
+        `);
+        
+      if (fromCity) query = query.ilike('from_city', `%${fromCity}%`);
+      if (toCity) query = query.ilike('to_city', `%${toCity}%`);
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error searching cabs:', err);
+      return [];
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  fetchLinks: async (userId, role) => {
+    set({ isLoading: true });
+    try {
+      let query = supabase
+        .from('driver_owner_link')
+        .select(`
+          id, driver_id, owner_id, relationship_type, status, created_at,
+          driver_profiles ( id, name, license_number, license_photo_url ),
+          users ( id, name, email, phone )
+        `);
+      
+      if (role === 'owner') {
+        query = query.eq('owner_id', userId);
+      } else if (role === 'driver') {
+        query = query.eq('driver_id', userId);
+      }
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      set({ links: data || [] });
+    } catch (err) {
+      console.error('Error fetching driver links:', err);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  sendLinkRequest: async (ownerId, licenseNumber) => {
+    try {
+      // Find driver by license
+      const { data: driverData, error: driverError } = await supabase
+        .from('driver_profiles')
+        .select('id')
+        .eq('license_number', licenseNumber)
+        .single();
+        
+      if (driverError || !driverData) {
+        throw new Error('Driver not found with this license number.');
+      }
+      
+      const { data, error } = await supabase
+        .from('driver_owner_link')
+        .insert([{
+          driver_id: driverData.id,
+          owner_id: ownerId,
+          relationship_type: 'employed',
+          status: 'pending'
+        }])
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      // Update local state
+      get().fetchLinks(ownerId, 'owner');
+      return { success: true };
+    } catch (err) {
+      console.error('Error sending link request:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  updateLinkStatus: async (linkId, status, userId, role) => {
+    try {
+      const { error } = await supabase
+        .from('driver_owner_link')
+        .update({ status })
+        .eq('id', linkId);
+        
+      if (error) throw error;
+      
+      get().fetchLinks(userId, role);
+      return { success: true };
+    } catch (err) {
+      console.error('Error updating link status:', err);
       return { success: false, error: err.message };
     }
   }

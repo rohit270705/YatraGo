@@ -9,6 +9,7 @@ import { supabase } from '../supabaseClient';
 
 export default function BookingPage() {
   const { routeId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const { routes, fetchAllRoutes, createBooking } = useBookingStore();
   const { vehicles } = useVehicleStore();
@@ -18,13 +19,34 @@ export default function BookingPage() {
   const { currentAgent, addAgentBooking } = useAgentStore();
 
   useEffect(() => {
-    if (routes.length === 0 && fetchAllRoutes) {
+    if (!location.state?.isCab && routes.length === 0 && fetchAllRoutes) {
       fetchAllRoutes();
     }
-  }, [routes.length, fetchAllRoutes]);
+  }, [routes.length, fetchAllRoutes, location.state]);
 
-  const route = routes.find(r => r.id === routeId);
-  const vehicle = route ? vehicles.find(v => v.id === route.vehicleId) : null;
+  const isCab = location.state?.isCab;
+  let route = null;
+  let vehicle = null;
+
+  if (isCab) {
+    const cab = location.state.route;
+    route = {
+      id: cab.id,
+      from: cab.from_city,
+      to: cab.to_city,
+      date: new Date().toISOString().split('T')[0], // Default to today for cabs
+      departureTime: 'Flexible',
+      arrivalTime: 'Flexible',
+      price: cab.rate
+    };
+    vehicle = {
+      type: 'Cab',
+      registrationNumber: cab.vehicle_details || 'Assigned Driver Vehicle'
+    };
+  } else {
+    route = routes.find(r => r.id === routeId);
+    vehicle = route ? vehicles.find(v => v.id === route.vehicleId) : null;
+  }
 
   const [step, setStep] = useState(1); // 1: details, 2: luggage, 3: summary, 4: confirmed
   const [passengers, setPassengers] = useState([{
@@ -104,7 +126,15 @@ export default function BookingPage() {
 
   const handleBook = async () => {
     setIsBooking(true);
-    const result = await createBooking(routeId, passengers, totalLuggageKg, isAgent, currentAgent?.id, customerPaymentMode, promoDiscount, promoCode);
+    let result;
+    if (isCab) {
+      // For cabs, we can just save it as a booking but pass the cab driver ID
+      result = await createBooking(routeId, passengers, totalLuggageKg, isAgent, currentAgent?.id, customerPaymentMode, promoDiscount, promoCode);
+      // NOTE: In a real app we would want a specific table or modified bookings table for cab bookings.
+      // For now we'll just use the regular booking API.
+    } else {
+      result = await createBooking(routeId, passengers, totalLuggageKg, isAgent, currentAgent?.id, customerPaymentMode, promoDiscount, promoCode);
+    }
     setIsBooking(false);
 
     if (result && result.error) {

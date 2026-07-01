@@ -45,8 +45,31 @@ export default function AdminDashboardPage() {
   const [vehicleTabFilter, setVehicleTabFilter] = useState('all');
   const [localSettings, setLocalSettings] = useState({});
   const [selectedTicketId, setSelectedTicketId] = useState(null);
-  const [adminReply, setAdminReply] = useState('');
   const [pendingStays, setPendingStays] = useState([]);
+  const [aiStatsData, setAiStatsData] = useState([]);
+  const [isLoadingAiStats, setIsLoadingAiStats] = useState(false);
+
+  useEffect(() => {
+    if (activeSection === 'ai-stats') {
+      const fetchAiStats = async () => {
+        setIsLoadingAiStats(true);
+        try {
+          const { data, error } = await supabase
+            .from('chat_messages')
+            .select('id, sender, content, ai_provider, response_time_ms, fallback_used, fallback_reason, created_at')
+            .eq('sender', 'ai')
+            .order('created_at', { ascending: false })
+            .limit(300);
+          if (!error && data) setAiStatsData(data);
+        } catch (e) {
+          console.error('Error loading AI stats:', e);
+        } finally {
+          setIsLoadingAiStats(false);
+        }
+      };
+      fetchAiStats();
+    }
+  }, [activeSection]);
 
   useEffect(() => {
     fetchVehicles();
@@ -167,6 +190,7 @@ export default function AdminDashboardPage() {
     { id: 'promos', label: 'Promos', icon: Tag },
     { id: 'homestays', label: `Homestays (${pendingStays.filter(s => s.status === 'pending').length})`, icon: Home },
     { id: 'support', label: 'Help Desk', icon: Headphones },
+    { id: 'ai-stats', label: 'AI Stats', icon: MessageSquare },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -251,17 +275,17 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
-        <h1>Admin Panel</h1>
-        <p>Platform management and oversight</p>
+      <div className="page-header" style={{ marginBottom: 12, paddingBottom: 8 }}>
+        <h1 style={{ marginBottom: 4 }}>Admin Panel</h1>
+        <p style={{ fontSize: '13px', margin: 0 }}>Platform management and oversight</p>
       </div>
 
       {/* Section Tabs */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 24 }}>
+      <div className="admin-tabs-bar">
         {sections.map(sec => (
-          <button key={sec.id} className={`btn btn-sm ${activeSection === sec.id ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setActiveSection(sec.id)} style={{ fontSize: '0.8rem' }}>
-            <sec.icon size={14} /> {sec.label}
+          <button key={sec.id} className={`btn ${activeSection === sec.id ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveSection(sec.id)}>
+            <sec.icon size={16} /> <span>{sec.label}</span>
           </button>
         ))}
       </div>
@@ -1088,6 +1112,158 @@ export default function AdminDashboardPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ===== AI STATS ===== */}
+      {activeSection === 'ai-stats' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontWeight: 700, margin: 0 }}><MessageSquare size={20} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} /> AI Assistant Usage & Routing Stats</h3>
+            <span style={{ fontSize: '13px', color: 'var(--color-text-tertiary)' }}>Privacy-First 4-Provider Router (DPDP Act 2023)</span>
+          </div>
+
+          {isLoadingAiStats ? (
+            <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-tertiary)' }}>Loading AI usage statistics...</div>
+          ) : aiStatsData.length === 0 ? (
+            <div className="glass-card" style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-tertiary)' }}>No AI chat activity recorded yet. Start chatting in the AI widget to see live metrics!</div>
+          ) : (
+            <>
+              {/* Stat cards grid */}
+              <div className="stats-grid stagger-children">
+                <div className="stat-card">
+                  <div className="stat-card-icon teal"><Zap size={22} /></div>
+                  <div className="stat-card-label">Total AI Responses</div>
+                  <div className="stat-card-value">{aiStatsData.length}</div>
+                  <div className="stat-card-change positive">Tracked across sessions</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-card-icon purple"><TrendingUp size={22} /></div>
+                  <div className="stat-card-label">Fallback Rate</div>
+                  <div className="stat-card-value">{((aiStatsData.filter(m => m.fallback_used).length / aiStatsData.length) * 100).toFixed(1)}%</div>
+                  <div className="stat-card-change" style={{ color: 'var(--color-text-tertiary)' }}>{aiStatsData.filter(m => m.fallback_used).length} routed fallbacks</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-card-icon blue"><Clock size={22} /></div>
+                  <div className="stat-card-label">Avg Latency</div>
+                  <div className="stat-card-value">{Math.round(aiStatsData.reduce((acc, m) => acc + (m.response_time_ms || 0), 0) / aiStatsData.length)} ms</div>
+                  <div className="stat-card-change positive">Fast response SLA</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-card-icon green"><CheckCircle size={22} /></div>
+                  <div className="stat-card-label">Primary (Gemini) Rate</div>
+                  <div className="stat-card-value">{((aiStatsData.filter(m => m.ai_provider === 'gemini').length / aiStatsData.length) * 100).toFixed(1)}%</div>
+                  <div className="stat-card-change positive">{aiStatsData.filter(m => m.ai_provider === 'gemini').length} direct hits</div>
+                </div>
+              </div>
+
+              {/* Provider Distribution & Fallback Breakdown */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <div className="glass-card">
+                  <h4 style={{ fontWeight: 600, marginBottom: 16 }}>Provider Distribution</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {[
+                      { name: 'Google Gemini 2.0 Flash (Primary)', key: 'gemini', color: '#10b981', count: aiStatsData.filter(m => m.ai_provider === 'gemini').length },
+                      { name: 'Groq Llama 3.3 70B (Speed Fallback)', key: 'groq', color: '#f59e0b', count: aiStatsData.filter(m => m.ai_provider === 'groq').length },
+                      { name: 'ChatGPT GPT-4o mini (Complex)', key: 'openai', color: '#3b82f6', count: aiStatsData.filter(m => m.ai_provider === 'openai').length },
+                      { name: 'Claude Haiku (Emergency Fallback)', key: 'claude', color: '#8b5cf6', count: aiStatsData.filter(m => m.ai_provider === 'claude').length },
+                      { name: 'Offline / Error Fallback', key: 'error', color: '#ef4444', count: aiStatsData.filter(m => m.ai_provider === 'error' || !m.ai_provider).length },
+                    ].map(p => {
+                      const pct = aiStatsData.length > 0 ? ((p.count / aiStatsData.length) * 100).toFixed(1) : 0;
+                      return (
+                        <div key={p.key}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: 4 }}>
+                            <span style={{ fontWeight: 500 }}>{p.name}</span>
+                            <span>{p.count} ({pct}%)</span>
+                          </div>
+                          <div style={{ width: '100%', height: 8, background: 'var(--color-bg-secondary)', borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{ width: `${pct}%`, height: '100%', background: p.color, transition: 'width 0.3s' }}></div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="glass-card">
+                  <h4 style={{ fontWeight: 600, marginBottom: 16 }}>Routing & Fallback Reasons</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {[
+                      { name: 'Direct Primary (No Fallback)', count: aiStatsData.filter(m => !m.fallback_used && m.ai_provider === 'gemini').length, color: '#10b981' },
+                      { name: 'Complex Query Auto-Route (ChatGPT)', count: aiStatsData.filter(m => m.fallback_reason === 'complex_query').length, color: '#3b82f6' },
+                      { name: 'Rate Limit Switch', count: aiStatsData.filter(m => m.fallback_reason === 'rate_limit').length, color: '#f59e0b' },
+                      { name: 'API Error / Timeout Switch', count: aiStatsData.filter(m => m.fallback_reason === 'error').length, color: '#ef4444' },
+                    ].map((r, idx) => {
+                      const pct = aiStatsData.length > 0 ? ((r.count / aiStatsData.length) * 100).toFixed(1) : 0;
+                      return (
+                        <div key={idx}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: 4 }}>
+                            <span style={{ fontWeight: 500 }}>{r.name}</span>
+                            <span>{r.count} ({pct}%)</span>
+                          </div>
+                          <div style={{ width: '100%', height: 8, background: 'var(--color-bg-secondary)', borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{ width: `${pct}%`, height: '100%', background: r.color, transition: 'width 0.3s' }}></div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ marginTop: 16, padding: 12, borderRadius: 8, background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '12px', color: '#10b981' }}>
+                    🔒 <strong>Privacy Compliance Active:</strong> All user queries are sanitized via <code>sanitizeUserContext</code> before transmission. DeepSeek is permanently excluded under DPDP Act 2023.
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent AI Logs Table */}
+              <div className="glass-card">
+                <h4 style={{ fontWeight: 600, marginBottom: 16 }}>Recent AI Response Logs</h4>
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="data-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <th style={{ padding: '10px 12px', fontSize: '12px' }}>Time</th>
+                        <th style={{ padding: '10px 12px', fontSize: '12px' }}>Provider</th>
+                        <th style={{ padding: '10px 12px', fontSize: '12px' }}>Latency</th>
+                        <th style={{ padding: '10px 12px', fontSize: '12px' }}>Routing / Fallback</th>
+                        <th style={{ padding: '10px 12px', fontSize: '12px' }}>Response Snippet</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {aiStatsData.slice(0, 15).map((log, index) => (
+                        <tr key={log.id || index} style={{ borderBottom: '1px solid var(--color-border)', fontSize: '13px' }}>
+                          <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                            {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <span className="badge" style={{
+                              background: log.ai_provider === 'gemini' ? 'rgba(16,185,129,0.15)' : log.ai_provider === 'groq' ? 'rgba(245,158,11,0.15)' : log.ai_provider === 'openai' ? 'rgba(59,130,246,0.15)' : 'rgba(139,92,246,0.15)',
+                              color: log.ai_provider === 'gemini' ? '#10b981' : log.ai_provider === 'groq' ? '#f59e0b' : log.ai_provider === 'openai' ? '#3b82f6' : '#8b5cf6',
+                              padding: '4px 8px', borderRadius: '4px', fontWeight: 600
+                            }}>
+                              {log.ai_provider === 'gemini' ? 'Gemini 2.0' : log.ai_provider === 'groq' ? 'Groq Llama' : log.ai_provider === 'openai' ? 'ChatGPT' : log.ai_provider === 'claude' ? 'Claude' : 'Error'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>{log.response_time_ms || 0} ms</td>
+                          <td style={{ padding: '10px 12px' }}>
+                            {log.fallback_used ? (
+                              <span style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 500 }}>
+                                ⚠️ {log.fallback_reason === 'complex_query' ? 'Complex Query' : log.fallback_reason === 'rate_limit' ? 'Rate Limit Switch' : 'API Error Switch'}
+                              </span>
+                            ) : (
+                              <span style={{ color: '#10b981', fontSize: '12px' }}>✅ Direct Primary</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '10px 12px', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {log.content}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 

@@ -25,7 +25,8 @@ export default function RegisterPage() {
     name: '', email: '', phone: '', password: '', confirmPassword: '',
     role: '', bloodGroup: '', aadharNumber: '', panNumber: '',
     dob: '', address: '', avatarUrl: '',
-    licenseNumber: '', licenseValidity: '', licensePhoto: null
+    licenseNumber: '', licenseValidity: '', licensePhoto: null,
+    hasOwnVehicle: true, licenseCategory: ''
   });
 
   const updateForm = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
@@ -70,6 +71,16 @@ export default function RegisterPage() {
     if (!/^\d{10}$/.test(form.phone.replace(/\D/g, ''))) {
       addToast('Phone number must be exactly 10 digits.', 'error');
       return;
+    }
+    if (form.role === 'driver') {
+      if (form.hasOwnVehicle === undefined || form.hasOwnVehicle === null) {
+        addToast('Please select your vehicle ownership status.', 'error');
+        return;
+      }
+      if (!form.licenseCategory) {
+        addToast('Please select your license category.', 'error');
+        return;
+      }
     }
     if (form.aadharNumber && !/^\d{12}$/.test(form.aadharNumber.replace(/\D/g, ''))) {
       addToast('Aadhar number must be exactly 12 digits.', 'error');
@@ -300,6 +311,29 @@ export default function RegisterPage() {
                       <label className="form-label">License Photo</label>
                       <input type="file" accept="image/*" onChange={handleLicenseUpload} className="form-input" style={{ padding: '8px' }} required />
                     </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Vehicle Ownership</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input type="radio" name="hasOwnVehicle" checked={form.hasOwnVehicle === true} onChange={() => updateForm('hasOwnVehicle', true)} />
+                        I own a vehicle (and will register it later)
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input type="radio" name="hasOwnVehicle" checked={form.hasOwnVehicle === false} onChange={() => updateForm('hasOwnVehicle', false)} />
+                        I do not own a vehicle, but I can drive (Hire me)
+                      </label>
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">License Category</label>
+                    <select className="form-select" value={form.licenseCategory} onChange={e => updateForm('licenseCategory', e.target.value)} required>
+                      <option value="" disabled>Select your license category</option>
+                      <option value="LMV">Light Motor Vehicle (LMV)</option>
+                      <option value="Transport Vehicle">Transport Vehicle</option>
+                      <option value="Commercial">Commercial License</option>
+                      <option value="HMV">Heavy Motor Vehicle (HMV)</option>
+                    </select>
                   </div>
                 </>
               )}

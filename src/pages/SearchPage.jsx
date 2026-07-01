@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Calendar, ArrowRight, Clock, Users, Luggage, Car, Filter, Bus, X, SlidersHorizontal } from 'lucide-react';
-import { useBookingStore, useVehicleStore } from '../store';
+import { useBookingStore, useVehicleStore, useDriverStore } from '../store';
 
 const VEHICLE_TYPES = [
   { id: 'all', label: 'All Types', icon: '🚀', desc: 'Show all vehicles' },
@@ -22,6 +22,10 @@ export default function SearchPage() {
   const [selectedVehicleType, setSelectedVehicleType] = useState('all');
   const [sortBy, setSortBy] = useState('price'); // price, seats, departure
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchMode, setSearchMode] = useState('shuttles'); // shuttles | cabs
+  const [cabResults, setCabResults] = useState([]);
+  
+  const { searchCabs } = useDriverStore();
   
   useEffect(() => {
     if (fetchAllRoutes) fetchAllRoutes();
@@ -34,7 +38,12 @@ export default function SearchPage() {
   const handleSearch = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    await searchRoutes(from, to, date);
+    if (searchMode === 'shuttles') {
+      await searchRoutes(from, to, date);
+    } else {
+      const cabs = await searchCabs(from, to);
+      setCabResults(cabs);
+    }
     setHasSearched(true);
     setIsLoading(false);
   };
@@ -94,6 +103,18 @@ export default function SearchPage() {
       <div className="page-header">
         <h1>Search Trips</h1>
         <p>Find the perfect ride for your journey — choose your preferred vehicle</p>
+      </div>
+
+      {/* Mode Toggle */}
+      <div className="tabs" style={{ marginBottom: 'var(--space-lg)', maxWidth: 500, margin: '0 auto var(--space-lg) auto' }}>
+        <button className={`tab ${searchMode === 'shuttles' ? 'active' : ''}`}
+          onClick={() => { setSearchMode('shuttles'); setHasSearched(false); }}>
+          🚌 Shuttle/Bus Routes
+        </button>
+        <button className={`tab ${searchMode === 'cabs' ? 'active' : ''}`}
+          onClick={() => { setSearchMode('cabs'); setHasSearched(false); }}>
+          🚕 Point-to-Point Cabs
+        </button>
       </div>
 
       {isLoading && <div className="loading-spinner">Loading routes...</div>}
@@ -157,7 +178,61 @@ export default function SearchPage() {
         </form>
       </div>
 
-      {/* Vehicle Type Selector */}
+      {searchMode === 'cabs' ? (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h3 style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+              {hasSearched ? `${cabResults.length} cab${cabResults.length !== 1 ? 's' : ''} found` : 'Search for a route to see available cabs'}
+            </h3>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }} className="stagger-children">
+            {hasSearched && cabResults.length === 0 ? (
+              <div className="empty-state glass-card">
+                <Car size={48} />
+                <h3 style={{ marginTop: 16 }}>No Cabs Found</h3>
+                <p>Try adjusting your search criteria or changing cities.</p>
+              </div>
+            ) : cabResults.map(cab => (
+              <div key={cab.id} className="glass-card trip-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--color-surface-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+                      🚕
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{cab.driver_profiles?.name}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>Driver</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 16, fontSize: '0.9rem' }}>
+                    <div>
+                      <span style={{ color: 'var(--color-text-tertiary)' }}>Route:</span> <strong>{cab.from_city} → {cab.to_city}</strong>
+                    </div>
+                    {cab.vehicle_details && (
+                      <div>
+                        <span style={{ color: 'var(--color-text-tertiary)' }}>Vehicle:</span> <strong>{cab.vehicle_details}</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>Total Rate</div>
+                  <div style={{ fontWeight: 800, fontSize: '1.5rem', color: 'var(--color-accent-teal-light)' }}>
+                    ₹{cab.rate}
+                  </div>
+                  <button className="btn btn-primary btn-sm" style={{ marginTop: 8 }} onClick={() => navigate('/booking', { state: { route: cab, isCab: true } })}>
+                    Book Cab
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Vehicle Type Selector */}
       <div style={{ marginBottom: 'var(--space-lg)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <h3 style={{ fontWeight: 700, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -327,6 +402,8 @@ export default function SearchPage() {
           })
         )}
       </div>
+      </>
+    )}
     </div>
   );
 }

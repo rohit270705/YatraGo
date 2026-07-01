@@ -2,17 +2,17 @@ import { useState, useEffect } from 'react';
 import {
   Car, Plus, MapPin, DollarSign, Clock, CheckCircle, Target, TrendingUp, AlertTriangle, Shield
 } from 'lucide-react';
-import { useAuthStore, useBookingStore, useToastStore } from '../store';
+import { useAuthStore, useBookingStore, useToastStore, useDriverStore } from '../store';
 import { supabase } from '../supabaseClient';
 
 export default function DriverDashboardPage() {
   const { user } = useAuthStore();
   const { bookings } = useBookingStore();
-  const { addToast } = useToastStore();
+  const { links: employerLinks, fetchLinks, updateLinkStatus } = useDriverStore();
   const [activeTab, setActiveTab] = useState('trips');
   
   const [jobRates, setJobRates] = useState([]);
-  const [newRate, setNewRate] = useState({ from: '', to: '', rate: '' });
+  const [newRate, setNewRate] = useState({ from: '', to: '', rate: '', vehicle_category: '', vehicle_model: '' });
   const [isLoading, setIsLoading] = useState(false);
 
   // Stats
@@ -23,6 +23,7 @@ export default function DriverDashboardPage() {
 
   useEffect(() => {
     fetchRates();
+    if (user?.id) fetchLinks(user.id, 'driver');
   }, [user]);
 
   const fetchRates = async () => {
@@ -56,12 +57,13 @@ export default function DriverDashboardPage() {
           driver_id: user.id,
           from_city: newRate.from.trim(),
           to_city: newRate.to.trim(),
-          rate: parseFloat(newRate.rate)
+          rate: parseFloat(newRate.rate),
+          vehicle_details: (newRate.vehicle_category + (newRate.vehicle_model ? ` - ${newRate.vehicle_model.trim()}` : '')).trim()
         }]);
       if (error) throw error;
       
       addToast('Route rate added successfully!', 'success');
-      setNewRate({ from: '', to: '', rate: '' });
+      setNewRate({ from: '', to: '', rate: '', vehicle_category: '', vehicle_model: '' });
       fetchRates();
     } catch (err) {
       addToast(err.message, 'error');
@@ -130,6 +132,17 @@ export default function DriverDashboardPage() {
         >
           Job-List Rates
         </button>
+        <button 
+          className={`tab ${activeTab === 'employers' ? 'active' : ''}`}
+          onClick={() => setActiveTab('employers')}
+        >
+          Employer Requests
+          {employerLinks?.filter(l => l.status === 'pending').length > 0 && (
+            <span className="badge badge-warning" style={{ marginLeft: 8 }}>
+              {employerLinks.filter(l => l.status === 'pending').length}
+            </span>
+          )}
+        </button>
       </div>
 
       {activeTab === 'trips' && (
@@ -196,6 +209,24 @@ export default function DriverDashboardPage() {
                 </div>
               </div>
               <div className="form-group">
+                <label className="form-label">Vehicle Category</label>
+                <select className="form-select" value={newRate.vehicle_category} onChange={e => setNewRate({...newRate, vehicle_category: e.target.value})} required>
+                  <option value="" disabled>Select vehicle category</option>
+                  <option value="Bus">Bus</option>
+                  <option value="Rented Car">Rented Car</option>
+                  <option value="Van">Van</option>
+                  <option value="Mini Bus">Mini Bus</option>
+                  <option value="Mini Van">Mini Van</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Vehicle Model (Optional)</label>
+                <div className="form-input-icon-wrapper">
+                  <Car className="form-input-icon" size={20} />
+                  <input type="text" className="form-input" placeholder="e.g. Swift Dzire, Innova" value={newRate.vehicle_model} onChange={e => setNewRate({...newRate, vehicle_model: e.target.value})} />
+                </div>
+              </div>
+              <div className="form-group">
                 <label className="form-label">Your Rate (₹)</label>
                 <div className="form-input-icon-wrapper">
                   <DollarSign className="form-input-icon" size={20} />
@@ -222,6 +253,7 @@ export default function DriverDashboardPage() {
                     <tr>
                       <th>From</th>
                       <th>To</th>
+                      <th>Vehicle</th>
                       <th>Rate (₹)</th>
                       <th>Actions</th>
                     </tr>
@@ -231,6 +263,7 @@ export default function DriverDashboardPage() {
                       <tr key={rate.id}>
                         <td>{rate.from_city}</td>
                         <td>{rate.to_city}</td>
+                        <td>{rate.vehicle_details || '-'}</td>
                         <td style={{ fontWeight: 600 }}>₹{rate.rate}</td>
                         <td>
                           <button 
@@ -249,6 +282,60 @@ export default function DriverDashboardPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {activeTab === 'employers' && (
+        <div className="card">
+          <h2 className="card-title">Employer Requests</h2>
+          {employerLinks?.length === 0 ? (
+            <div className="empty-state">
+              <Shield size={48} />
+              <p>No employer requests yet.</p>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Owner Name</th>
+                    <th>Contact</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {employerLinks.map(link => (
+                    <tr key={link.id}>
+                      <td style={{ fontWeight: 600 }}>{link.users?.name || 'Unknown'}</td>
+                      <td>{link.users?.phone || link.users?.email}</td>
+                      <td>
+                        <span className={`badge badge-${link.status === 'active' ? 'success' : link.status === 'rejected' ? 'error' : 'warning'}`}>
+                          {link.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td>
+                        {link.status === 'pending' ? (
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button className="btn btn-sm btn-primary" onClick={() => updateLinkStatus(link.id, 'active', user.id, 'driver')}>
+                              Accept
+                            </button>
+                            <button className="btn btn-sm btn-outline" onClick={() => updateLinkStatus(link.id, 'rejected', user.id, 'driver')} style={{ borderColor: 'var(--color-accent-red)', color: 'var(--color-accent-red)' }}>
+                              Reject
+                            </button>
+                          </div>
+                        ) : link.status === 'active' ? (
+                          <button className="btn btn-sm btn-outline" onClick={() => updateLinkStatus(link.id, 'rejected', user.id, 'driver')} style={{ borderColor: 'var(--color-accent-red)', color: 'var(--color-accent-red)' }}>
+                            Leave Employment
+                          </button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

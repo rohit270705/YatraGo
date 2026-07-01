@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Bike, Star, MapPin, Clock, Fuel, Gauge, Shield, X, CheckCircle,
   Search, SlidersHorizontal, Zap, ArrowRight, Calendar, AlertCircle,
   RotateCcw, XCircle, ChevronDown
 } from 'lucide-react';
-import { useRentalStore, useWalletStore, useToastStore, useAuthStore, useChatStore } from '../store';
+import { useRentalStore, useWalletStore, useToastStore, useAuthStore, useChatStore, useDriverStore } from '../store';
 
 const CATEGORY_TABS = [
   { id: 'all', label: 'All', icon: '🚀' },
@@ -17,6 +17,7 @@ export default function RentalPage() {
   const { balance } = useWalletStore();
   const { addToast } = useToastStore();
   const { user } = useAuthStore();
+  const { availableDrivers, fetchAvailableDrivers } = useDriverStore();
 
   const userActiveRentals = activeRentals.filter(r => r.userId === user?.id);
   const userRentalHistory = rentalHistory.filter(r => r.userId === user?.id);
@@ -51,6 +52,13 @@ export default function RentalPage() {
     const set = new Set(rentalVehicles.map(v => v.location.split(' - ')[0]));
     return ['all', ...Array.from(set).sort()];
   }, [rentalVehicles]);
+
+  useEffect(() => {
+    fetchAvailableDrivers(true);
+  }, []);
+
+  const [hireDriver, setHireDriver] = useState(false);
+  const [selectedDriverId, setSelectedDriverId] = useState('');
 
   // Filter and sort
   const filteredVehicles = useMemo(() => {
@@ -130,7 +138,7 @@ export default function RentalPage() {
     // Passing the renterForm as passenger_details equivalent for rentals. 
     // In store.js, bookRental could be updated to save it, but here we just pass it if supported, 
     // or just let it succeed to satisfy UI requirements.
-    const result = await bookRental(bookingModal.id, duration, durationType === 'daily' ? 'daily' : 'hourly');
+    const result = await bookRental(bookingModal.id, duration, durationType === 'daily' ? 'daily' : 'hourly', driverCost);
     setIsBooking(false);
 
     if (result && result.error) {
@@ -161,7 +169,13 @@ export default function RentalPage() {
   const rentalCost = selectedVehicle
     ? (durationType === 'daily' ? selectedVehicle.pricePerDay * duration : selectedVehicle.pricePerHour * duration)
     : 0;
-  const totalPayable = selectedVehicle ? rentalCost + selectedVehicle.securityDeposit : 0;
+  
+  const selectedDriver = availableDrivers.find(d => d.id === selectedDriverId);
+  // Default driver daily rate is ₹500 if not specified (hourly gets converted to daily roughly, but let's just do daily_rate * duration_days)
+  const driverDays = durationType === 'daily' ? duration : Math.ceil(duration / 24);
+  const driverCost = hireDriver && selectedDriverId ? (selectedDriver?.daily_rate || 500) * driverDays : 0;
+  
+  const totalPayable = selectedVehicle ? rentalCost + selectedVehicle.securityDeposit + driverCost : 0;
 
   return (
     <div className="animate-fade-in">
@@ -664,6 +678,40 @@ export default function RentalPage() {
               </div>
             </div>
 
+            {/* Hire Driver Option */}
+            <div style={{
+              background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', padding: 16,
+              marginBottom: 16, border: '1px solid var(--color-border)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h4 style={{ fontWeight: 600, margin: 0 }}>Hire a Driver</h4>
+                <div className="toggle-switch">
+                  <input type="checkbox" id="hire-driver-toggle" checked={hireDriver} onChange={(e) => {
+                    setHireDriver(e.target.checked);
+                    if (!e.target.checked) setSelectedDriverId('');
+                  }} />
+                  <label htmlFor="hire-driver-toggle"></label>
+                </div>
+              </div>
+              
+              {hireDriver && (
+                <div style={{ marginTop: 16 }}>
+                  <label className="form-label">Select Driver</label>
+                  <select className="form-select" value={selectedDriverId} onChange={e => setSelectedDriverId(e.target.value)}>
+                    <option value="">Choose a driver...</option>
+                    {availableDrivers.map(d => (
+                      <option key={d.id} value={d.id}>
+                        {d.name} (Daily: ₹{d.daily_rate || 500})
+                      </option>
+                    ))}
+                  </select>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', marginTop: 8 }}>
+                    Driver charges will be applied for {driverDays} {driverDays > 1 ? 'days' : 'day'}.
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Price Breakdown */}
             <div style={{
               background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', padding: 16,
@@ -683,6 +731,14 @@ export default function RentalPage() {
                 </span>
                 <span style={{ fontWeight: 600 }}>₹{bookingModal.securityDeposit}</span>
               </div>
+              {hireDriver && selectedDriverId && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: '0.875rem' }}>
+                  <span style={{ color: 'var(--color-text-tertiary)' }}>
+                    Driver Cost ({driverDays} {driverDays > 1 ? 'days' : 'day'})
+                  </span>
+                  <span style={{ fontWeight: 600 }}>₹{driverCost}</span>
+                </div>
+              )}
               <div style={{
                 display: 'flex', justifyContent: 'space-between', paddingTop: 10,
                 borderTop: 'var(--border-subtle)', fontWeight: 700, fontSize: '1.125rem',

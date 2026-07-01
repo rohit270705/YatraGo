@@ -1,6 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, User, Phone, Car, ShieldCheck, Briefcase, Key } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, Phone, Car, ShieldCheck, Briefcase, Key, Luggage } from 'lucide-react';
+
+const CustomDriverIcon = ({ size = 24, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    {/* Driver Cap */}
+    <path d="M6 7c0-2.5 2.5-4 6-4s6 1.5 6 4" />
+    <path d="M3 7h18v1.5a1.5 1.5 0 0 1-1.5 1.5H4.5A1.5 1.5 0 0 1 3 8.5V7z" />
+    {/* Steering Wheel */}
+    <circle cx="12" cy="16" r="6" />
+    <path d="M12 16v6" />
+    <path d="m7.8 13.9 4.2 2.1 4.2-2.1" />
+    <circle cx="12" cy="16" r="1.5" />
+  </svg>
+);
 import { useAuthStore, useToastStore } from '../store';
 import { supabase } from '../supabaseClient';
 
@@ -33,10 +46,10 @@ export default function LoginPage() {
   }, [isAuthenticated, user, navigate]);
 
   const roles = [
-    { id: 'passenger', label: 'Passenger', desc: 'Book trips & parcels', icon: '🧳' },
-    { id: 'agent', label: 'Travel Agent', desc: 'Book for customers', icon: '💼' },
-    { id: 'owner', label: 'Vehicle Owner', desc: 'Register vehicles', icon: '🚗' },
-    { id: 'driver', label: 'Driver', desc: 'Find trips & earn', icon: '🪪' },
+    { id: 'passenger', label: 'Passenger', desc: 'Book trips & parcels', icon: <Luggage size={28} /> },
+    { id: 'agent', label: 'Travel Agent', desc: 'Book for customers', icon: <Briefcase size={28} /> },
+    { id: 'owner', label: 'Vehicle Owner', desc: 'Register vehicles', icon: <Car size={28} /> },
+    { id: 'driver', label: 'Driver', desc: 'Find trips & earn', icon: <CustomDriverIcon size={28} /> },
   ];
 
   const handleSubmit = async (e) => {
