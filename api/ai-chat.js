@@ -306,27 +306,26 @@ export default async function handler(req, res) {
 
     if (!message) return res.status(400).json({ error: 'Message is required' });
 
-    // Retrieve secret keys and validate required configuration
-    const requiredKeys = [
-      'GEMINI_API_KEY', 
-      'GROQ_API_KEY', 
-      'OPENAI_API_KEY', 
-      'CLAUDE_API_KEY'
-    ];
+    // Retrieve secret keys
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    const GROQ_API_KEY = process.env.GROQ_API_KEY;
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 
-    const missingKeys = requiredKeys.filter(key => !process.env[key]);
-
-    if (missingKeys.length > 0) {
-      console.error(`Missing API keys: ${missingKeys.join(', ')}`);
+    // Validate that at least ONE AI provider key is configured
+    const allKeys = [GEMINI_API_KEY, GROQ_API_KEY, OPENAI_API_KEY, CLAUDE_API_KEY];
+    if (!allKeys.some(key => Boolean(key))) {
+      console.error('CRITICAL: No AI provider API keys found in environment variables.');
       return res.status(500).json({ 
         error: 'Service configuration error'
       });
     }
 
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    const GROQ_API_KEY = process.env.GROQ_API_KEY;
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
+    // Log warnings server-side for any missing secondary fallback keys without failing the request
+    if (!GEMINI_API_KEY) console.warn('Warning: GEMINI_API_KEY is missing. Gemini routing disabled.');
+    if (!GROQ_API_KEY) console.warn('Warning: GROQ_API_KEY is missing. Groq fallback disabled.');
+    if (!OPENAI_API_KEY) console.warn('Warning: OPENAI_API_KEY is missing. OpenAI routing disabled.');
+    if (!CLAUDE_API_KEY) console.warn('Warning: CLAUDE_API_KEY is missing. Claude fallback disabled.');
 
     // 1. Sanitize user context for privacy (DPDP Act 2023)
     const sanitizedContext = sanitizeUserContext(userContext);
