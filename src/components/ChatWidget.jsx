@@ -2,12 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { useChatStore, useAuthStore } from '../store';
 import { MessageSquare, X, Send, Bot, Ticket, ChevronDown } from 'lucide-react';
 
-const LANGUAGES = [
-  { code: 'en', label: 'EN' },
-  { code: 'hi', label: 'हि' },
-  { code: 'mr', label: 'मर' },
-  { code: 'hinglish', label: 'HE' },
-];
 
 export default function ChatWidget() {
   const { user } = useAuthStore();
@@ -15,7 +9,7 @@ export default function ChatWidget() {
     isChatOpen, toggleChat, closeChat,
     aiMessages, isTyping, sessionId,
     detectedLanguage, manualLanguage,
-    sendUserMessage, initAiChat, setLanguage,
+    sendUserMessage, initAiChat,
     raiseTicketFromChat
   } = useChatStore();
 
@@ -100,19 +94,6 @@ export default function ChatWidget() {
         </div>
 
         <div className="chat-header-actions">
-          {/* Language Toggle */}
-          <div className="chat-lang-toggle">
-            {LANGUAGES.map(lang => (
-              <button
-                key={lang.code}
-                className={`chat-lang-btn ${activeLang === lang.code ? 'active' : ''}`}
-                onClick={() => setLanguage(lang.code)}
-                title={lang.code}
-              >
-                {lang.label}
-              </button>
-            ))}
-          </div>
 
           {/* Raise Ticket */}
           <button
@@ -156,11 +137,6 @@ export default function ChatWidget() {
                     <span className="message-time">
                       {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    {!isUser && msg.aiProvider && msg.aiProvider !== 'error' && (
-                      <span className="chat-ai-badge">
-                        via {msg.aiProvider === 'gemini' ? 'Gemini' : msg.aiProvider === 'groq' ? 'Llama' : msg.aiProvider === 'openai' ? 'GPT' : 'Claude'}
-                      </span>
-                    )}
                   </div>
                 </div>
 
