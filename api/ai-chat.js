@@ -306,7 +306,23 @@ export default async function handler(req, res) {
 
     if (!message) return res.status(400).json({ error: 'Message is required' });
 
-    // Retrieve secret keys
+    // Retrieve secret keys and validate required configuration
+    const requiredKeys = [
+      'GEMINI_API_KEY', 
+      'GROQ_API_KEY', 
+      'OPENAI_API_KEY', 
+      'CLAUDE_API_KEY'
+    ];
+
+    const missingKeys = requiredKeys.filter(key => !process.env[key]);
+
+    if (missingKeys.length > 0) {
+      console.error(`Missing API keys: ${missingKeys.join(', ')}`);
+      return res.status(500).json({ 
+        error: 'Service configuration error'
+      });
+    }
+
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     const GROQ_API_KEY = process.env.GROQ_API_KEY;
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
