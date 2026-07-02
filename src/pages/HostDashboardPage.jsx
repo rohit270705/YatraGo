@@ -124,7 +124,7 @@ export default function HostDashboardPage() {
                 <input className="form-input" placeholder="e.g. Manali, Goa, Jaipur" value={form.destination} onChange={e => setForm({...form, destination: e.target.value})} />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="form-group">
                   <label className="form-label">Price per Night (₹) *</label>
                   <input type="number" className="form-input" placeholder="e.g. 800" value={form.price_per_night} onChange={e => setForm({...form, price_per_night: e.target.value})} />

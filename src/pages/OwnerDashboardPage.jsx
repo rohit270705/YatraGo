@@ -457,7 +457,7 @@ export default function OwnerDashboardPage() {
 
       {/* My Vehicles */}
       <h3 style={{ fontWeight: 700, marginBottom: 12 }}>My Active Vehicles</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {myVehicles.filter(v => v.approved).map(v => (
           <div key={v.id} className="glass-card">
             {/* Vehicle Photos Carousel */}

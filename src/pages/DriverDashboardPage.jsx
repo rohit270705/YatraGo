@@ -4,10 +4,11 @@ import {
 } from 'lucide-react';
 import { useAuthStore, useBookingStore, useToastStore, useDriverStore } from '../store';
 import { supabase } from '../supabaseClient';
+import SkeletonLoader from '../components/SkeletonLoader';
 
 export default function DriverDashboardPage() {
   const { user } = useAuthStore();
-  const { bookings } = useBookingStore();
+  const { bookings, isLoading: bookingsLoading } = useBookingStore();
   const { links: employerLinks, fetchLinks, updateLinkStatus } = useDriverStore();
   const [activeTab, setActiveTab] = useState('trips');
   
@@ -95,29 +96,35 @@ export default function DriverDashboardPage() {
         </div>
       </div>
 
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon-wrapper" style={{ background: 'rgba(27,153,139,0.15)', color: 'var(--color-accent-teal)' }}>
-            <Car size={24} />
-          </div>
-          <div className="stat-value">{myTrips.length}</div>
-          <div className="stat-label">Total Assigned Trips</div>
+      {bookingsLoading ? (
+        <div className="stats-grid">
+          <SkeletonLoader type="stats-card" count={3} />
         </div>
-        <div className="stat-card">
-          <div className="stat-icon-wrapper" style={{ background: 'rgba(110,68,255,0.15)', color: 'var(--color-accent-purple)' }}>
-            <DollarSign size={24} />
+      ) : (
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon-wrapper" style={{ background: 'rgba(27,153,139,0.15)', color: 'var(--color-accent-teal)' }}>
+              <Car size={24} />
+            </div>
+            <div className="stat-value">{myTrips.length}</div>
+            <div className="stat-label">Total Assigned Trips</div>
           </div>
-          <div className="stat-value">₹{totalEarnings.toLocaleString()}</div>
-          <div className="stat-label">Total Earnings</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon-wrapper" style={{ background: 'rgba(240,162,2,0.15)', color: 'var(--color-accent-amber)' }}>
-            <Target size={24} />
+          <div className="stat-card">
+            <div className="stat-icon-wrapper" style={{ background: 'rgba(110,68,255,0.15)', color: 'var(--color-accent-purple)' }}>
+              <DollarSign size={24} />
+            </div>
+            <div className="stat-value">₹{totalEarnings.toLocaleString()}</div>
+            <div className="stat-label">Total Earnings</div>
           </div>
-          <div className="stat-value">{upcomingTrips.length}</div>
-          <div className="stat-label">Upcoming Trips</div>
+          <div className="stat-card">
+            <div className="stat-icon-wrapper" style={{ background: 'rgba(240,162,2,0.15)', color: 'var(--color-accent-amber)' }}>
+              <Target size={24} />
+            </div>
+            <div className="stat-value">{upcomingTrips.length}</div>
+            <div className="stat-label">Upcoming Trips</div>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="tabs" style={{ marginBottom: '24px' }}>
         <button 
@@ -187,8 +194,8 @@ export default function DriverDashboardPage() {
       )}
 
       {activeTab === 'rates' && (
-        <div className="grid" style={{ gridTemplateColumns: '1fr 2fr' }}>
-          <div className="card">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="card lg:col-span-1">
             <h2 className="card-title">Add Route Rate</h2>
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: '16px' }}>
               Set your per-route driving rates to appear in the independent Job-List.
@@ -239,7 +246,7 @@ export default function DriverDashboardPage() {
             </form>
           </div>
 
-          <div className="card">
+          <div className="card lg:col-span-2">
             <h2 className="card-title">My Job-List Rates</h2>
             {jobRates.length === 0 ? (
               <div className="empty-state">

@@ -259,7 +259,7 @@ export default function AgentDashboardPage() {
           <Percent size={20} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
           How Commission Works
         </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, textAlign: 'center' }}>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
           <div style={{ padding: 16, background: 'var(--color-surface)', borderRadius: 'var(--radius-md)' }}>
             <div style={{ fontSize: '2rem', marginBottom: 8 }}>🎫</div>
             <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Book Ticket</div>
@@ -400,7 +400,7 @@ export default function AgentDashboardPage() {
                     onChange={e => setEditBanner(b => ({ ...b, tagline: e.target.value }))}
                     placeholder="Your catchy tagline" />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="form-group">
                     <label className="form-label">Phone</label>
                     <input className="form-input" value={editBanner.phone}
@@ -414,7 +414,7 @@ export default function AgentDashboardPage() {
                       placeholder="email@agency.com" />
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="form-group">
                     <label className="form-label">Website</label>
                     <input className="form-input" value={editBanner.website}
@@ -449,9 +449,7 @@ export default function AgentDashboardPage() {
               <div>
                 <div className="form-group">
                   <label className="form-label">Background Theme</label>
-                  <div style={{
-                    display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8,
-                  }}>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {GRADIENT_PRESETS.map(g => (
                       <button key={g.id} onClick={() => setEditBanner(b => ({ ...b, gradientId: g.id }))}
                         style={{

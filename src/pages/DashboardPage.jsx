@@ -4,13 +4,16 @@ import {
   ArrowRight, Clock, CheckCircle, Navigation, Bike
 } from 'lucide-react';
 import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore } from '../store';
+import SkeletonLoader from '../components/SkeletonLoader';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { balance } = useWalletStore();
-  const { bookings } = useBookingStore();
-  const { vehicles } = useVehicleStore();
+  const { balance, isLoading: walletLoading } = useWalletStore();
+  const { bookings, isLoading: bookingsLoading } = useBookingStore();
+  const { vehicles, isLoading: vehiclesLoading } = useVehicleStore();
+
+  const isLoading = walletLoading || bookingsLoading || vehiclesLoading;
 
   const userBookings = (bookings || []).filter(b => b.user_id === user?.id);
   const activeBookings = userBookings.filter(b => b.status === 'confirmed');
@@ -51,46 +54,52 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="stats-grid stagger-children">
-        <div className="stat-card">
-          <div className="stat-card-icon teal"><Wallet size={22} /></div>
-          <div className="stat-card-label">Wallet Balance</div>
-          <div className="stat-card-value">₹{balance.toLocaleString()}</div>
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full mb-8">
+          <SkeletonLoader type="stats-card" count={4} />
         </div>
-        <div className="stat-card">
-          <div className="stat-card-icon purple"><Ticket size={22} /></div>
-          <div className="stat-card-label">Active Bookings</div>
-          <div className="stat-card-value">{activeBookings.length}</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full mb-8 stagger-children">
+          <div className="stat-card">
+            <div className="stat-card-icon teal"><Wallet size={22} /></div>
+            <div className="stat-card-label">Wallet Balance</div>
+            <div className="stat-card-value">₹{balance.toLocaleString()}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-icon purple"><Ticket size={22} /></div>
+            <div className="stat-card-label">Active Bookings</div>
+            <div className="stat-card-value">{activeBookings.length}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-icon green"><CheckCircle size={22} /></div>
+            <div className="stat-card-label">Completed Trips</div>
+            <div className="stat-card-value">{completedBookings.length}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-icon blue"><Car size={22} /></div>
+            <div className="stat-card-label">Active Vehicles</div>
+            <div className="stat-card-value">{activeVehicles.length}</div>
+          </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-card-icon green"><CheckCircle size={22} /></div>
-          <div className="stat-card-label">Completed Trips</div>
-          <div className="stat-card-value">{completedBookings.length}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-icon blue"><Car size={22} /></div>
-          <div className="stat-card-label">Active Vehicles</div>
-          <div className="stat-card-value">{activeVehicles.length}</div>
-        </div>
-      </div>
+      )}
 
       {/* Quick Search */}
-      <div className="glass-card" style={{ marginBottom: 'var(--space-xl)', padding: 'var(--space-xl)' }}>
-        <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: 16 }}>
-          <Search size={20} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
+      <div className="glass-card mb-8 p-6">
+        <h3 className="text-lg font-bold mb-4">
+          <Search size={20} className="inline mr-2 align-text-bottom" />
           Quick Trip Search
         </h3>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <input className="form-input" placeholder="From (e.g., Mumbai)" style={{ width: '100%' }} />
+        <div className="flex flex-col md:flex-row gap-3 w-full">
+          <div className="w-full md:flex-1">
+            <input className="form-input w-full" placeholder="From (e.g., Mumbai)" />
           </div>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <input className="form-input" placeholder="To (e.g., Pune)" style={{ width: '100%' }} />
+          <div className="w-full md:flex-1">
+            <input className="form-input w-full" placeholder="To (e.g., Pune)" />
           </div>
-          <div style={{ minWidth: 160 }}>
-            <input type="date" className="form-input" style={{ width: '100%' }} />
+          <div className="w-full md:w-48">
+            <input type="date" className="form-input w-full" />
           </div>
-          <button className="btn btn-primary" onClick={() => navigate('/search')}>
+          <button className="btn btn-primary w-full md:w-auto justify-center" onClick={() => navigate('/search')}>
             <Search size={18} /> Search
           </button>
         </div>
@@ -98,28 +107,27 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: 16 }}>Quick Actions</h3>
-      <div className="stats-grid stagger-children" style={{ marginBottom: 'var(--space-xl)' }}>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 w-full mb-8 stagger-children">
         {quickActions.map(action => (
           <div
             key={action.label}
-            className="glass-card clickable"
+            className="glass-card clickable p-3 flex items-center gap-3 cursor-pointer"
             onClick={() => navigate(action.path)}
-            style={{ display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer' }}
           >
-            <div className={`stat-card-icon ${action.color}`}>
-              <action.icon size={22} />
+            <div className={`stat-card-icon ${action.color} shrink-0`}>
+              <action.icon size={20} />
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{action.label}</div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm truncate">{action.label}</div>
             </div>
-            <ArrowRight size={18} color="var(--color-text-tertiary)" />
+            <ArrowRight size={16} color="var(--color-text-tertiary)" className="shrink-0" />
           </div>
         ))}
       </div>
 
       {/* Popular Routes */}
       <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: 16 }}>Popular Routes</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
         {popularRoutes.map((route, i) => (
           <div
             key={i}

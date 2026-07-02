@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useVehicleStore, useBookingStore, useWalletStore, useToastStore, useRentalStore, usePlatformStore, useChatStore, useAuthStore, usePromoStore, useSupportStore } from '../store';
+import SkeletonLoader from '../components/SkeletonLoader';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell
@@ -294,42 +295,48 @@ export default function AdminDashboardPage() {
       {activeSection === 'overview' && (
         <>
           {/* Top Stats */}
-          <div className="stats-grid stagger-children">
-            <div className="stat-card">
-              <div className="stat-card-icon teal"><Users size={22} /></div>
-              <div className="stat-card-label">Active Users</div>
-              <div className="stat-card-value">{activeUserCount}</div>
-              <div className="stat-card-change positive">of {users.length} total</div>
+          {isLoadingUsers ? (
+            <div className="stats-grid">
+              <SkeletonLoader type="stats-card" count={6} />
             </div>
-            <div className="stat-card">
-              <div className="stat-card-icon blue"><Car size={22} /></div>
-              <div className="stat-card-label">Total Vehicles</div>
-              <div className="stat-card-value">{totalAllVehicles}</div>
-              <div className="stat-card-change positive">{totalTravelVehicles} travel + {rentalVehicles.length} rental</div>
+          ) : (
+            <div className="stats-grid stagger-children">
+              <div className="stat-card">
+                <div className="stat-card-icon teal"><Users size={22} /></div>
+                <div className="stat-card-label">Active Users</div>
+                <div className="stat-card-value">{activeUserCount}</div>
+                <div className="stat-card-change positive">of {users.length} total</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-card-icon blue"><Car size={22} /></div>
+                <div className="stat-card-label">Total Vehicles</div>
+                <div className="stat-card-value">{totalAllVehicles}</div>
+                <div className="stat-card-change positive">{totalTravelVehicles} travel + {rentalVehicles.length} rental</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-card-icon green"><TrendingUp size={22} /></div>
+                <div className="stat-card-label">Total Revenue</div>
+                <div className="stat-card-value">₹{(totalRevenue + 87500).toLocaleString()}</div>
+                <div className="stat-card-change positive">↑ 8% this month</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-card-icon purple"><Ticket size={22} /></div>
+                <div className="stat-card-label">Total Bookings</div>
+                <div className="stat-card-value">{bookings.length + 342}</div>
+                <div className="stat-card-change positive">↑ 15% this month</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-card-icon amber"><DollarSign size={22} /></div>
+                <div className="stat-card-label">Agent Commissions</div>
+                <div className="stat-card-value">₹{(totalCommissions + 4500).toLocaleString()}</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-card-icon red"><AlertTriangle size={22} /></div>
+                <div className="stat-card-label">Pending Approvals</div>
+                <div className="stat-card-value">{pendingVehicles.length}</div>
+              </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-card-icon green"><TrendingUp size={22} /></div>
-              <div className="stat-card-label">Total Revenue</div>
-              <div className="stat-card-value">₹{(totalRevenue + 87500).toLocaleString()}</div>
-              <div className="stat-card-change positive">↑ 8% this month</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-card-icon purple"><Ticket size={22} /></div>
-              <div className="stat-card-label">Total Bookings</div>
-              <div className="stat-card-value">{bookings.length + 342}</div>
-              <div className="stat-card-change positive">↑ 15% this month</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-card-icon amber"><DollarSign size={22} /></div>
-              <div className="stat-card-label">Agent Commissions</div>
-              <div className="stat-card-value">₹{(totalCommissions + 4500).toLocaleString()}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-card-icon red"><AlertTriangle size={22} /></div>
-              <div className="stat-card-label">Pending Approvals</div>
-              <div className="stat-card-value">{pendingVehicles.length}</div>
-            </div>
-          </div>
+          )}
 
           {/* Vehicle Breakdown Card */}
           <div className="glass-card" style={{ marginTop: 24, marginBottom: 24 }}>
@@ -1025,8 +1032,8 @@ export default function AdminDashboardPage() {
 
       {/* ===== SUPPORT HELP DESK ===== */}
       {activeSection === 'support' && (
-        <div style={{ display: 'flex', gap: 24, height: '600px', background: 'var(--color-bg-primary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-          <div style={{ width: 350, borderRight: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column' }}>
+        <div className="flex flex-col md:flex-row h-[600px] bg-[var(--color-bg-primary)] rounded-lg border border-[var(--color-border)] overflow-hidden">
+          <div className="w-full md:w-[350px] border-b md:border-b-0 md:border-r border-[var(--color-border)] flex flex-col max-h-[250px] md:max-h-full shrink-0">
             <div style={{ padding: 16, borderBottom: '1px solid var(--color-border)', fontWeight: 700 }}>
               <Headphones size={18} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
               Support Tickets ({tickets.length})
@@ -1158,7 +1165,7 @@ export default function AdminDashboardPage() {
               </div>
 
               {/* Provider Distribution & Fallback Breakdown */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="glass-card">
                   <h4 style={{ fontWeight: 600, marginBottom: 16 }}>Provider Distribution</h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
