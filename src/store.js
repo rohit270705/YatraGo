@@ -468,17 +468,27 @@ export const useAuthStore = create(
       }
 
       // Fetch the user's public profile and verify role
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', authData.user.id)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        throw new Error(`Supabase Error: ${error.message || JSON.stringify(error)}`);
+      if (!data && !error) {
+        const res = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', email)
+          .maybeSingle();
+        data = res.data;
+        error = res.error;
+      }
+
+      if (error || !data) {
+        throw new Error(`User profile not found. Please check your credentials.`);
       }
       
-      if (role && data.role !== role) {
+      if (role && data.role && data.role.toLowerCase().trim() !== role.toLowerCase().trim()) {
         await supabase.auth.signOut();
         throw new Error('Invalid role. Please select the correct account type.');
       }

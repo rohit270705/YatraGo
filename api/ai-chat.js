@@ -11,6 +11,22 @@ const rateLimits = {
 };
 const RATE_LIMITS = { gemini: 50, groq: 100, openai: 15, claude: 8 }; // conservative per-minute thresholds
 
+// In-memory client IP rate limiter (20 requests per minute per IP to prevent abuse/DDoS)
+const ipRateLimits = new Map();
+const IP_RATE_LIMIT = 20;
+
+function checkIpRateLimit(ip) {
+  const now = Date.now();
+  const record = ipRateLimits.get(ip);
+  if (!record || now > record.resetAt) {
+    ipRateLimits.set(ip, { count: 1, resetAt: now + 60000 });
+    return true;
+  }
+  if (record.count >= IP_RATE_LIMIT) return false;
+  record.count++;
+  return true;
+}
+
 function checkRateLimit(provider) {
   const now = Date.now();
   if (now > rateLimits[provider].resetAt) {
@@ -300,6 +316,13 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Check client IP rate limit (Priority 6 API Rate Limiting)
+  const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  if (!checkIpRateLimit(clientIp)) {
+    console.warn(`[Rate Limit] IP ${clientIp} exceeded 20 req/min threshold.`);
+    return res.status(429).json({ error: 'Too many requests. Please try again after a minute.' });
+  }
 
   try {
     const { message, userContext, chatHistory = [], detectedLanguage = 'en', messageCount = 0 } = req.body;
