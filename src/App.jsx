@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Search, Ticket, Wallet, Car, Package, Users, ShieldCheck,
@@ -8,34 +8,37 @@ import {
 } from 'lucide-react';
 import { useAuthStore, useToastStore, useNotificationStore, usePlatformStore } from './store';
 import { supabase } from './supabaseClient';
+import ErrorBoundary from './components/ErrorBoundary';
+import SkeletonLoader from './components/SkeletonLoader';
+import OfflineBanner from './components/OfflineBanner';
 
-// ===== Pages =====
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import VerificationPage from './pages/VerificationPage';
-import DashboardPage from './pages/DashboardPage';
-import SearchPage from './pages/SearchPage';
-import BookingPage from './pages/BookingPage';
-import MyBookingsPage from './pages/MyBookingsPage';
-import WalletPage from './pages/WalletPage';
-import VehiclesPage from './pages/VehiclesPage';
-import VehicleDetailPage from './pages/VehicleDetailPage';
-import LiveTrackingPage from './pages/LiveTrackingPage';
-import ParcelPage from './pages/ParcelPage';
-import AgentDashboardPage from './pages/AgentDashboardPage';
-import OwnerDashboardPage from './pages/OwnerDashboardPage';
-import DriverDashboardPage from './pages/DriverDashboardPage';
-import AdminDashboardPage from './pages/AdminDashboardPage';
-import DeviceSessionsPage from './pages/DeviceSessionsPage';
-import RentalPage from './pages/RentalPage';
-import DailyReportPage from './pages/DailyReportPage';
-import ProfilePage from './pages/ProfilePage';
-import AdminLoginPage from './pages/AdminLoginPage';
+// ===== Lazy Loaded Pages (Priority 7 Code Splitting) =====
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const VerificationPage = lazy(() => import('./pages/VerificationPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const SearchPage = lazy(() => import('./pages/SearchPage'));
+const BookingPage = lazy(() => import('./pages/BookingPage'));
+const MyBookingsPage = lazy(() => import('./pages/MyBookingsPage'));
+const WalletPage = lazy(() => import('./pages/WalletPage'));
+const VehiclesPage = lazy(() => import('./pages/VehiclesPage'));
+const VehicleDetailPage = lazy(() => import('./pages/VehicleDetailPage'));
+const LiveTrackingPage = lazy(() => import('./pages/LiveTrackingPage'));
+const ParcelPage = lazy(() => import('./pages/ParcelPage'));
+const AgentDashboardPage = lazy(() => import('./pages/AgentDashboardPage'));
+const OwnerDashboardPage = lazy(() => import('./pages/OwnerDashboardPage'));
+const DriverDashboardPage = lazy(() => import('./pages/DriverDashboardPage'));
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
+const DeviceSessionsPage = lazy(() => import('./pages/DeviceSessionsPage'));
+const RentalPage = lazy(() => import('./pages/RentalPage'));
+const DailyReportPage = lazy(() => import('./pages/DailyReportPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
+const PackagesPage = lazy(() => import('./pages/PackagesPage'));
+const PackageDetailsPage = lazy(() => import('./pages/PackageDetailsPage'));
+const HostDashboardPage = lazy(() => import('./pages/HostDashboardPage'));
+const SupportTicketsPage = lazy(() => import('./pages/SupportTicketsPage'));
 import ChatWidget from './components/ChatWidget';
-import PackagesPage from './pages/PackagesPage';
-import PackageDetailsPage from './pages/PackageDetailsPage';
-import HostDashboardPage from './pages/HostDashboardPage';
-import SupportTicketsPage from './pages/SupportTicketsPage';
 
 // ===== FIX 4: mapDbUser moved outside — no longer re-created on every render =====
 const mapDbUser = (data) => ({
@@ -428,12 +431,16 @@ function AppLayout({ children }) {
 
       <main className="app-main">
         <div className="app-content">
-          {children}
+          <ErrorBoundary key={window.location.hash}>
+            {children}
+          </ErrorBoundary>
         </div>
       </main>
 
       <BottomNav />
-      <ChatWidget />
+      <ErrorBoundary title="Chat assistant unavailable" message="The AI Assistant encountered an issue. Tap to reload.">
+        <ChatWidget />
+      </ErrorBoundary>
     </div>
   );
 }
@@ -500,13 +507,19 @@ export default function App() {
 
   return (
     <HashRouter>
+      <OfflineBanner />
       <ToastContainer />
-      <Routes>
+      <Suspense fallback={
+        <div style={{ minHeight: '100vh', padding: '24px', background: 'var(--bg-main, #0f172a)' }}>
+          <SkeletonLoader type="page" />
+        </div>
+      }>
+        <Routes>
         {/* Public Auth Routes */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/verify" element={<VerificationPage />} />
+        <Route path="/login" element={<ErrorBoundary><LoginPage /></ErrorBoundary>} />
+        <Route path="/admin/login" element={<ErrorBoundary><AdminLoginPage /></ErrorBoundary>} />
+        <Route path="/register" element={<ErrorBoundary><RegisterPage /></ErrorBoundary>} />
+        <Route path="/verify" element={<ErrorBoundary><VerificationPage /></ErrorBoundary>} />
 
         {/* Shared Authenticated Routes (all roles) */}
         <Route path="/profile" element={<ProtectedRoute><AppLayout><ProfilePage /></AppLayout></ProtectedRoute>} />
@@ -579,7 +592,8 @@ export default function App() {
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+        </Routes>
+      </Suspense>
     </HashRouter>
   );
 }
