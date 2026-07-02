@@ -11,6 +11,7 @@ import { supabase } from './supabaseClient';
 import ErrorBoundary from './components/ErrorBoundary';
 import SkeletonLoader from './components/SkeletonLoader';
 import OfflineBanner from './components/OfflineBanner';
+import LogoutConfirmModal from './components/LogoutConfirmModal';
 
 // ===== Lazy Loaded Pages (Priority 7 Code Splitting) =====
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -105,7 +106,7 @@ function ProtectedRoute({ children, allowedRoles }) {
 function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user, openLogoutConfirm } = useAuthStore();
 
   const role = user?.role || 'passenger';
 
@@ -171,8 +172,7 @@ function Sidebar({ isOpen, onClose }) {
   };
 
   const handleLogout = () => {
-    logout();
-    navigate('/login');
+    openLogoutConfirm();
     onClose();
   };
 
@@ -438,6 +438,7 @@ function AppLayout({ children }) {
       </main>
 
       <BottomNav />
+      <LogoutConfirmModal />
       <ErrorBoundary title="Chat assistant unavailable" message="The AI Assistant encountered an issue. Tap to reload.">
         <ChatWidget />
       </ErrorBoundary>

@@ -214,6 +214,9 @@ export const useAuthStore = create(
       activeSessions: [],
       isLoading: false,
       error: null,
+      isLogoutModalOpen: false,
+      openLogoutConfirm: () => set({ isLogoutModalOpen: true }),
+      closeLogoutConfirm: () => set({ isLogoutModalOpen: false }),
 
       register: async (userData) => {
     try {

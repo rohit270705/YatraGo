@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { UserCircle, Mail, Phone, MapPin, Edit2, Check, ShieldCheck, CreditCard, Calendar, Activity, Key } from 'lucide-react';
+import { UserCircle, Mail, Phone, MapPin, Edit2, Check, ShieldCheck, CreditCard, Calendar, Activity, Key, LogOut } from 'lucide-react';
 import { useAuthStore, useToastStore } from '../store';
 import { supabase } from '../supabaseClient';
 
 export default function ProfilePage() {
-  const { user, updateProfile, linkGoogleAccount, setPassword } = useAuthStore();
+  const { user, updateProfile, linkGoogleAccount, setPassword, openLogoutConfirm } = useAuthStore();
   const { addToast } = useToastStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -423,6 +423,24 @@ export default function ProfilePage() {
                 value={form.panNumber} onChange={e => updateForm('panNumber', e.target.value.toUpperCase())} 
                 disabled={!isEditing} maxLength={10} />
             </div>
+          </div>
+
+          <div className="form-divider" />
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginTop: '16px' }}>
+            <div>
+              <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>Account Session</h4>
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', margin: 0 }}>Log out from your current session on this device.</p>
+            </div>
+            <button 
+              type="button" 
+              className="btn btn-danger" 
+              onClick={openLogoutConfirm}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #e74c3c, #c0392b)', color: 'white', border: 'none', padding: '10px 18px', borderRadius: '12px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              <LogOut size={18} />
+              <span>Log Out</span>
+            </button>
           </div>
 
         </div>
