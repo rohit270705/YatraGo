@@ -101,9 +101,9 @@ export default function SupportTicketsPage() {
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 24, height: '600px' }}>
+      <div className="flex flex-col md:flex-row gap-6 h-[600px]">
         {/* Ticket List */}
-        <div className="glass-card" style={{ width: 350, display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+        <div className="glass-card w-full md:w-[350px] flex flex-col p-0 overflow-hidden max-h-[250px] md:max-h-full shrink-0">
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {isLoading ? (
               <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-tertiary)' }}>Loading tickets...</div>

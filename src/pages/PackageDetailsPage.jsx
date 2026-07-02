@@ -74,7 +74,7 @@ export default function PackageDetailsPage() {
         </div>
       </div>
 
-      <div className="content-grid" style={{ gridTemplateColumns: '2fr 1fr' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
         <div>
           {/* Tabs */}
           <div style={{ display: 'flex', gap: 16, borderBottom: '1px solid var(--border-subtle)', marginBottom: 24 }}>

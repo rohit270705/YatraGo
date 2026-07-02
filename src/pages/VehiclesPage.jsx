@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { Car, CheckCircle, XCircle, AlertTriangle, MapPin, Shield, Eye, Calendar, Users } from 'lucide-react';
 import { useVehicleStore } from '../store';
+import SkeletonLoader from '../components/SkeletonLoader';
 
 export default function VehiclesPage() {
   const navigate = useNavigate();
-  const { vehicles } = useVehicleStore();
+  const { vehicles, isLoading } = useVehicleStore();
 
   const getStatusBadge = (vehicle) => {
     if (!vehicle.approved) return <span className="badge badge-warning"><AlertTriangle size={12} /> Pending Approval</span>;
@@ -57,7 +58,9 @@ export default function VehiclesPage() {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }} className="stagger-children">
-        {vehicles.map(vehicle => (
+        {isLoading ? (
+          <SkeletonLoader type="list" count={3} />
+        ) : vehicles.map(vehicle => (
           <div key={vehicle.id} className="glass-card clickable" onClick={() => navigate(`/vehicle/${vehicle.id}`)}>
             <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
               {/* Vehicle Icon */}

@@ -6,6 +6,7 @@ import {
   Pencil, Info
 } from 'lucide-react';
 import { useBookingStore, useToastStore, useChatStore } from '../store';
+import SkeletonLoader from '../components/SkeletonLoader';
 
 const REVIEW_TAGS = [
   'Clean Vehicle', 'On Time', 'Polite Driver', 'Comfortable Ride',
@@ -17,7 +18,7 @@ export default function MyBookingsPage() {
   const navigate = useNavigate();
   const { startPeerChat } = useChatStore();
   const {
-    bookings, cancelBooking, completeBooking, modifyBooking,
+    bookings, isLoading, cancelBooking, completeBooking, modifyBooking,
     canModifyBooking, submitReview, skipReview, payForBooking
   } = useBookingStore();
   const { addToast } = useToastStore();
@@ -205,7 +206,9 @@ export default function MyBookingsPage() {
       </div>
 
       {/* Bookings List */}
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <SkeletonLoader type="list" count={4} />
+      ) : filtered.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon"><Ticket size={36} /></div>
           <h3>No bookings yet</h3>
@@ -489,7 +492,7 @@ export default function MyBookingsPage() {
                     onChange={e => setModifyForm(f => ({ ...f, name: e.target.value }))} />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="form-group">
                     <label className="form-label">Age</label>
                     <input className="form-input" type="number" value={modifyForm.age || ''}
@@ -507,7 +510,7 @@ export default function MyBookingsPage() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="form-group">
                     <label className="form-label">Aadhar Number</label>
                     <input className="form-input" value={modifyForm.aadhar || ''}

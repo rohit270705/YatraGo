@@ -261,7 +261,7 @@ export default function BookingPage() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
         {/* Main Form */}
         <div>
           {step === 1 && (

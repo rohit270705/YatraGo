@@ -36,6 +36,10 @@ export default function LoginPage() {
   const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
+    clearError();
+  }, [clearError]);
+
+  useEffect(() => {
     if (isAuthenticated && user) {
       const dest = user.role === 'admin' ? '/admin'
         : user.role === 'agent' ? '/agent'
@@ -64,18 +68,26 @@ export default function LoginPage() {
     const success = await login(email, password, selectedRole);
     setIsLoading(false);
 
-    if (success) {
+    let isAuth = useAuthStore.getState().isAuthenticated;
+    if (!success && !isAuth) {
+      // Give onAuthStateChange event window time to update the store
+      await new Promise(resolve => setTimeout(resolve, 600));
+      isAuth = useAuthStore.getState().isAuthenticated;
+    }
+
+    if (success || isAuth) {
       addToast('Welcome back! Login successful.', 'success');
       // Get the true role from the store (handles Admin bypass properly)
-      const user = useAuthStore.getState().user;
-      const dest = user?.role === 'admin' ? '/admin'
-        : user?.role === 'agent' ? '/agent'
-        : user?.role === 'owner' ? '/owner'
+      const currentUser = useAuthStore.getState().user || user;
+      const dest = currentUser?.role === 'admin' ? '/admin'
+        : currentUser?.role === 'agent' ? '/agent'
+        : currentUser?.role === 'owner' ? '/owner'
         : '/dashboard';
       navigate(dest);
     } else {
-      // Error is handled by the store and displayed via the `error` state variable
-      addToast('Login failed. Please check your credentials.', 'error');
+      // Show actual error from store if available, or fallback
+      const storeError = useAuthStore.getState().error;
+      addToast(storeError || 'Login failed. Please check your credentials.', 'error');
     }
   };
 

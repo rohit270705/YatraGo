@@ -59,7 +59,7 @@ export default function LiveTrackingPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
         {/* Map */}
         <div className="map-container" style={{ height: 500, position: 'relative', borderRadius: '12px', overflow: 'hidden' }}>
           {hasValidKey ? (

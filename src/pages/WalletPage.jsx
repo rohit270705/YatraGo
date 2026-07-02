@@ -4,9 +4,10 @@ import {
   CreditCard, Smartphone, Building2, TrendingUp, Filter
 } from 'lucide-react';
 import { useWalletStore, useToastStore, useAuthStore } from '../store';
+import SkeletonLoader from '../components/SkeletonLoader';
 
 export default function WalletPage() {
-  const { balance, transactions, addMoney, initializeWallet } = useWalletStore();
+  const { balance, transactions, isLoading, addMoney, initializeWallet } = useWalletStore();
   const { user } = useAuthStore();
   const { addToast } = useToastStore();
   const [showAddMoney, setShowAddMoney] = useState(false);
@@ -131,7 +132,9 @@ export default function WalletPage() {
         </select>
       </div>
 
-      {filteredTxns.length === 0 ? (
+      {isLoading ? (
+        <SkeletonLoader type="list" count={4} />
+      ) : filteredTxns.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon"><Wallet size={36} /></div>
           <h3>No transactions</h3>

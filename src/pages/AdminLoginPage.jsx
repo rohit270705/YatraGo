@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useAuthStore, useToastStore } from '../store';
@@ -12,6 +12,10 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     clearError();
@@ -21,11 +25,18 @@ export default function AdminLoginPage() {
     const success = await login(email, password, 'admin');
     setIsLoading(false);
 
-    if (success) {
+    let isAuth = useAuthStore.getState().isAuthenticated;
+    if (!success && !isAuth) {
+      await new Promise(resolve => setTimeout(resolve, 600));
+      isAuth = useAuthStore.getState().isAuthenticated;
+    }
+
+    if (success || isAuth) {
       addToast('Welcome Admin! Access granted.', 'success');
       navigate('/admin');
     } else {
-      addToast('Admin login failed. Unauthorized access.', 'error');
+      const storeError = useAuthStore.getState().error;
+      addToast(storeError || 'Admin login failed. Unauthorized access.', 'error');
     }
   };
 

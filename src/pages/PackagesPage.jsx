@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Palmtree, MapPin, Calendar, Clock, Star, Filter } from 'lucide-react';
 import { usePackageStore } from '../store';
+import SkeletonLoader from '../components/SkeletonLoader';
 
 export default function PackagesPage() {
   const { packages, isLoading, fetchPackages } = usePackageStore();
@@ -39,8 +40,8 @@ export default function PackagesPage() {
       </div>
 
       {isLoading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
-          <div className="spinner" style={{ width: 40, height: 40 }}></div>
+        <div className="route-grid">
+          <SkeletonLoader type="card" count={6} />
         </div>
       ) : filteredPackages.length === 0 ? (
         <div className="empty-state">

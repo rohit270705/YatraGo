@@ -29,7 +29,7 @@ export default function DeviceSessionsPage() {
 
       {/* Device Limit Card */}
       <div className="glass-card" style={{ marginBottom: 24, padding: 'var(--space-xl)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
           <div style={{
             width: 64, height: 64, borderRadius: 'var(--radius-lg)',
             background: activeSessions.length >= maxDevices ? 'rgba(231, 76, 60, 0.12)' : 'rgba(46, 204, 113, 0.12)',
