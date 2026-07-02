@@ -457,41 +457,45 @@ export default function App() {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
         try {
           const { user: authUser } = session;
 
-          const { data: existingUser } = await supabase
+          const { data: emailUsers } = await supabase
             .from('users')
             .select('*')
-            .eq('email', authUser.email)
-            .maybeSingle();
+            .eq('email', authUser.email);
+          
+          let existingUser = Array.isArray(emailUsers) && emailUsers.length > 0 ? emailUsers[0] : (emailUsers || null);
 
-          if (!existingUser) {
-            // FIX 3: Read role from Supabase user_metadata instead of localStorage
+          if (!existingUser && authUser.id) {
+            const res = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', authUser.id);
+            existingUser = Array.isArray(res.data) && res.data.length > 0 ? res.data[0] : (res.data || null);
+          }
+
+          if (existingUser && existingUser.role) {
+            useAuthStore.setState({ user: mapDbUser(existingUser), isAuthenticated: true });
+          } else {
+            // FIX 2: User exists in auth.users but NOT in public.users (or has no role).
+            // Do not insert blindly or let them get stuck without a role.
+            // Redirect to role selection/registration page!
+            useAuthStore.setState({ isAuthenticated: false, user: null });
+            
             const intendedRole =
               authUser.user_metadata?.intended_role ||
-              localStorage.getItem('oauth_intended_role') || // kept as fallback
-              'passenger';
+              localStorage.getItem('oauth_intended_role') || '';
             localStorage.removeItem('oauth_intended_role');
 
-            const { data: newUser, error } = await supabase
-              .from('users')
-              .insert([{
-                email: authUser.email,
-                name: authUser.user_metadata?.full_name || 'Google User',
-                avatar_url: authUser.user_metadata?.avatar_url || null,
-                role: intendedRole,
-                email_verified: true,
-              }])
-              .select()
-              .single();
+            const params = new URLSearchParams();
+            if (intendedRole) params.set('role', intendedRole);
+            if (authUser.email) params.set('email', authUser.email);
+            if (authUser.user_metadata?.full_name) params.set('name', authUser.user_metadata.full_name);
 
-            if (!error && newUser) {
-              useAuthStore.setState({ user: mapDbUser(newUser), isAuthenticated: true });
-            }
-          } else {
-            useAuthStore.setState({ user: mapDbUser(existingUser), isAuthenticated: true });
+            window.location.hash = `#/register?${params.toString()}`;
+            useToastStore.getState().addToast('Please complete your role selection and registration.', 'info');
           }
         } catch (err) {
           console.error('Error syncing Google Auth with public.users', err);

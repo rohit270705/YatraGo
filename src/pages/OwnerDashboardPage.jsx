@@ -270,22 +270,22 @@ export default function OwnerDashboardPage() {
 
       {/* Stats */}
       <div className="stats-grid stagger-children">
-        <div className="stat-card">
+        <div className="stat-card" style={{ background: 'var(--card-bg, var(--color-surface))' }}>
           <div className="stat-card-icon teal"><Car size={22} /></div>
           <div className="stat-card-label">My Vehicles</div>
           <div className="stat-card-value">{myVehicles.length}</div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card" style={{ background: 'var(--card-bg, var(--color-surface))' }}>
           <div className="stat-card-icon green"><TrendingUp size={22} /></div>
           <div className="stat-card-label">Total Earnings</div>
           <div className="stat-card-value">₹{totalEarnings.toLocaleString()}</div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card" style={{ background: 'var(--card-bg, var(--color-surface))' }}>
           <div className="stat-card-icon purple"><Users size={22} /></div>
           <div className="stat-card-label">Total Passengers</div>
           <div className="stat-card-value">{myBookings.length * 3}</div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card" style={{ background: 'var(--card-bg, var(--color-surface))' }}>
           <div className="stat-card-icon amber"><Bell size={22} /></div>
           <div className="stat-card-label">Doc Alerts</div>
           <div className="stat-card-value">{docAlerts.length}</div>
@@ -322,7 +322,7 @@ export default function OwnerDashboardPage() {
       )}
 
       {/* Wallet & Withdrawals */}
-      <div style={{ marginTop: 24, marginBottom: 24, background: '#fff', borderRadius: 'var(--radius-lg)', padding: 24, border: '1px solid var(--color-border-subtle)' }}>
+      <div style={{ marginTop: 24, marginBottom: 24, background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 24, border: '1px solid var(--color-border-subtle)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div>
             <h3 style={{ fontWeight: 700, margin: 0 }}>Wallet & Withdrawals</h3>
@@ -516,7 +516,7 @@ export default function OwnerDashboardPage() {
       </div>
 
       {/* My Drivers */}
-      <div style={{ marginTop: 24, marginBottom: 24, background: '#fff', borderRadius: 'var(--radius-lg)', padding: 24, border: '1px solid var(--color-border-subtle)' }}>
+      <div style={{ marginTop: 24, marginBottom: 24, background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 24, border: '1px solid var(--color-border-subtle)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h3 style={{ fontWeight: 700, margin: 0 }}>My Drivers</h3>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -577,7 +577,7 @@ export default function OwnerDashboardPage() {
       </div>
       
       {/* Vehicle-less Drivers Pool */}
-      <div style={{ marginBottom: 24, background: '#fff', borderRadius: 'var(--radius-lg)', padding: 24, border: '1px solid var(--color-border-subtle)' }}>
+      <div style={{ marginBottom: 24, background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: 24, border: '1px solid var(--color-border-subtle)' }}>
         <h3 style={{ fontWeight: 700, margin: 0, marginBottom: 16 }}>Available Skill-Only Drivers</h3>
         <p style={{ color: 'var(--color-text-tertiary)', fontSize: '0.9rem', marginBottom: 16 }}>
           These drivers don't have their own vehicle. You can link them to drive your cars.

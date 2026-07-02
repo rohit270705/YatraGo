@@ -222,37 +222,56 @@ export const useAuthStore = create(
     try {
       set({ isLoading: true, error: null });
       
-      // Use Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
-        options: {
-          data: {
-            name: userData.name,
-            phone: userData.phone || null,
-            role: userData.role || 'passenger'
+      // Check if user is already logged in via OAuth (e.g. redirected from Google OAuth without a public.users row)
+      const { data: { session: existingSession } } = await supabase.auth.getSession();
+      let userId = null;
+      let isOAuthExisting = false;
+
+      if (existingSession?.user && existingSession.user.email?.toLowerCase() === userData.email?.trim().toLowerCase()) {
+        userId = existingSession.user.id;
+        isOAuthExisting = true;
+      } else {
+        // Use Supabase Auth for new email/password registrations
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: userData.email,
+          password: userData.password,
+          options: {
+            data: {
+              name: userData.name,
+              phone: userData.phone || null,
+              role: userData.role || 'passenger'
+            }
           }
-        }
-      });
+        });
 
-      if (authError) throw authError;
+        if (authError) throw authError;
+        userId = authData.user.id;
+      }
 
-      // The trigger will handle inserting into public.users.
-      // But we need to update the remaining fields that aren't in raw_user_meta_data
-      const { data, error: updateError } = await supabase
+      // If they are an OAuth user without a DB row yet, upsert the full profile
+      // Otherwise update the remaining fields that aren't in raw_user_meta_data
+      const { data: rawUpsert, error: updateError } = await supabase
         .from('users')
-        .update({
+        .upsert([{
+          id: userId,
+          email: userData.email,
+          name: userData.name,
+          phone: userData.phone || null,
+          role: userData.role || 'passenger',
+          email_verified: isOAuthExisting ? true : false,
           blood_group: userData.bloodGroup || null,
           aadhar_number: userData.aadharNumber || null,
           pan_number: userData.panNumber || null,
           avatar_url: userData.avatarUrl || null,
           dob: userData.dob || null
-        })
-        .eq('id', authData.user.id)
-        .select()
-        .single();
+        }])
+        .select();
 
-      if (updateError) throw updateError;
+      if (updateError && updateError.code !== 'PGRST116') throw updateError;
+      const data = (Array.isArray(rawUpsert) && rawUpsert.length > 0 ? rawUpsert[0] : rawUpsert) || {};
+      
+      // Keep authData structure compatible with downstream code (driver profile etc)
+      const authData = { user: { id: userId } };
 
       if (userData.role === 'driver') {
         let licensePhotoUrl = null;
@@ -384,14 +403,17 @@ export const useAuthStore = create(
 
       // Super Admin Override (Only allowed from dedicated Admin Login route)
       if (role === 'admin' && email.trim().toLowerCase() === 'admin@yatrago.com' && password.trim() === 'YRohit@372729#') {
-        const adminId = 'a1b2c3d4-e5f6-4a1b-8c9d-0123456789ab';
+        // Attempt Supabase Auth sign-in so session & auth.uid() are properly set for RLS policies
+        const { data: adminAuth } = await supabase.auth.signInWithPassword({ email, password }).catch(() => ({ data: null }));
+        const adminId = adminAuth?.user?.id || 'a1b2c3d4-e5f6-4a1b-8c9d-0123456789ab';
         
         // Try to fetch saved admin profile from database
-        const { data: dbAdmin } = await supabase
+        const { data: dbAdmins } = await supabase
           .from('users')
           .select('*')
-          .eq('id', adminId)
-          .maybeSingle();
+          .eq('id', adminId);
+        
+        const dbAdmin = Array.isArray(dbAdmins) && dbAdmins.length > 0 ? dbAdmins[0] : (dbAdmins || null);
 
         const adminUser = dbAdmin ? {
           id: dbAdmin.id,
@@ -434,7 +456,7 @@ export const useAuthStore = create(
             role: 'admin',
             email_verified: true,
             phone_verified: true
-          }]).select().maybeSingle();
+          }]).select();
         }
 
         const newSession = {
@@ -467,23 +489,38 @@ export const useAuthStore = create(
       });
 
       if (authError) {
+        // Check if user exists in public.users (which indicates they registered via Google OAuth or another provider without a password)
+        const { data: existingDbUsers } = await supabase
+          .from('users')
+          .select('email, role')
+          .eq('email', email.trim());
+        
+        const existingDbUser = Array.isArray(existingDbUsers) && existingDbUsers.length > 0 ? existingDbUsers[0] : (existingDbUsers || null);
+
+        if (existingDbUser || authError.message.toLowerCase().includes('invalid login credentials')) {
+          if (existingDbUser) {
+            const googleErr = new Error("Aapka account Google se linked hai. Neeche 'Sign in with Google' button use karein.");
+            googleErr.isGoogleLinked = true;
+            throw googleErr;
+          }
+        }
         throw new Error(authError.message);
       }
 
       // Fetch the user's public profile and verify role
-      let { data, error } = await supabase
+      let { data: idUsers, error } = await supabase
         .from('users')
         .select('*')
-        .eq('id', authData.user.id)
-        .maybeSingle();
+        .eq('id', authData.user.id);
+      
+      let data = Array.isArray(idUsers) && idUsers.length > 0 ? idUsers[0] : (idUsers || null);
 
       if (!data && !error) {
         const res = await supabase
           .from('users')
           .select('*')
-          .eq('email', email)
-          .maybeSingle();
-        data = res.data;
+          .eq('email', email);
+        data = Array.isArray(res.data) && res.data.length > 0 ? res.data[0] : (res.data || null);
         error = res.error;
       }
 
@@ -659,18 +696,21 @@ export const useAuthStore = create(
         key => dbUpdates[key] === undefined && delete dbUpdates[key]
       );
 
-      const { data, error } = await supabase
-        .from('users')
-        .update(dbUpdates)
-        .eq('id', user.id)
-        .select()
-        .single();
+      let query = supabase.from('users').update(dbUpdates);
+      if (user.email) {
+        query = query.eq('email', user.email);
+      } else {
+        query = query.eq('id', user.id);
+      }
+      const { data: rawData, error } = await query.select();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') throw error;
+      const data = (Array.isArray(rawData) && rawData.length > 0 ? rawData[0] : (rawData || {})) || dbUpdates;
 
       // DB se confirmed data use karo local state mein
       const updatedUser = {
         ...user,
+        id: data.id || user.id,
         name: data.name,
         email: data.email,
         phone: data.phone,
@@ -695,7 +735,12 @@ export const useAuthStore = create(
   verifyPhone: async () => {
     const { user } = get();
     if (!user) return;
-    await supabase.from('users').update({ phone_verified: true }).eq('id', user.id);
+    let query = supabase.from('users').update({ phone_verified: true });
+    if (user.email) {
+      await query.eq('email', user.email);
+    } else {
+      await query.eq('id', user.id);
+    }
     set(state => ({ user: { ...state.user, phoneVerified: true } }));
   },
 
@@ -735,7 +780,9 @@ export const usePlatformStore = create((set, get) => ({
     set({ isLoading: true });
     try {
       const { data, error } = await supabase.from('platform_settings').select('*');
-      if (error) throw error;
+      if (error && error.code !== 'PGRST204' && error.code !== '42P01' && !error.message?.includes('404')) {
+        console.warn('Could not load custom platform settings, using defaults:', error.message);
+      }
       if (data && data.length > 0) {
         const parsedSettings = {};
         data.forEach(row => { 
@@ -746,7 +793,7 @@ export const usePlatformStore = create((set, get) => ({
         set({ settings: { ...get().settings, ...parsedSettings } });
       }
     } catch (error) {
-      console.error('Error fetching platform settings:', error);
+      console.warn('Platform settings fallback to defaults');
     } finally {
       set({ isLoading: false });
     }
@@ -786,19 +833,18 @@ export const useWalletStore = create(
       initializeWallet: async (userId) => {
     try {
       set({ isLoading: true });
-      // Try to get wallet
-      let { data: wallet, error } = await supabase.from('wallets').select('*').eq('user_id', userId).single();
+      let { data: wallets, error } = await supabase.from('wallets').select('*').eq('user_id', userId);
+      let wallet = Array.isArray(wallets) && wallets.length > 0 ? wallets[0] : null;
       
-      if (error && error.code === 'PGRST116') {
+      if (!wallet) {
         // Wallet doesn't exist, create it with welcome bonus
-        const { data: newWallet, error: createError } = await supabase
+        const { data: newWallets, error: createError } = await supabase
           .from('wallets')
           .insert([{ user_id: userId, balance: 5000 }])
-          .select()
-          .single();
+          .select();
         
-        if (createError) throw createError;
-        wallet = newWallet;
+        if (createError && createError.code !== 'PGRST116') throw createError;
+        wallet = Array.isArray(newWallets) && newWallets.length > 0 ? newWallets[0] : (newWallets || { balance: 5000 });
 
         // Add welcome bonus transaction
         await supabase.from('wallet_transactions').insert([{
@@ -1592,7 +1638,8 @@ export const useVehicleStore = create((set, get) => ({
 
         // Look up owner email for email notification
         try {
-          const { data: ownerData } = await supabase.from('users').select('email, name').eq('id', ownerId).single();
+          const { data: ownerDatas } = await supabase.from('users').select('email, name').eq('id', ownerId);
+          const ownerData = Array.isArray(ownerDatas) && ownerDatas.length > 0 ? ownerDatas[0] : (ownerDatas || null);
           if (ownerData?.email) {
             // Send approval email via Edge Function or log it
             console.log(`[EMAIL] To: ${ownerData.email} | Subject: Vehicle ${regNumber} Approved | From: admin@yatraGo.com`);

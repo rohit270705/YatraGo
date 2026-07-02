@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Mail, Lock, User, Phone, Eye, EyeOff, CreditCard } from 'lucide-react';
 import { useAuthStore, useToastStore } from '../store';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { register, error: storeError, isAuthenticated, user } = useAuthStore();
   const { addToast } = useToastStore();
   const [step, setStep] = useState(1);
@@ -28,6 +29,20 @@ export default function RegisterPage() {
     licenseNumber: '', licenseValidity: '', licensePhoto: null,
     hasOwnVehicle: true, licenseCategory: ''
   });
+
+  useEffect(() => {
+    const roleParam = searchParams.get('role');
+    const emailParam = searchParams.get('email');
+    const nameParam = searchParams.get('name');
+    if (roleParam || emailParam || nameParam) {
+      setForm(prev => ({
+        ...prev,
+        role: roleParam || prev.role,
+        email: emailParam || prev.email,
+        name: nameParam || prev.name,
+      }));
+    }
+  }, [searchParams]);
 
   const updateForm = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 

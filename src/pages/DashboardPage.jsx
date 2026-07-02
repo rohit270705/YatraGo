@@ -55,11 +55,11 @@ export default function DashboardPage() {
 
       {/* Stats */}
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           <SkeletonLoader type="stats-card" count={4} />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full mb-8 stagger-children">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6 stagger-children">
           <div className="stat-card">
             <div className="stat-card-icon teal"><Wallet size={22} /></div>
             <div className="stat-card-label">Wallet Balance</div>
@@ -107,7 +107,7 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: 16 }}>Quick Actions</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 w-full mb-8 stagger-children">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3 w-full mb-8 stagger-children">
         {quickActions.map(action => (
           <div
             key={action.label}
@@ -127,7 +127,7 @@ export default function DashboardPage() {
 
       {/* Popular Routes */}
       <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: 16 }}>Popular Routes</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
         {popularRoutes.map((route, i) => (
           <div
             key={i}

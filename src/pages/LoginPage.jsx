@@ -26,6 +26,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [highlightGoogle, setHighlightGoogle] = useState(false);
 
   // Forgot Password State
   const [showForgot, setShowForgot] = useState(false);
@@ -87,7 +88,16 @@ export default function LoginPage() {
     } else {
       // Show actual error from store if available, or fallback
       const storeError = useAuthStore.getState().error;
-      addToast(storeError || 'Login failed. Please check your credentials.', 'error');
+      const errorMsg = storeError || 'Login failed. Please check your credentials.';
+      addToast(errorMsg, 'error');
+
+      if (errorMsg.includes('Google') || errorMsg.includes('Google se linked')) {
+        setHighlightGoogle(true);
+        const googleBtn = document.getElementById('google-signin-btn');
+        if (googleBtn) {
+          googleBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
     }
   };
 
@@ -323,7 +333,12 @@ export default function LoginPage() {
           </form>
 
           <div style={{ marginTop: 24 }}>
-            <button type="button" onClick={() => {
+            {highlightGoogle && (
+              <div style={{ color: '#4285F4', fontSize: '0.85rem', fontWeight: 700, marginBottom: 8, textAlign: 'center', background: 'rgba(66, 133, 244, 0.1)', padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(66, 133, 244, 0.3)' }}>
+                ⭐ Aapka account Google se linked hai — Use this button below:
+              </div>
+            )}
+            <button id="google-signin-btn" type="button" onClick={() => {
               if (!selectedRole) {
                 addToast('Please select your role first.', 'error');
                 return;
@@ -334,7 +349,11 @@ export default function LoginPage() {
               background: 'white', 
               color: 'var(--color-bg-primary)', 
               justifyContent: 'center',
-              border: '1px solid #e2e8f0'
+              border: highlightGoogle ? '2px solid #4285F4' : '1px solid #e2e8f0',
+              boxShadow: highlightGoogle ? '0 0 16px rgba(66, 133, 244, 0.6)' : 'none',
+              transform: highlightGoogle ? 'scale(1.02)' : 'none',
+              transition: 'all 0.3s ease',
+              fontWeight: highlightGoogle ? 700 : 600
             }}>
               <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: 20, height: 20, marginRight: 8 }} />
               Sign in with Google

@@ -18,6 +18,7 @@
   --color-surface: #1a2332;
   --color-surface-hover: #1f2b3d;
   --color-surface-elevated: #243044;
+  --card-bg: var(--color-surface);
 
   /* Accent Colors */
   --color-accent-teal: #1b998b;
