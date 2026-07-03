@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Search, Ticket, Wallet, Car, Package, Users, ShieldCheck,
   LogOut, Menu, X, MapPin, UserCircle, Settings, Bell, ChevronRight,
   Briefcase, TruckIcon, ClipboardList, FileCheck, CreditCard, BarChart3,
-  Home, Map, Bike, Palmtree
+  Home, Map, Bike, Palmtree, Navigation, User
 } from 'lucide-react';
 import { useAuthStore, useToastStore, useNotificationStore, usePlatformStore } from './store';
 import { supabase } from './supabaseClient';
@@ -249,10 +249,10 @@ function BottomNav() {
   const items =
     role === 'passenger' ? [
       { path: '/dashboard', label: 'Home', icon: Home },
-      { path: '/search', label: 'Search', icon: Search },
-      { path: '/rentals', label: 'Rentals', icon: Bike },
-      { path: '/bookings', label: 'Bookings', icon: Ticket },
-      { path: '/wallet', label: 'Wallet', icon: Wallet },
+      { path: '/bookings', label: 'Trips', icon: Ticket },
+      { path: '/tracking', label: 'Track', icon: Navigation },
+      { path: '/parcel', label: 'Parcel', icon: Package },
+      { path: '/profile', label: 'Profile', icon: User },
     ]
     : role === 'agent' ? [
       { path: '/agent', label: 'Dashboard', icon: Home },
