@@ -324,6 +324,7 @@ export const useAuthStore = create(
         aadharNumber: data.aadhar_number,
         panNumber: data.pan_number,
         avatarUrl: data.avatar_url,
+        preferredGreetingName: data.preferred_greeting_name || userData.preferredGreetingName || null,
         createdAt: data.created_at,
       };
 
@@ -555,6 +556,7 @@ export const useAuthStore = create(
         panNumber: data.pan_number,
         // FIX: DB se fresh avatar_url lo, aur sessionStorage se bhi try karo
         avatarUrl: data.avatar_url || null,
+        preferredGreetingName: data.preferred_greeting_name || authUser?.user_metadata?.preferred_greeting_name || null,
         createdAt: data.created_at,
       };
 
@@ -688,6 +690,7 @@ export const useAuthStore = create(
         address: updates.address,
         aadhar_number: updates.aadharNumber,
         pan_number: updates.panNumber,
+        preferred_greeting_name: updates.preferredGreetingName,
         avatar_url: finalAvatarUrl,  // permanent Storage URL, not base64
       };
 
@@ -702,7 +705,27 @@ export const useAuthStore = create(
       } else {
         query = query.eq('id', user.id);
       }
-      const { data: rawData, error } = await query.select();
+      let { data: rawData, error } = await query.select();
+
+      // Fallback if DB column preferred_greeting_name does not exist yet
+      if (error && (error.code === 'PGRST204' || error.message?.includes('preferred_greeting_name') || error.message?.includes('column'))) {
+        console.warn('DB missing preferred_greeting_name column, falling back to auth metadata...', error.message);
+        const fallbackUpdates = { ...dbUpdates };
+        delete fallbackUpdates.preferred_greeting_name;
+        let retryQuery = supabase.from('users').update(fallbackUpdates);
+        if (user.email) retryQuery = retryQuery.eq('email', user.email);
+        else retryQuery = retryQuery.eq('id', user.id);
+        const retryRes = await retryQuery.select();
+        error = retryRes.error;
+        rawData = retryRes.data;
+        if (!error && supabase.auth.updateUser) {
+          try {
+            await supabase.auth.updateUser({
+              data: { preferred_greeting_name: updates.preferredGreetingName }
+            });
+          } catch (metaErr) {}
+        }
+      }
 
       if (error && error.code !== 'PGRST116') throw error;
       const data = (Array.isArray(rawData) && rawData.length > 0 ? rawData[0] : (rawData || {})) || dbUpdates;
@@ -721,6 +744,7 @@ export const useAuthStore = create(
         address: data.address,
         aadharNumber: data.aadhar_number,
         panNumber: data.pan_number,
+        preferredGreetingName: data.preferred_greeting_name !== undefined ? data.preferred_greeting_name : (updates.preferredGreetingName !== undefined ? updates.preferredGreetingName : user.preferredGreetingName),
         avatarUrl: data.avatar_url || finalAvatarUrl,
       };
 

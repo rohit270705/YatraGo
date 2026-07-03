@@ -54,8 +54,19 @@ export default function RegisterPage() {
       addToast('Please select a role (Passenger, Agent, or Owner).', 'error');
       return;
     }
-    if (!/^[a-zA-Z]+(\s+[a-zA-Z]+){2,}$/.test(form.name.trim())) {
-      addToast('Please enter your full name (First, Middle, and Last name).', 'error');
+    const trimmedName = form.name.trim().replace(/\s+/g, ' ');
+    if (!/^[a-zA-Z]+(\s+[a-zA-Z]+)+$/.test(trimmedName)) {
+      addToast('Please enter your First Middle Last name (at least First and Last name, alphabets only).', 'error');
+      return;
+    }
+    const cleanPhone = form.phone.replace(/^\+?91/, '').replace(/\D/g, '');
+    if (!/^\d{10}$/.test(cleanPhone)) {
+      addToast('Mobile number must be exactly 10 digits.', 'error');
+      return;
+    }
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]).{8,}$/;
+    if (!passwordRegex.test(form.password)) {
+      addToast('Password must be at least 8 characters and include uppercase, lowercase, number, and special character.', 'error');
       return;
     }
     if (form.password !== form.confirmPassword) {
@@ -83,7 +94,8 @@ export default function RegisterPage() {
 
   const handleStep2 = async (e) => {
     e.preventDefault();
-    if (!/^\d{10}$/.test(form.phone.replace(/\D/g, ''))) {
+    const cleanPhone = form.phone.replace(/^\+?91/, '').replace(/\D/g, '');
+    if (!/^\d{10}$/.test(cleanPhone)) {
       addToast('Phone number must be exactly 10 digits.', 'error');
       return;
     }
@@ -97,8 +109,9 @@ export default function RegisterPage() {
         return;
       }
     }
-    if (form.aadharNumber && !/^\d{12}$/.test(form.aadharNumber.replace(/\D/g, ''))) {
-      addToast('Aadhar number must be exactly 12 digits.', 'error');
+    const cleanAadhar = form.aadharNumber.replace(/\D/g, '');
+    if (!/^\d{12}$/.test(cleanAadhar)) {
+      addToast('Aadhaar number is mandatory and must be exactly 12 digits.', 'error');
       return;
     }
     if (form.panNumber && !/^[A-Z]{5}\d{4}[A-Z]$/.test(form.panNumber.toUpperCase())) {
@@ -199,7 +212,7 @@ export default function RegisterPage() {
                   <div className="form-input-icon-wrapper">
                     <User className="form-input-icon" size={20} />
                     <input type="text" className="form-input" placeholder="e.g. Rahul Kumar Sharma"
-                      value={form.name} onChange={e => updateForm('name', e.target.value)} required />
+                      value={form.name} onChange={e => updateForm('name', e.target.value.replace(/[^a-zA-Z\s]/g, ''))} required />
                   </div>
                 </div>
 
@@ -214,18 +227,22 @@ export default function RegisterPage() {
 
                 <div className="form-group">
                   <label className="form-label">Mobile Number</label>
-                  <div className="form-input-icon-wrapper">
+                  <div className="form-input-icon-wrapper" style={{ position: 'relative' }}>
                     <Phone className="form-input-icon" size={20} />
-                    <input type="tel" className="form-input" placeholder="+91 98765 43210"
-                      value={form.phone} onChange={e => updateForm('phone', e.target.value)} required />
+                    <span style={{ position: 'absolute', left: '44px', top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--color-text-secondary)', fontSize: '0.875rem', pointerEvents: 'none', zIndex: 2 }}>+91</span>
+                    <input type="tel" className="form-input" style={{ paddingLeft: '76px' }} placeholder="98765 43210"
+                      value={form.phone} onChange={e => {
+                        const val = e.target.value.replace(/^\+?91/, '').replace(/\D/g, '').slice(0, 10);
+                        updateForm('phone', val);
+                      }} required maxLength={10} inputMode="numeric" />
                   </div>
                 </div>
 
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Password</label>
-                    <input type={showPassword ? 'text' : 'password'} className="form-input" placeholder="Min 8 characters"
-                      value={form.password} onChange={e => updateForm('password', e.target.value)} required minLength={6} />
+                    <input type={showPassword ? 'text' : 'password'} className="form-input" placeholder="Min 8 chars, Aa, 123, !@#"
+                      value={form.password} onChange={e => updateForm('password', e.target.value)} required minLength={8} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Confirm</label>
@@ -262,12 +279,12 @@ export default function RegisterPage() {
                 <div className="form-divider" />
 
                 <div className="form-group">
-                  <label className="form-label">Aadhar Number</label>
+                  <label className="form-label">Aadhaar Number <span style={{ color: 'var(--color-accent-red, #ef4444)' }}>*</span></label>
                   <div className="form-input-icon-wrapper">
                     <CreditCard className="form-input-icon" size={20} />
-                    <input type="text" className="form-input" placeholder="XXXX XXXX XXXX"
-                      value={form.aadharNumber} onChange={e => updateForm('aadharNumber', e.target.value)}
-                      maxLength={14} />
+                    <input type="text" className="form-input" placeholder="12-digit Aadhaar Number"
+                      value={form.aadharNumber} onChange={e => updateForm('aadharNumber', e.target.value.replace(/\D/g, '').slice(0, 12))}
+                      required maxLength={12} inputMode="numeric" />
                   </div>
                 </div>
 

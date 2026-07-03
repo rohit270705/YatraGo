@@ -249,60 +249,6 @@ function Sidebar({ isOpen, onClose }) {
   );
 }
 
-// ===== Bottom Nav =====
-function BottomNav() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { user } = useAuthStore();
-  const role = user?.role || 'passenger';
-
-  const items =
-    role === 'passenger' ? [
-      { path: '/dashboard', label: 'Home', icon: Home },
-      { path: '/bookings', label: 'Trips', icon: Ticket },
-      { path: '/tracking', label: 'Track', icon: Navigation },
-      { path: '/parcel', label: 'Parcel', icon: Package },
-      { path: '/profile', label: 'Profile', icon: User },
-    ]
-    : role === 'agent' ? [
-      { path: '/agent', label: 'Dashboard', icon: Home },
-      { path: '/search', label: 'Book', icon: Search },
-      { path: '/bookings', label: 'Bookings', icon: Ticket },
-      { path: '/wallet', label: 'Wallet', icon: Wallet },
-    ]
-    : role === 'owner' ? [
-      { path: '/owner', label: 'Dashboard', icon: Home },
-      { path: '/vehicles', label: 'Vehicles', icon: Car },
-      { path: '/bookings', label: 'Bookings', icon: Ticket },
-      { path: '/wallet', label: 'Earnings', icon: Wallet },
-    ]
-    : role === 'driver' ? [
-      { path: '/driver', label: 'Dashboard', icon: Home },
-      { path: '/bookings', label: 'Trips', icon: MapPin },
-      { path: '/wallet', label: 'Earnings', icon: Wallet },
-    ]
-    : [
-      { path: '/admin', label: 'Panel', icon: ShieldCheck },
-      { path: '/vehicles', label: 'Vehicles', icon: Car },
-      { path: '/bookings', label: 'Bookings', icon: Ticket },
-      { path: '/wallet', label: 'Wallets', icon: Wallet },
-    ];
-
-  return (
-    <nav className="bottom-nav">
-      {items.map(item => (
-        <button
-          key={item.path}
-          className={`bottom-nav-item ${location.pathname === item.path ? 'active' : ''}`}
-          onClick={() => navigate(item.path)}
-        >
-          <item.icon size={22} />
-          <span>{item.label}</span>
-        </button>
-      ))}
-    </nav>
-  );
-}
 
 // ===== FIX 2: Notification Bell with click-outside close =====
 function NotificationBell() {
@@ -447,7 +393,6 @@ function AppLayout({ children }) {
         </div>
       </main>
 
-      <BottomNav />
       <LogoutConfirmModal />
       <TransportModal />
       <ErrorBoundary title="Chat assistant unavailable" message="The AI Assistant encountered an issue. Tap to reload.">

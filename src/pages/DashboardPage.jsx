@@ -4,21 +4,24 @@ import {
   MapPin, Search, Ticket, Wallet, Package, Car, TrendingUp,
   ArrowRight, Clock, CheckCircle, Navigation, Bike, Palmtree,
   Sparkles, Compass, Bell, UserCircle, ChevronRight, Map, ShieldCheck,
-  AlertCircle, ChevronDown, History, Luggage
+  AlertCircle, ChevronDown, History, Luggage, Pencil, Check, X, RotateCcw
 } from 'lucide-react';
-import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore } from '../store';
+import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToastStore } from '../store';
 import { supabase } from '../supabaseClient';
 import SkeletonLoader from '../components/SkeletonLoader';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, updateProfile } = useAuthStore();
   const { balance, isLoading: walletLoading } = useWalletStore();
   const { bookings, isLoading: bookingsLoading } = useBookingStore();
   const { vehicles, isLoading: vehiclesLoading } = useVehicleStore();
+  const addToast = useToastStore(s => s.addToast);
 
   const [dbRoutes, setDbRoutes] = useState([]);
   const [routesLoading, setRoutesLoading] = useState(true);
+  const [isEditingGreeting, setIsEditingGreeting] = useState(false);
+  const [customGreetingInput, setCustomGreetingInput] = useState('');
 
   const isLoading = walletLoading || bookingsLoading || vehiclesLoading;
 
@@ -46,6 +49,21 @@ export default function DashboardPage() {
   // Robust User Name Extraction
   const userName = user?.name || user?.full_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Traveler';
   const firstName = userName !== 'Traveler' ? userName.split(' ')[0] : 'Traveler';
+  const displayGreetingName = user?.preferredGreetingName || user?.preferred_greeting_name || firstName;
+
+  const handleSaveGreeting = async (e) => {
+    e?.preventDefault();
+    const val = customGreetingInput.trim() || null;
+    await updateProfile({ preferredGreetingName: val });
+    setIsEditingGreeting(false);
+    addToast(val ? 'Greeting updated!' : 'Greeting reset to default', 'success');
+  };
+
+  const handleResetGreeting = async () => {
+    await updateProfile({ preferredGreetingName: null });
+    setIsEditingGreeting(false);
+    addToast('Greeting reset to default', 'success');
+  };
 
   // Live trip detection
   const userBookings = (bookings || []).filter(b => b.user_id === user?.id);
@@ -100,9 +118,66 @@ export default function DashboardPage() {
         {/* 1. GREETING HEADER */}
         <div className="flex items-center justify-between mb-6 pt-2">
           <div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-[var(--color-text)]">
-              {greeting()}, {firstName} 👋
-            </h1>
+            <div className="flex items-center gap-2 relative flex-wrap">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-[var(--color-text)] flex items-center gap-2 flex-wrap">
+                <span>{greeting()}, {displayGreetingName}</span>
+                <span>👋</span>
+              </h1>
+              <button
+                onClick={() => {
+                  setCustomGreetingInput(user?.preferredGreetingName || user?.preferred_greeting_name || '');
+                  setIsEditingGreeting(!isEditingGreeting);
+                }}
+                className="p-1.5 rounded-full hover:bg-[var(--color-surface-elevated)] text-[var(--color-text-tertiary)] hover:text-[var(--color-text)] transition-colors inline-flex items-center justify-center cursor-pointer ml-1"
+                title="Customize greeting name"
+              >
+                <Pencil size={16} />
+              </button>
+            </div>
+
+            {/* Inline edit popover */}
+            {isEditingGreeting && (
+              <div className="mt-2 p-3 rounded-xl bg-[var(--color-surface)] border border-[var(--glass-border)] shadow-xl max-w-xs animate-fade-in z-20 relative">
+                <div className="text-xs font-semibold text-[var(--color-text-secondary)] mb-2">
+                  Customize display name
+                </div>
+                <form onSubmit={handleSaveGreeting} className="flex items-center gap-1.5 mb-2">
+                  <input
+                    type="text"
+                    className="form-input text-xs py-1.5 px-2.5 h-8 flex-1"
+                    placeholder={`e.g. Bhai, Boss, ${firstName}`}
+                    value={customGreetingInput}
+                    onChange={(e) => setCustomGreetingInput(e.target.value)}
+                    maxLength={20}
+                    autoFocus
+                  />
+                  <button
+                    type="submit"
+                    className="btn btn-primary h-8 px-2.5 text-xs flex items-center gap-1 shrink-0"
+                    title="Save"
+                  >
+                    <Check size={14} /> Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingGreeting(false)}
+                    className="btn btn-ghost h-8 w-8 p-0 flex items-center justify-center shrink-0"
+                    title="Cancel"
+                  >
+                    <X size={14} />
+                  </button>
+                </form>
+                {(user?.preferredGreetingName || user?.preferred_greeting_name) && (
+                  <button
+                    type="button"
+                    onClick={handleResetGreeting}
+                    className="text-[11px] text-[var(--color-accent-teal)] hover:underline flex items-center gap-1 w-full justify-end font-medium"
+                  >
+                    <RotateCcw size={11} /> Reset to default ({firstName})
+                  </button>
+                )}
+              </div>
+            )}
             <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] font-medium mt-0.5">
               Your personal transit & travel companion
             </p>
