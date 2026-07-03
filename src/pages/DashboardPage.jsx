@@ -6,7 +6,7 @@ import {
   Sparkles, Compass, Bell, UserCircle, ChevronRight, Map, ShieldCheck,
   AlertCircle, ChevronDown, Plane, TrainFront, History, Luggage
 } from 'lucide-react';
-import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToastStore } from '../store';
+import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToastStore, useTransportModalStore } from '../store';
 import { supabase } from '../supabaseClient';
 import SkeletonLoader from '../components/SkeletonLoader';
 
@@ -17,15 +17,14 @@ export default function DashboardPage() {
   const { bookings, isLoading: bookingsLoading } = useBookingStore();
   const { vehicles, isLoading: vehiclesLoading } = useVehicleStore();
   const { addToast } = useToastStore();
+  const { openModal } = useTransportModalStore();
 
-  const [originInput, setOriginInput] = useState('');
-  const [destinationInput, setDestinationInput] = useState('');
   const [dbRoutes, setDbRoutes] = useState([]);
   const [routesLoading, setRoutesLoading] = useState(true);
 
   const isLoading = walletLoading || bookingsLoading || vehiclesLoading;
 
-  // Fetch real routes from Supabase (FIX 1)
+  // Fetch real routes from Supabase
   useEffect(() => {
     async function fetchRoutes() {
       try {
@@ -63,27 +62,17 @@ export default function DashboardPage() {
     return 'Good evening';
   };
 
-  const handleSwapRoutes = () => {
-    const temp = originInput;
-    setOriginInput(destinationInput);
-    setDestinationInput(temp);
-  };
-
   const handleActionClick = (action) => {
-    if (action.actionType === 'scroll-flight') {
-      const el = document.getElementById('flight-booking-section');
-      if (el) el.scrollIntoView({ behavior: 'smooth' });
-      addToast("Flight booking coming soon! Stay tuned for updates. 🛫", "info");
-    } else if (action.actionType === 'scroll-train') {
-      const el = document.getElementById('train-booking-section');
-      if (el) el.scrollIntoView({ behavior: 'smooth' });
-      addToast("Train booking coming soon! We're integrating with IRCTC. 🚂", "info");
+    if (action.actionType === 'modal-flight') {
+      openModal('flights');
+    } else if (action.actionType === 'modal-train') {
+      openModal('trains');
     } else if (action.path) {
       navigate(action.path);
     }
   };
 
-  // Quick Actions with Flights ✈ and Trains 🚂 chips added
+  // Quick Actions with Flights ✈ and Trains 🚂 chips triggering popups
   const transitActions = [
     { 
       label: 'Book a ride', icon: Car, path: '/search',
@@ -110,16 +99,16 @@ export default function DashboardPage() {
       bgStyle: 'rgba(244, 63, 94, 0.22)', borderStyle: 'rgba(244, 63, 94, 0.45)', colorStyle: '#fb7185'
     },
     {
-      label: 'Flights ✈', icon: Plane, actionType: 'scroll-flight',
+      label: 'Flights ✈', icon: Plane, actionType: 'modal-flight',
       bgStyle: 'rgba(251, 113, 133, 0.22)', borderStyle: 'rgba(251, 113, 133, 0.45)', colorStyle: '#f43f5e'
     },
     {
-      label: 'Trains 🚂', icon: TrainFront, actionType: 'scroll-train',
+      label: 'Trains 🚂', icon: TrainFront, actionType: 'modal-train',
       bgStyle: 'rgba(99, 102, 241, 0.22)', borderStyle: 'rgba(99, 102, 241, 0.45)', colorStyle: '#818cf8'
     }
   ];
 
-  // Format real routes from Supabase or user bookings (FIX 1 - No fake hardcoded routes)
+  // Format real routes from Supabase or user bookings (No fake hardcoded routes)
   const recentUserRoutes = (userBookings || [])
     .filter(b => b.pickup && b.destination)
     .map(b => ({
@@ -216,108 +205,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* 3. BOARDING-PASS SEARCH CARD (FIX 2: max-w-[800px] mx-auto) */}
-        <div
-          className="mb-8 p-0 relative rounded-2xl shadow-2xl transition-all duration-300 w-full max-w-[800px] mx-auto"
-          style={{
-            background: 'rgba(255, 255, 255, 0.05)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            maxWidth: '800px',
-            margin: '0 auto 2rem auto'
-          }}
-        >
-          {/* Header tag with prominent teal TICKET # stamp */}
-          <div className="bg-black/25 px-5 py-3 border-b border-white/10 flex items-center justify-between rounded-t-2xl">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-[#2dd4bf] flex items-center gap-2">
-              <Car size={15} className="text-[#2dd4bf]" /> Boarding Pass • Route Search
-            </span>
-            <div className="bg-[#14b8a6]/25 border border-[#14b8a6]/60 px-3 py-1 rounded-full shadow-md">
-              <span className="text-xs font-mono font-black text-[#2dd4bf] tracking-wider">TICKET #{Math.floor(100000 + Math.random() * 900000)}</span>
-            </div>
-          </div>
-
-          {/* Top section: From / To fields with circular swap icon */}
-          <div className="p-5 sm:p-6 relative">
-            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 relative">
-              <div className="w-full md:flex-1 relative flex items-center bg-[#0b1329]/80 rounded-xl p-3.5 border border-white/10 focus-within:border-[#2dd4bf] transition-colors shadow-inner">
-                <div className="w-3.5 h-3.5 rounded-full border-2 border-[#2dd4bf] mr-3.5 shrink-0"></div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[10px] uppercase tracking-wider text-white/50 font-bold mb-0.5">Origin Point</div>
-                  <input
-                    value={originInput}
-                    onChange={(e) => setOriginInput(e.target.value)}
-                    className="w-full bg-transparent border-0 p-0 text-sm sm:text-base font-bold text-white focus:outline-none focus:ring-0 placeholder:text-white/40 placeholder:font-normal truncate"
-                    placeholder="From (e.g., Mumbai, Airport T2)"
-                  />
-                </div>
-              </div>
-
-              {/* Circular Swap Icon */}
-              <div className="flex justify-center z-10 -my-3 md:my-0 md:-mx-4 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleSwapRoutes}
-                  className="w-10 h-10 rounded-full bg-[#0f1936] border border-white/20 shadow-lg flex items-center justify-center text-[#2dd4bf] hover:rotate-180 hover:bg-[#2dd4bf] hover:text-black transition-all duration-300"
-                  title="Swap Origin and Destination"
-                >
-                  <ArrowRight size={18} className="rotate-90 md:rotate-0" />
-                </button>
-              </div>
-
-              <div className="w-full md:flex-1 relative flex items-center bg-[#0b1329]/80 rounded-xl p-3.5 border border-white/10 focus-within:border-[#2dd4bf] transition-colors shadow-inner">
-                <div className="w-3.5 h-3.5 rounded-full bg-[#2dd4bf] mr-3.5 shrink-0 shadow-sm shadow-teal-500/50"></div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[10px] uppercase tracking-wider text-white/50 font-bold mb-0.5">Destination Point</div>
-                  <input
-                    value={destinationInput}
-                    onChange={(e) => setDestinationInput(e.target.value)}
-                    className="w-full bg-transparent border-0 p-0 text-sm sm:text-base font-bold text-white focus:outline-none focus:ring-0 placeholder:text-white/40 placeholder:font-normal truncate"
-                    placeholder="To (e.g., Pune, Tech Park)"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Perforated Dashed Divider with Cutout Notches */}
-          <div className="relative flex items-center justify-between w-full my-1 py-1">
-            {/* Left Cutout Notch */}
-            <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0b1329] border border-white/20 z-20 shadow-inner"></div>
-            {/* Dashed Line */}
-            <div className="w-full border-b-2 border-dashed border-white/25 mx-4"></div>
-            {/* Right Cutout Notch */}
-            <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0b1329] border border-white/20 z-20 shadow-inner"></div>
-          </div>
-
-          {/* Bottom section: Date picker pill + Search button below dashed line */}
-          <div className="p-5 sm:p-6 bg-black/20 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 rounded-b-2xl">
-            <div className="w-full sm:w-auto flex items-center">
-              <div className="bg-[#0f1936] border border-white/15 rounded-full px-4 py-2.5 flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm w-full sm:w-auto justify-center">
-                <Clock size={16} className="text-[#2dd4bf] shrink-0" />
-                <span>Today, {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                <span className="text-white/40">•</span>
-                <input type="time" defaultValue="10:00" className="bg-transparent border-0 p-0 text-xs sm:text-sm text-white focus:outline-none focus:ring-0 font-bold cursor-pointer" />
-              </div>
-            </div>
-
-            <button
-              onClick={() => navigate('/search')}
-              className="btn w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-lg hover:scale-[1.02] transition-transform shrink-0"
-              style={{
-                backgroundColor: '#14b8a6',
-                color: '#000000',
-                boxShadow: '0 10px 25px rgba(20, 184, 166, 0.35)'
-              }}
-            >
-              <Search size={18} />
-              <span>Search Transit</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 4. QUICK ACTIONS (With Flights ✈ and Trains 🚂 chips) */}
+        {/* 3. QUICK ACTIONS (With Flights ✈ and Trains 🚂 chips opening popups) */}
         <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
           <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-3 flex items-center gap-1.5">
             <Sparkles size={14} className="text-[var(--color-accent-teal)]" />
@@ -346,7 +234,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 5. WALLET CARD (FIX 2: max-w-[800px] mx-auto) */}
+        {/* 4. WALLET CARD */}
         <div className="glass-card mb-8 p-0 relative rounded-2xl border border-[var(--glass-border)] shadow-xl bg-gradient-to-br from-[var(--color-surface)] to-[var(--color-surface)]/80 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
           {/* Balance on top */}
           <div className="p-5 sm:p-6 flex items-center justify-between gap-4">
@@ -390,7 +278,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* FIX 3: RECENT BOOKINGS SECTION */}
+        {/* 5. RECENT BOOKINGS SECTION */}
         <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] flex items-center gap-1.5">
@@ -458,7 +346,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* FIX 1: POPULAR ROUTES NEAR YOU (Real Data from Supabase / No hardcoded fakes) */}
+        {/* 6. POPULAR ROUTES NEAR YOU (Real Data from Supabase / No hardcoded fakes) */}
         <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] flex items-center gap-1.5">
@@ -521,88 +409,6 @@ export default function DashboardPage() {
               No routes available yet
             </div>
           )}
-        </div>
-
-        {/* SECTION 1 — FLIGHT BOOKING (✈️) */}
-        <div
-          id="flight-booking-section"
-          onClick={() => addToast("Flight booking coming soon! Stay tuned for updates. 🛫", "info")}
-          onMouseEnter={() => addToast("Flight booking coming soon! Stay tuned for updates. 🛫", "info")}
-          className="glass-card rounded-2xl border border-[var(--glass-border)] p-5 sm:p-6 mb-6 relative overflow-hidden shadow-xl bg-[var(--color-surface)]/90 cursor-not-allowed transition-all hover:border-amber-500/50 w-full max-w-[800px] mx-auto"
-          style={{ maxWidth: '800px', margin: '0 auto 1.5rem auto' }}
-        >
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0 shadow-md">
-                <Plane size={26} />
-              </div>
-              <div>
-                <h3 className="text-lg sm:text-xl font-extrabold text-[var(--color-text)] tracking-tight">Flight Booking</h3>
-                <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] font-medium mt-0.5">Book domestic flights across India</p>
-              </div>
-            </div>
-            <div className="bg-amber-500/20 border border-amber-500/40 px-3.5 py-1.5 rounded-full flex items-center gap-2 shrink-0 shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-              <span className="text-xs font-black uppercase tracking-wider text-amber-300">Coming Soon</span>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-3">Popular Domestic Routes</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {['Mumbai ✈ Delhi', 'Bangalore ✈ Kolkata', 'Chennai ✈ Hyderabad', 'Pune ✈ Jaipur'].map((route, i) => (
-                <div key={i} className="bg-[#0b1329]/70 border border-white/5 rounded-xl p-3.5 flex items-center justify-between opacity-75">
-                  <span className="font-bold text-sm text-white/90">{route}</span>
-                  <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded bg-amber-500/10 text-amber-300/80 border border-amber-500/20">Domestic</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* SECTION 2 — TRAIN/RAILWAY BOOKING (🚂) */}
-        <div
-          id="train-booking-section"
-          onClick={() => addToast("Train booking coming soon! We're integrating with IRCTC. 🚂", "info")}
-          onMouseEnter={() => addToast("Train booking coming soon! We're integrating with IRCTC. 🚂", "info")}
-          className="glass-card rounded-2xl border border-[var(--glass-border)] p-5 sm:p-6 mb-8 relative overflow-hidden shadow-xl bg-[var(--color-surface)]/90 cursor-not-allowed transition-all hover:border-indigo-500/50 w-full max-w-[800px] mx-auto"
-          style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}
-        >
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0 shadow-md">
-                <TrainFront size={26} />
-              </div>
-              <div>
-                <h3 className="text-lg sm:text-xl font-extrabold text-[var(--color-text)] tracking-tight">Train Booking</h3>
-                <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] font-medium mt-0.5">Book train tickets across India via IRCTC</p>
-              </div>
-            </div>
-            <div className="bg-indigo-500/20 border border-indigo-500/40 px-3.5 py-1.5 rounded-full flex items-center gap-2 shrink-0 shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
-              <span className="text-xs font-black uppercase tracking-wider text-indigo-300">Coming Soon</span>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-3">Popular IRCTC Routes</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {[
-                { route: 'Mumbai → Delhi', train: 'Rajdhani Express' },
-                { route: 'Pune → Bangalore', train: 'Udyan Express' },
-                { route: 'Chennai → Hyderabad', train: 'Charminar Express' },
-                { route: 'Kolkata → Jaipur', train: 'Express' }
-              ].map((item, i) => (
-                <div key={i} className="bg-[#0b1329]/70 border border-white/5 rounded-xl p-3.5 flex items-center justify-between opacity-75">
-                  <div>
-                    <div className="font-bold text-sm text-white/90">{item.route}</div>
-                    <div className="text-[11px] text-white/50 font-medium">{item.train}</div>
-                  </div>
-                  <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300/80 border border-indigo-500/20">IRCTC</span>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
       </div>

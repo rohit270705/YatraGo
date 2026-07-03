@@ -4,14 +4,15 @@ import {
   LayoutDashboard, Search, Ticket, Wallet, Car, Package, Users, ShieldCheck,
   LogOut, Menu, X, MapPin, UserCircle, Settings, Bell, ChevronRight,
   Briefcase, TruckIcon, ClipboardList, FileCheck, CreditCard, BarChart3,
-  Home, Map, Bike, Palmtree, Navigation, User
+  Home, Map, Bike, Palmtree, Navigation, User, Plane, TrainFront
 } from 'lucide-react';
-import { useAuthStore, useToastStore, useNotificationStore, usePlatformStore } from './store';
+import { useAuthStore, useToastStore, useNotificationStore, usePlatformStore, useTransportModalStore } from './store';
 import { supabase } from './supabaseClient';
 import ErrorBoundary from './components/ErrorBoundary';
 import SkeletonLoader from './components/SkeletonLoader';
 import OfflineBanner from './components/OfflineBanner';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
+import TransportModal from './components/TransportModal';
 
 // ===== Lazy Loaded Pages (Priority 7 Code Splitting) =====
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -117,6 +118,8 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/bookings', label: 'My Bookings', icon: Ticket },
     { path: '/wallet', label: 'Wallet', icon: Wallet },
     { path: '/packages', label: 'Holiday Packages', icon: Palmtree },
+    { path: '#flights', label: 'Flights', icon: Plane, isModal: 'flights' },
+    { path: '#trains', label: 'Trains', icon: TrainFront, isModal: 'trains' },
     { path: '/host', label: 'My Homestay', icon: Home },
     { path: '/rentals', label: 'Rent Bike/Scooty', icon: Bike },
     { path: '/vehicles', label: 'Vehicles', icon: Car },
@@ -195,9 +198,16 @@ function Sidebar({ isOpen, onClose }) {
           </div>
           {links.map(link => (
             <button
-              key={link.path}
+              key={link.path || link.label}
               className={`sidebar-link ${location.pathname === link.path ? 'active' : ''}`}
-              onClick={() => handleNav(link.path)}
+              onClick={() => {
+                if (link.isModal) {
+                  useTransportModalStore.getState().openModal(link.isModal);
+                  onClose();
+                } else {
+                  handleNav(link.path);
+                }
+              }}
             >
               <link.icon className="sidebar-link-icon" size={20} />
               {link.label}
@@ -439,6 +449,7 @@ function AppLayout({ children }) {
 
       <BottomNav />
       <LogoutConfirmModal />
+      <TransportModal />
       <ErrorBoundary title="Chat assistant unavailable" message="The AI Assistant encountered an issue. Tap to reload.">
         <ChatWidget />
       </ErrorBoundary>

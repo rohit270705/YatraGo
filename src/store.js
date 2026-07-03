@@ -2982,3 +2982,11 @@ export const useDriverStore = create((set, get) => ({
     }
   }
 }));
+
+// 18. TRANSPORT MODAL STORE (Flights & Trains Coming Soon Popups)
+export const useTransportModalStore = create((set) => ({
+  activeModal: null, // null | 'flights' | 'trains'
+  openModal: (type) => set({ activeModal: type }),
+  closeModal: () => set({ activeModal: null }),
+}));
+
