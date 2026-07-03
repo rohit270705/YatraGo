@@ -40,6 +40,14 @@ export default function VerificationPage() {
   const handleKeyDown = (index, e) => {
     if (e.key === 'Backspace' && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const isComplete = otp.every(digit => digit !== '') && otp.join('').length === 6;
+      if (isComplete && !isVerifying) {
+        handleVerify();
+      } else if (!isComplete) {
+        addToast('Please enter the full 6-digit verification code', 'warning');
+      }
     }
   };
 
