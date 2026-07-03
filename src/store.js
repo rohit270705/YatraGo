@@ -2555,7 +2555,7 @@ export const useChatStore = create((set, get) => ({
             };
             set({ messages: [...get().messages, uiMsg] });
             if (!get().isChatOpen || activeConversationId !== conv.id) {
-              const title = conv.title || (conv.type === 'support' ? 'YatraGo Assistant' : 'New Message');
+              const title = conv.title || (conv.type === 'support' ? 'Yaara' : 'New Message');
               useToastStore.getState().addToast(`New message from ${title}: ${newDbMsg.content}`, 'info');
             }
           }

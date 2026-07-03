@@ -290,10 +290,10 @@ export async function sendAiMessage(message, userContext, chatHistory, detectedL
     console.error('Error calling AI router:', err);
     // Return offline fallback
     const fallbacks = {
-      en: "Our assistant is busy right now. Please try again in a moment or raise a support ticket 🙏",
-      hi: "हमारा असिस्टेंट अभी व्यस्त है। कृपया थोड़ी देर बाद कोशिश करें या सपोर्ट टिकट बनाएं 🙏",
-      mr: "आमचा असिस्टंट सध्या व्यस्त आहे। कृपया थोड्या वेळाने पुन्हा प्रयत्न करा 🙏",
-      hinglish: "Abhi assistant busy hai. Thodi der mein try karein ya support ticket raise karein 🙏"
+      en: "Yaara is busy right now. Please try again in a moment or raise a support ticket 🙏",
+      hi: "यारा अभी व्यस्त है। कृपया थोड़ी देर बाद कोशिश करें या सपोर्ट टिकट बनाएं 🙏",
+      mr: "यारा सध्या व्यस्त आहे। कृपया थोड्या वेळाने पुन्हा प्रयत्न करा 🙏",
+      hinglish: "Abhi Yaara busy hai. Thodi der mein try karein ya support ticket raise karein 🙏"
     };
     return {
       reply: fallbacks[detectedLanguage] || fallbacks.en,

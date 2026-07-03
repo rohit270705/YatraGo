@@ -47,7 +47,7 @@ export default function ChatWidget() {
       <button
         className="chat-floating-btn"
         onClick={toggleChat}
-        aria-label="Open YatraGo Assistant"
+        aria-label="Open Yaara AI Chat"
       >
         <MessageSquare size={24} />
       </button>
@@ -88,7 +88,7 @@ export default function ChatWidget() {
         <div className="chat-header-info">
           <Bot size={22} className="text-accent-teal" />
           <div>
-            <span className="chat-title">YatraGo Assistant</span>
+            <span className="chat-title">Yaara</span>
             <span className="chat-online-dot" />
           </div>
         </div>
@@ -116,7 +116,7 @@ export default function ChatWidget() {
         {aiMessages.length === 0 && !isTyping ? (
           <div className="chat-welcome">
             <Bot size={40} className="text-accent-teal" style={{ marginBottom: 12 }} />
-            <h3>Welcome to YatraGo Assistant! 🤖</h3>
+            <h3>Welcome to Yaara! 🤖</h3>
             <p>
               {activeLang === 'hi' ? 'नमस्ते! मैं आपकी यात्रा में कैसे मदद कर सकता हूँ?' :
                activeLang === 'mr' ? 'नमस्कार! मी तुमच्या प्रवासात कशी मदत करू शकतो?' :

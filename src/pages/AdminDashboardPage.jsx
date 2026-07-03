@@ -1126,7 +1126,7 @@ export default function AdminDashboardPage() {
       {activeSection === 'ai-stats' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontWeight: 700, margin: 0 }}><MessageSquare size={20} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} /> AI Assistant Usage & Routing Stats</h3>
+            <h3 style={{ fontWeight: 700, margin: 0 }}><MessageSquare size={20} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} /> Yaara AI Usage & Routing Stats</h3>
             <span style={{ fontSize: '13px', color: 'var(--color-text-tertiary)' }}>Privacy-First 4-Provider Router (DPDP Act 2023)</span>
           </div>
 

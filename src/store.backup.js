@@ -1310,7 +1310,7 @@ export const useChatStore = create(
           set({ conversations: [...conversations, supportConv] });
           
           // Add welcome message
-          get().sendMessage(supportConv.id, 'Hello! I am the YatraGo Assistant. I can help you with wallet balance, ticket status, or rental issues. How can I help you today?', 'bot');
+          get().sendMessage(supportConv.id, 'Hello! I am Yaara, your travel assistant. I can help you with wallet balance, ticket status, or rental issues. How can I help you today?', 'bot');
         }
         
         set({ activeConversationId: supportConv.id, isChatOpen: true });

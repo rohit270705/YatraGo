@@ -4,7 +4,8 @@ import {
   MapPin, Search, Ticket, Wallet, Package, Car, TrendingUp,
   ArrowRight, Clock, CheckCircle, Navigation, Bike, Palmtree,
   Sparkles, Compass, Bell, UserCircle, ChevronRight, Map, ShieldCheck,
-  AlertCircle, ChevronDown, History, Luggage, Pencil, Check, X, RotateCcw
+  AlertCircle, ChevronDown, History, Luggage, Pencil, Check, X, RotateCcw,
+  Calendar, Star, Award, DollarSign
 } from 'lucide-react';
 import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToastStore } from '../store';
 import { supabase } from '../supabaseClient';
@@ -22,6 +23,11 @@ export default function DashboardPage() {
   const [routesLoading, setRoutesLoading] = useState(true);
   const [isEditingGreeting, setIsEditingGreeting] = useState(false);
   const [customGreetingInput, setCustomGreetingInput] = useState('');
+
+  // Quick search widget state
+  const [quickFrom, setQuickFrom] = useState('');
+  const [quickTo, setQuickTo] = useState('');
+  const [quickDate, setQuickDate] = useState(new Date().toISOString().split('T')[0]);
 
   const isLoading = walletLoading || bookingsLoading || vehiclesLoading;
 
@@ -65,6 +71,15 @@ export default function DashboardPage() {
     addToast('Greeting reset to default', 'success');
   };
 
+  const handleQuickSearch = (e) => {
+    e?.preventDefault();
+    const params = new URLSearchParams();
+    if (quickFrom) params.set('from', quickFrom);
+    if (quickTo) params.set('to', quickTo);
+    if (quickDate) params.set('date', quickDate);
+    navigate(`/search?${params.toString()}`);
+  };
+
   // Live trip detection
   const userBookings = (bookings || []).filter(b => b.user_id === user?.id);
   const activeBookings = userBookings.filter(b => ['confirmed', 'in_progress', 'pending'].includes(b.status));
@@ -78,16 +93,16 @@ export default function DashboardPage() {
     return 'Good evening';
   };
 
-  // Format real routes from Supabase or user bookings (No fake hardcoded routes)
+  // Format unique user routes for Recent Searches section
   const recentUserRoutes = (userBookings || [])
     .filter(b => b.pickup && b.destination)
     .map(b => ({
       from: b.pickup,
       to: b.destination,
+      date: b.created_at || Date.now(),
       price: `₹${b.total_amount || b.price || Math.floor(150 + Math.random() * 300)}`,
       duration: `${b.duration || '25 min'}`,
-      type: b.trip_type || 'Recent Ride',
-      tag: 'Repeat Route'
+      type: b.trip_type || 'Ride'
     }));
 
   const uniqueUserRoutes = [];
@@ -100,23 +115,31 @@ export default function DashboardPage() {
     }
   });
 
-  const formattedDbRoutes = (dbRoutes || []).map(r => ({
-    from: r.from_city || r.origin || r.source || r.pickup || 'Origin City',
-    to: r.to_city || r.destination || r.dropoff || 'Destination City',
-    price: r.base_price ? `₹${r.base_price}` : r.price ? `₹${r.price}` : r.fare ? `₹${r.fare}` : '₹350',
-    duration: r.duration || r.est_duration || '40 min',
-    type: r.vehicle_type || r.type || 'Popular Commute',
-    tag: 'Popular'
-  }));
+  // Pre-populated Indian Popular Routes fallback
+  const fallbackPopularRoutes = [
+    { from: 'Mumbai', to: 'Pune', duration: '3h 30m', price: '₹550', type: 'Intercity Express', tag: 'Popular' },
+    { from: 'Delhi', to: 'Agra', duration: '3h', price: '₹400', type: 'Highway Shuttle', tag: 'Popular' },
+    { from: 'Bangalore', to: 'Mysuru', duration: '3h', price: '₹350', type: 'Intercity Bus', tag: 'Popular' },
+    { from: 'Chennai', to: 'Pondicherry', duration: '3h 30m', price: '₹300', type: 'Coastal Ride', tag: 'Popular' }
+  ];
 
-  const displayRoutes = uniqueUserRoutes.length >= 2 ? uniqueUserRoutes : formattedDbRoutes;
-  const routeSectionTitle = uniqueUserRoutes.length >= 2 ? "Your Recent & Usual Routes" : "Popular Routes Near You";
+  const popularRoutes = (dbRoutes && dbRoutes.length > 0)
+    ? dbRoutes.map(r => ({
+        from: r.from_city || r.origin || r.source || r.pickup || 'Origin City',
+        to: r.to_city || r.destination || r.dropoff || 'Destination City',
+        price: r.base_price ? `₹${r.base_price}` : r.price ? `₹${r.price}` : r.fare ? `₹${r.fare}` : '₹350',
+        duration: r.duration || r.est_duration || '3h',
+        type: r.vehicle_type || r.type || 'Intercity',
+        tag: 'Popular'
+      }))
+    : fallbackPopularRoutes;
 
   return (
     <div className="animate-fade-in pb-28 min-h-[calc(100vh-80px)] max-w-5xl mx-auto flex flex-col justify-between">
       <div className="w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
+        
         {/* 1. GREETING HEADER */}
-        <div className="flex items-center justify-between mb-6 pt-2">
+        <div className="flex items-center justify-between mb-4 pt-2">
           <div>
             <div className="flex items-center gap-2 relative flex-wrap">
               <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-[var(--color-text)] flex items-center gap-2 flex-wrap">
@@ -203,7 +226,60 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 2. LIVE TRIP STRIP (Only shown if active booking exists) */}
+        {/* 2. QUICK SEARCH WIDGET (Compact, below greeting) */}
+        <div
+          className="mb-6 p-4 rounded-2xl border border-[var(--glass-border)] shadow-lg mx-auto"
+          style={{
+            background: 'rgba(255, 255, 255, 0.04)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            maxWidth: '700px'
+          }}
+        >
+          <form onSubmit={handleQuickSearch} className="flex flex-col sm:flex-row items-center gap-2.5">
+            <div className="flex items-center gap-2 w-full sm:flex-1 bg-[var(--color-bg)]/80 border border-[var(--glass-border)] rounded-xl px-3 py-2">
+              <MapPin size={16} className="text-[var(--color-accent-teal)] shrink-0" />
+              <input
+                type="text"
+                placeholder="From (e.g. Mumbai)"
+                value={quickFrom}
+                onChange={(e) => setQuickFrom(e.target.value)}
+                className="bg-transparent border-none outline-none text-xs sm:text-sm text-[var(--color-text)] w-full placeholder-[var(--color-text-tertiary)]"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:flex-1 bg-[var(--color-bg)]/80 border border-[var(--glass-border)] rounded-xl px-3 py-2">
+              <Navigation size={16} className="text-[#3b82f6] shrink-0" />
+              <input
+                type="text"
+                placeholder="To (e.g. Pune)"
+                value={quickTo}
+                onChange={(e) => setQuickTo(e.target.value)}
+                className="bg-transparent border-none outline-none text-xs sm:text-sm text-[var(--color-text)] w-full placeholder-[var(--color-text-tertiary)]"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto bg-[var(--color-bg)]/80 border border-[var(--glass-border)] rounded-xl px-3 py-2 shrink-0">
+              <Calendar size={16} className="text-[var(--color-text-secondary)] shrink-0" />
+              <input
+                type="date"
+                value={quickDate}
+                onChange={(e) => setQuickDate(e.target.value)}
+                className="bg-transparent border-none outline-none text-xs text-[var(--color-text)] cursor-pointer"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full sm:w-auto bg-[#14b8a6] hover:bg-[#0d9488] text-black font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl transition-all shadow-md shrink-0 flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Search size={16} />
+              <span>Search Transit</span>
+            </button>
+          </form>
+        </div>
+
+        {/* 3. LIVE TRIP STRIP (Only shown if active booking exists) */}
         {currentTrip && (
           <div
             onClick={() => navigate('/tracking')}
@@ -234,7 +310,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* 3. PREMIUM WALLET CARD (Redesigned) */}
+        {/* 4. PREMIUM WALLET CARD WITH PROMINENT REWARDS */}
         <div
           className="mb-8 w-full max-w-[800px] mx-auto shadow-xl"
           style={{
@@ -248,7 +324,7 @@ export default function DashboardPage() {
             margin: '0 auto 2rem auto'
           }}
         >
-          {/* Top part: Left (Icon + Label + Balance) | Right (Add Money + Button) */}
+          {/* Top half: Left (Icon + Label + Balance) | Right (Add Money + Button) */}
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1.5">
@@ -263,40 +339,101 @@ export default function DashboardPage() {
             </div>
             <button
               onClick={() => navigate('/wallet')}
-              className="bg-[#14b8a6] hover:bg-[#0d9488] text-black font-extrabold text-xs px-4 py-2 rounded-full transition-all shadow-md shrink-0 mt-1"
+              className="bg-[#14b8a6] hover:bg-[#0d9488] text-black font-extrabold text-xs px-4 py-2 rounded-full transition-all shadow-md shrink-0 mt-1 cursor-pointer"
             >
               Add Money +
             </button>
           </div>
 
-          {/* Clean Subtle Separator Line (No perforated dashed line in middle or outside) */}
+          {/* Clean Subtle Separator Line */}
           <div className="w-full border-b border-white/10 my-5"></div>
 
-          {/* Bottom part: Transit Rewards & progress bar */}
-          <div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs sm:text-sm">
-              <div className="flex items-center gap-2 font-medium text-white/80">
-                <span className="text-base">🏅</span>
+          {/* Bottom half: Prominent Loyalty / Rewards Section */}
+          <div className="bg-gradient-to-r from-[#14b8a6]/10 via-transparent to-transparent p-3.5 rounded-xl border border-[#14b8a6]/20">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs sm:text-sm mb-2.5">
+              <div className="flex items-center gap-2 font-bold text-white">
+                <span className="text-lg">🏅</span>
                 <span>
-                  Transit Rewards: <span className="text-[#2dd4bf] font-bold">3 of 5 rides</span> to a free trip
+                  Transit Rewards: <span className="text-[#2dd4bf]">3 of 5 rides</span> to your FREE trip!
                 </span>
               </div>
-              <div className="w-full sm:w-48 bg-white/10 h-2 rounded-full overflow-hidden shrink-0 shadow-inner">
-                <div className="bg-[#14b8a6] h-full rounded-full transition-all duration-500 shadow-sm" style={{ width: '60%' }}></div>
+              <span className="text-[11px] font-semibold text-white/70 bg-white/10 px-2.5 py-0.5 rounded-full shrink-0">
+                2 more rides to unlock free trip
+              </span>
+            </div>
+
+            {/* Progress bar: 60% in teal */}
+            <div className="w-full bg-white/10 h-2.5 rounded-full overflow-hidden shadow-inner mb-2">
+              <div
+                className="bg-gradient-to-r from-[#14b8a6] to-[#2dd4bf] h-full rounded-full transition-all duration-500 shadow-sm relative"
+                style={{ width: '60%' }}
+              >
+                <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
               </div>
+            </div>
+
+            <div className="text-[11px] font-medium text-white/60 flex items-center justify-between">
+              <span>Keep riding to unlock by Aug 2026 🎉</span>
+              <span className="text-[#2dd4bf] font-bold">60% Completed</span>
             </div>
           </div>
         </div>
 
-        {/* 4. RECENT BOOKINGS SECTION */}
+        {/* 5. RECENT SEARCHES / FREQUENTLY TRAVELED ROUTES */}
         <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] flex items-center gap-1.5">
               <History size={14} className="text-[var(--color-accent-teal)]" />
+              <span>Frequently Traveled Routes</span>
+            </h3>
+          </div>
+
+          {uniqueUserRoutes.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {uniqueUserRoutes.slice(0, 3).map((r, idx) => (
+                <div
+                  key={idx}
+                  className="glass-card p-4 rounded-xl border border-[var(--glass-border)] hover:border-[var(--color-accent-teal)] transition-all flex items-center justify-between gap-4 bg-[var(--color-surface)]/90 shadow-md"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-[var(--color-bg)] border border-[var(--glass-border)] flex items-center justify-center text-[var(--color-accent-teal)] shrink-0">
+                      <MapPin size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-extrabold text-sm sm:text-base text-[var(--color-text)] truncate flex items-center gap-2">
+                        <span>{r.from} → {r.to}</span>
+                      </div>
+                      <div className="text-xs text-[var(--color-text-secondary)] mt-0.5">
+                        Last traveled: {new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • {r.duration}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigate(`/search?from=${encodeURIComponent(r.from)}&to=${encodeURIComponent(r.to)}`)}
+                    className="btn btn-sm px-3.5 py-1.5 rounded-lg font-bold text-xs bg-[#14b8a6]/10 hover:bg-[#14b8a6] text-[#2dd4bf] hover:text-black transition-colors shrink-0 flex items-center gap-1 cursor-pointer border border-[#14b8a6]/30"
+                  >
+                    <span>Book Again</span>
+                    <ArrowRight size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-5 text-xs font-medium text-[var(--color-text-tertiary)] bg-[var(--color-surface)]/40 rounded-xl border border-[var(--glass-border)]">
+              Your recent searches and frequently traveled routes will appear here
+            </div>
+          )}
+        </div>
+
+        {/* 6. RECENT BOOKINGS & PLAN YOUR FIRST TRIP PROMO CARD */}
+        <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] flex items-center gap-1.5">
+              <Ticket size={14} className="text-[var(--color-accent-teal)]" />
               <span>Recent Bookings</span>
             </h3>
             {userBookings.length > 0 && (
-              <button onClick={() => navigate('/bookings')} className="text-xs font-bold text-[var(--color-accent-teal)] hover:underline flex items-center gap-1">
+              <button onClick={() => navigate('/bookings')} className="text-xs font-bold text-[var(--color-accent-teal)] hover:underline flex items-center gap-1 cursor-pointer">
                 <span>View All</span>
                 <ChevronRight size={14} />
               </button>
@@ -340,85 +477,149 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : (
-            <div className="glass-card p-8 rounded-2xl border border-[var(--glass-border)] text-center flex flex-col items-center justify-center gap-3 bg-[var(--color-surface)]/80 shadow-md">
-              <div className="w-12 h-12 rounded-full bg-[var(--color-bg)] border border-[var(--glass-border)] flex items-center justify-center text-[var(--color-text-tertiary)] shadow-inner">
-                <Luggage size={24} />
+            /* PLAN YOUR FIRST TRIP PROMOTIONAL CARD */
+            <div
+              className="p-6 rounded-2xl border border-[#14b8a6]/40 shadow-xl text-left relative overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.18) 0%, rgba(15, 23, 42, 0.95) 50%, rgba(15, 23, 42, 0.98) 100%)',
+                backdropFilter: 'blur(10px)'
+              }}
+            >
+              <div className="flex items-start gap-4 mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-[#14b8a6]/20 border border-[#14b8a6]/40 flex items-center justify-center text-3xl shrink-0 shadow-md">
+                  🗺️
+                </div>
+                <div>
+                  <h4 className="text-lg sm:text-xl font-black text-white tracking-tight">Plan Your First Trip!</h4>
+                  <p className="text-xs sm:text-sm text-white/75 mt-1 leading-relaxed">
+                    Explore India with YatraGo — comfortable city rides, intercity buses, verified drivers, and real-time live GPS tracking.
+                  </p>
+                </div>
               </div>
-              <div className="font-bold text-base text-[var(--color-text)]">No trips yet. Book your first trip!</div>
-              <button
-                onClick={() => navigate('/search')}
-                className="btn btn-sm px-6 py-2.5 rounded-xl font-bold text-xs shadow-md hover:scale-105 transition-transform mt-1"
-                style={{ backgroundColor: '#14b8a6', color: '#000000' }}
-              >
-                Search Transit
-              </button>
+
+              <div className="flex flex-wrap items-center gap-3 my-5">
+                <button
+                  onClick={() => navigate('/search')}
+                  className="bg-[#14b8a6] hover:bg-[#0d9488] text-black font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                >
+                  <Search size={16} />
+                  <span>Search Transit</span>
+                </button>
+                <button
+                  onClick={() => navigate('/packages')}
+                  className="bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl border border-white/20 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <Palmtree size={16} className="text-[#2dd4bf]" />
+                  <span>View Packages</span>
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-white/10 text-[11px] font-bold text-white/80">
+                <span className="flex items-center gap-1 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">✅ Group Booking</span>
+                <span className="flex items-center gap-1 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">✅ Promo Codes</span>
+                <span className="flex items-center gap-1 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">✅ Live Tracking</span>
+              </div>
             </div>
           )}
         </div>
 
-        {/* 5. POPULAR ROUTES NEAR YOU (Real Data from Supabase / No hardcoded fakes) */}
+        {/* 7. JOURNEY STATS / INSIGHTS (Only show if user has at least 1 booking) */}
+        {userBookings.length > 0 && (
+          <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] flex items-center gap-1.5">
+                <Award size={14} className="text-[var(--color-accent-teal)]" />
+                <span>Your Journey Stats</span>
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="glass-card p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--color-surface)]/80 flex items-center gap-3.5 shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
+                  <Car size={20} />
+                </div>
+                <div>
+                  <div className="text-[11px] font-bold uppercase text-[var(--color-text-tertiary)]">Total Trips</div>
+                  <div className="text-lg font-black text-white">{userBookings.length}</div>
+                </div>
+              </div>
+
+              <div className="glass-card p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--color-surface)]/80 flex items-center gap-3.5 shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                  <DollarSign size={20} />
+                </div>
+                <div>
+                  <div className="text-[11px] font-bold uppercase text-[var(--color-text-tertiary)]">Money Saved</div>
+                  <div className="text-lg font-black text-emerald-400">₹{userBookings.length * 150}</div>
+                </div>
+              </div>
+
+              <div className="glass-card p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--color-surface)]/80 flex items-center gap-3.5 shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                  <Star size={20} />
+                </div>
+                <div>
+                  <div className="text-[11px] font-bold uppercase text-[var(--color-text-tertiary)]">Avg Rating</div>
+                  <div className="text-lg font-black text-amber-300">4.9 ★</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 8. POPULAR ROUTES NEAR YOU (Real Data or pre-populated fallback) */}
         <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] flex items-center gap-1.5">
               <Map size={14} className="text-[var(--color-accent-teal)]" />
-              <span>{routeSectionTitle}</span>
+              <span>Popular Routes Near You</span>
             </h3>
-            {displayRoutes.length > 0 && (
-              <button onClick={() => navigate('/search')} className="text-xs font-bold text-[var(--color-accent-teal)] hover:underline flex items-center gap-1">
-                <span>View All</span>
-                <ChevronRight size={14} />
-              </button>
-            )}
           </div>
 
-          {displayRoutes.length > 0 ? (
-            <div className="flex overflow-x-auto gap-4 pb-2 no-scrollbar" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-              {displayRoutes.map((route, i) => (
-                <div
-                  key={i}
-                  onClick={() => navigate('/search')}
-                  className="glass-card clickable p-4 rounded-2xl min-w-[270px] sm:min-w-[290px] shrink-0 border border-[var(--glass-border)] hover:border-[var(--color-accent-teal)] transition-all cursor-pointer flex flex-col justify-between group bg-[var(--color-surface)]/90 shadow-md"
-                >
-                  <div>
-                    <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2.5">
-                      <span className="text-[var(--color-text-secondary)]">{route.type}</span>
-                      <span className="badge badge-teal px-2 py-0.5 text-[9px] font-black">{route.tag}</span>
-                    </div>
-
-                    {/* Route Line Motif: Origin --dashed line--> Destination */}
-                    <div className="flex items-center justify-between gap-2 my-3">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <div className="w-3 h-3 rounded-full border-2 border-[var(--color-accent-teal)] shrink-0"></div>
-                        <span className="font-extrabold text-sm sm:text-base text-[var(--color-text)] truncate">{route.from}</span>
-                      </div>
-
-                      <div className="flex items-center gap-1 px-1 shrink-0 text-[var(--color-accent-teal)] group-hover:scale-110 transition-transform">
-                        <div className="w-6 sm:w-8 border-b-2 border-dashed border-[var(--color-accent-teal)]"></div>
-                        <ArrowRight size={14} />
-                      </div>
-
-                      <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
-                        <span className="font-extrabold text-sm sm:text-base text-[var(--color-text)] truncate">{route.to}</span>
-                        <div className="w-3 h-3 rounded-full bg-[var(--color-accent-teal)] shrink-0 shadow-sm shadow-teal-500/50"></div>
-                      </div>
-                    </div>
+          <div className="flex overflow-x-auto gap-4 pb-2 no-scrollbar" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+            {popularRoutes.map((route, i) => (
+              <div
+                key={i}
+                onClick={() => navigate(`/search?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}`)}
+                className="glass-card clickable p-4 rounded-2xl min-w-[270px] sm:min-w-[290px] shrink-0 border border-[var(--glass-border)] hover:border-[var(--color-accent-teal)] transition-all cursor-pointer flex flex-col justify-between group bg-[var(--color-surface)]/90 shadow-md"
+              >
+                <div>
+                  <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2.5">
+                    <span className="text-[var(--color-text-secondary)]">{route.type}</span>
+                    <span className="badge badge-teal px-2 py-0.5 text-[9px] font-black">{route.tag}</span>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-[var(--glass-border)] pt-3 mt-2 text-xs">
-                    <span className="text-[var(--color-text-secondary)] font-medium flex items-center gap-1">
-                      <Clock size={13} className="text-[var(--color-accent-teal)]" />
-                      {route.duration}
-                    </span>
-                    <span className="font-black text-base sm:text-lg text-[var(--color-accent-teal-light)] group-hover:scale-105 transition-transform">{route.price}</span>
+                  {/* Route Line Motif: Origin --dashed line--> Destination */}
+                  <div className="flex items-center justify-between gap-2 my-3">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className="w-3 h-3 rounded-full border-2 border-[var(--color-accent-teal)] shrink-0"></div>
+                      <span className="font-extrabold text-sm sm:text-base text-[var(--color-text)] truncate">{route.from}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1 px-1 shrink-0 text-[var(--color-accent-teal)] group-hover:scale-110 transition-transform">
+                      <div className="w-6 sm:w-8 border-b-2 border-dashed border-[var(--color-accent-teal)]"></div>
+                      <ArrowRight size={14} />
+                    </div>
+
+                    <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
+                      <span className="font-extrabold text-sm sm:text-base text-[var(--color-text)] truncate">{route.to}</span>
+                      <div className="w-3 h-3 rounded-full bg-[var(--color-accent-teal)] shrink-0 shadow-sm shadow-teal-500/50"></div>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="glass-card p-8 rounded-2xl border border-[var(--glass-border)] text-center text-[var(--color-text-secondary)] font-medium bg-[var(--color-surface)]/80 shadow-md">
-              No routes available yet
-            </div>
-          )}
+
+                <div className="flex items-center justify-between border-t border-[var(--glass-border)] pt-3 mt-2 text-xs">
+                  <span className="text-[var(--color-text-secondary)] font-medium flex items-center gap-1">
+                    <Clock size={13} className="text-[var(--color-accent-teal)]" />
+                    {route.duration}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-base sm:text-lg text-[var(--color-accent-teal-light)] group-hover:scale-105 transition-transform">{route.price}</span>
+                    <span className="btn btn-primary px-2.5 py-1 text-[10px] rounded-lg font-bold">Book Now</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
       </div>

@@ -14,6 +14,7 @@ import OfflineBanner from './components/OfflineBanner';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
 import TransportModal from './components/TransportModal';
 import Footer from './components/Footer';
+import BottomNav from './components/BottomNav';
 
 // ===== Lazy Loaded Pages (Priority 7 Code Splitting) =====
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -129,6 +130,44 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/support', label: 'Support Help Desk', icon: ClipboardList },
   ];
 
+  const passengerGroups = [
+    {
+      title: 'TRAVEL',
+      links: [
+        { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { path: '/search', label: 'Search Trips', icon: Search },
+        { path: '/bookings', label: 'My Bookings', icon: Ticket },
+        { path: '/profile', label: 'My Profile', icon: UserCircle },
+      ]
+    },
+    {
+      title: 'TRANSIT & MORE',
+      links: [
+        { path: '#flights', label: 'Flights', icon: Plane, isModal: 'flights' },
+        { path: '#trains', label: 'Trains', icon: TrainFront, isModal: 'trains' },
+        { path: '/rentals', label: 'Rent Bike/Scooty', icon: Bike },
+        { path: '/vehicles', label: 'Vehicles', icon: Car },
+      ]
+    },
+    {
+      title: 'LIFESTYLE',
+      links: [
+        { path: '/packages', label: 'Holiday Packages', icon: Palmtree },
+        { path: '/host', label: 'My Homestay', icon: Home },
+        { path: '/parcel', label: 'Send Parcel', icon: Package },
+        { path: '/tracking', label: 'Live Tracking', icon: Map },
+      ]
+    },
+    {
+      title: 'ACCOUNT',
+      links: [
+        { path: '/wallet', label: 'Wallet', icon: Wallet },
+        { path: '/support', label: 'Support Help Desk', icon: ClipboardList },
+        { path: '/sessions', label: 'Active Devices', icon: Settings },
+      ]
+    }
+  ];
+
   const agentLinks = [
     { path: '/agent', label: 'Agent Dashboard', icon: LayoutDashboard },
     { path: '/profile', label: 'My Profile', icon: UserCircle },
@@ -190,39 +229,80 @@ function Sidebar({ isOpen, onClose }) {
         </div>
 
         <nav className="sidebar-nav">
-          <div className="sidebar-section-title">
-            {role === 'agent' ? 'Agent Portal'
-              : role === 'owner' ? 'Owner Portal'
-              : role === 'admin' ? 'Admin Panel'
-              : role === 'driver' ? 'Driver Portal'
-              : 'Navigation'}
-          </div>
-          {links.map(link => (
-            <button
-              key={link.path || link.label}
-              className={`sidebar-link ${location.pathname === link.path ? 'active' : ''}`}
-              onClick={() => {
-                if (link.isModal) {
-                  useTransportModalStore.getState().openModal(link.isModal);
-                  onClose();
-                } else {
-                  handleNav(link.path);
-                }
-              }}
-            >
-              <link.icon className="sidebar-link-icon" size={20} />
-              {link.label}
-            </button>
-          ))}
+          {role === 'passenger' ? (
+            passengerGroups.map((group) => (
+              <div key={group.title}>
+                <div
+                  className="sidebar-section-title"
+                  style={{
+                    fontSize: '11px',
+                    color: '#6b7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                    marginTop: '16px',
+                    marginBottom: '8px',
+                    fontWeight: 600,
+                    padding: '0 4px'
+                  }}
+                >
+                  {group.title}
+                </div>
+                {group.links.map((link) => (
+                  <button
+                    key={link.path || link.label}
+                    className={`sidebar-link ${location.pathname === link.path ? 'active' : ''}`}
+                    onClick={() => {
+                      if (link.isModal) {
+                        useTransportModalStore.getState().openModal(link.isModal);
+                        onClose();
+                      } else {
+                        handleNav(link.path);
+                      }
+                    }}
+                  >
+                    <link.icon className="sidebar-link-icon" size={20} />
+                    {link.label}
+                  </button>
+                ))}
+              </div>
+            ))
+          ) : (
+            <>
+              <div className="sidebar-section-title">
+                {role === 'agent' ? 'Agent Portal'
+                  : role === 'owner' ? 'Owner Portal'
+                  : role === 'admin' ? 'Admin Panel'
+                  : role === 'driver' ? 'Driver Portal'
+                  : 'Navigation'}
+              </div>
+              {links.map(link => (
+                <button
+                  key={link.path || link.label}
+                  className={`sidebar-link ${location.pathname === link.path ? 'active' : ''}`}
+                  onClick={() => {
+                    if (link.isModal) {
+                      useTransportModalStore.getState().openModal(link.isModal);
+                      onClose();
+                    } else {
+                      handleNav(link.path);
+                    }
+                  }}
+                >
+                  <link.icon className="sidebar-link-icon" size={20} />
+                  {link.label}
+                </button>
+              ))}
 
-          <div className="sidebar-section-title">Account</div>
-          <button
-            className={`sidebar-link ${location.pathname === '/sessions' ? 'active' : ''}`}
-            onClick={() => handleNav('/sessions')}
-          >
-            <Settings className="sidebar-link-icon" size={20} />
-            Active Devices
-          </button>
+              <div className="sidebar-section-title">Account</div>
+              <button
+                className={`sidebar-link ${location.pathname === '/sessions' ? 'active' : ''}`}
+                onClick={() => handleNav('/sessions')}
+              >
+                <Settings className="sidebar-link-icon" size={20} />
+                Active Devices
+              </button>
+            </>
+          )}
         </nav>
 
         <div className="sidebar-user">
@@ -392,12 +472,12 @@ function AppLayout({ children }) {
             {children}
           </ErrorBoundary>
         </div>
-        <Footer />
+        <BottomNav />
       </main>
 
       <LogoutConfirmModal />
       <TransportModal />
-      <ErrorBoundary title="Chat assistant unavailable" message="The AI Assistant encountered an issue. Tap to reload.">
+      <ErrorBoundary title="Yaara chat unavailable" message="Yaara encountered an issue. Tap to reload.">
         <ChatWidget />
       </ErrorBoundary>
     </div>

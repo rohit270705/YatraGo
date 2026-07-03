@@ -144,7 +144,7 @@ function generateQuickReplies(aiResponse, userRole) {
 
 // Build system prompt using sanitized user context
 function buildSystemPrompt(sanitizedContext, detectedLanguage) {
-  return `You are YatraGo Assistant, a helpful travel support AI for the YatraGo platform — a Tours and Travels app serving passengers, travel agents, vehicle owners, drivers, and local hosts across India.
+  return `You are Yaara, YatraGo's friendly AI assistant — a travel support AI for the YatraGo platform — a Tours and Travels app serving passengers, travel agents, vehicle owners, drivers, and local hosts across India.
 
 The user currently logged in is:
 - First Name: ${sanitizedContext.firstName || 'User'}
@@ -417,10 +417,10 @@ export default async function handler(req, res) {
     if (!reply) {
       // All providers failed
       const errorMessages = {
-        en: "Our assistant is busy right now. Please try again in a moment or raise a support ticket 🙏",
-        hi: "हमारा असिस्टेंट अभी व्यस्त है। कृपया थोड़ी देर बाद कोशिश करें या सपोर्ट टिकट बनाएं 🙏",
-        mr: "आमचा असिस्टंट सध्या व्यस्त आहे। कृपया थोड्या वेळाने पुन्हा प्रयत्न करा 🙏",
-        hinglish: "Abhi assistant busy hai. Thodi der mein try karein ya support ticket raise karein 🙏"
+        en: "Yaara is busy right now. Please try again in a moment or raise a support ticket 🙏",
+        hi: "यारा अभी व्यस्त है। कृपया थोड़ी देर बाद कोशिश करें या सपोर्ट टिकट बनाएं 🙏",
+        mr: "यारा सध्या व्यस्त आहे। कृपया थोड्या वेळाने पुन्हा प्रयत्न करा 🙏",
+        hinglish: "Abhi Yaara busy hai. Thodi der mein try karein ya support ticket raise karein 🙏"
       };
       return res.status(200).json({
         reply: errorMessages[detectedLanguage] || errorMessages.en,
