@@ -4,9 +4,9 @@ import {
   MapPin, Search, Ticket, Wallet, Package, Car, TrendingUp,
   ArrowRight, Clock, CheckCircle, Navigation, Bike, Palmtree,
   Sparkles, Compass, Bell, UserCircle, ChevronRight, Map, ShieldCheck,
-  AlertCircle, ChevronDown, Plane, TrainFront, History, Luggage
+  AlertCircle, ChevronDown, History, Luggage
 } from 'lucide-react';
-import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToastStore, useTransportModalStore } from '../store';
+import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore } from '../store';
 import { supabase } from '../supabaseClient';
 import SkeletonLoader from '../components/SkeletonLoader';
 
@@ -16,8 +16,6 @@ export default function DashboardPage() {
   const { balance, isLoading: walletLoading } = useWalletStore();
   const { bookings, isLoading: bookingsLoading } = useBookingStore();
   const { vehicles, isLoading: vehiclesLoading } = useVehicleStore();
-  const { addToast } = useToastStore();
-  const { openModal } = useTransportModalStore();
 
   const [dbRoutes, setDbRoutes] = useState([]);
   const [routesLoading, setRoutesLoading] = useState(true);
@@ -61,52 +59,6 @@ export default function DashboardPage() {
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
   };
-
-  const handleActionClick = (action) => {
-    if (action.actionType === 'modal-flight') {
-      openModal('flights');
-    } else if (action.actionType === 'modal-train') {
-      openModal('trains');
-    } else if (action.path) {
-      navigate(action.path);
-    }
-  };
-
-  // Quick Actions with Flights ✈ and Trains 🚂 chips triggering popups
-  const transitActions = [
-    { 
-      label: 'Book a ride', icon: Car, path: '/search',
-      bgStyle: 'rgba(20, 184, 166, 0.22)', borderStyle: 'rgba(20, 184, 166, 0.45)', colorStyle: '#2dd4bf'
-    },
-    { 
-      label: 'Bus tickets', icon: Ticket, path: '/search',
-      bgStyle: 'rgba(168, 85, 247, 0.22)', borderStyle: 'rgba(168, 85, 247, 0.45)', colorStyle: '#c084fc'
-    },
-    { 
-      label: 'Hire a driver', icon: UserCircle, path: '/rentals',
-      bgStyle: 'rgba(59, 130, 246, 0.22)', borderStyle: 'rgba(59, 130, 246, 0.45)', colorStyle: '#60a5fa'
-    },
-    { 
-      label: 'Rent a bike', icon: Bike, path: '/rentals',
-      bgStyle: 'rgba(245, 158, 11, 0.22)', borderStyle: 'rgba(245, 158, 11, 0.45)', colorStyle: '#fbbf24'
-    },
-    { 
-      label: 'Send a parcel', icon: Package, path: '/parcel',
-      bgStyle: 'rgba(34, 197, 94, 0.22)', borderStyle: 'rgba(34, 197, 94, 0.45)', colorStyle: '#4ade80'
-    },
-    { 
-      label: 'Holiday packages', icon: Palmtree, path: '/packages',
-      bgStyle: 'rgba(244, 63, 94, 0.22)', borderStyle: 'rgba(244, 63, 94, 0.45)', colorStyle: '#fb7185'
-    },
-    {
-      label: 'Flights ✈', icon: Plane, actionType: 'modal-flight',
-      bgStyle: 'rgba(251, 113, 133, 0.22)', borderStyle: 'rgba(251, 113, 133, 0.45)', colorStyle: '#f43f5e'
-    },
-    {
-      label: 'Trains 🚂', icon: TrainFront, actionType: 'modal-train',
-      bgStyle: 'rgba(99, 102, 241, 0.22)', borderStyle: 'rgba(99, 102, 241, 0.45)', colorStyle: '#818cf8'
-    }
-  ];
 
   // Format real routes from Supabase or user bookings (No fake hardcoded routes)
   const recentUserRoutes = (userBookings || [])
@@ -205,80 +157,70 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* 3. QUICK ACTIONS (With Flights ✈ and Trains 🚂 chips opening popups) */}
-        <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
-          <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-3 flex items-center gap-1.5">
-            <Sparkles size={14} className="text-[var(--color-accent-teal)]" />
-            <span>Quick Transit Actions</span>
-          </h3>
-          <div className="flex overflow-x-auto gap-3.5 pb-2 no-scrollbar" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-            {transitActions.map((action, idx) => (
-              <div
-                key={idx}
-                onClick={() => handleActionClick(action)}
-                className="flex flex-col items-center cursor-pointer group min-w-[88px] flex-1 shrink-0"
-              >
-                <div
-                  className="w-14 h-14 rounded-2xl border flex items-center justify-center mb-2 shadow-md group-hover:scale-105 transition-all duration-300"
-                  style={{
-                    backgroundColor: action.bgStyle,
-                    borderColor: action.borderStyle,
-                    color: action.colorStyle
-                  }}
-                >
-                  <action.icon size={26} />
-                </div>
-                <span className="text-xs font-bold text-center text-[var(--color-text)] group-hover:text-[var(--color-accent-teal)] transition-colors whitespace-nowrap">{action.label}</span>
+        {/* 3. PREMIUM WALLET CARD (Redesigned) */}
+        <div
+          className="mb-8 relative w-full max-w-[800px] mx-auto shadow-xl"
+          style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '16px',
+            padding: '20px 24px',
+            maxWidth: '800px',
+            margin: '0 auto 2rem auto'
+          }}
+        >
+          {/* Top section: Left (icon + label) | Right (Add Money + button) */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-sm">
+                <Wallet size={18} />
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 4. WALLET CARD */}
-        <div className="glass-card mb-8 p-0 relative rounded-2xl border border-[var(--glass-border)] shadow-xl bg-gradient-to-br from-[var(--color-surface)] to-[var(--color-surface)]/80 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
-          {/* Balance on top */}
-          <div className="p-5 sm:p-6 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0 shadow-md">
-                <Wallet size={28} />
-              </div>
-              <div>
-                <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-tertiary)]">YatraGo Pay Balance</div>
-                <div className="text-2xl sm:text-3xl font-black text-[var(--color-text)] mt-0.5 tracking-tight">₹{balance.toLocaleString()}</div>
-              </div>
+              <span className="text-[11px] font-extrabold uppercase tracking-widest text-white/50">YatraGo Pay Balance</span>
             </div>
             <button
               onClick={() => navigate('/wallet')}
-              className="btn btn-sm bg-amber-500/25 hover:bg-amber-500/35 text-amber-300 border border-amber-500/50 rounded-xl px-4 py-2.5 text-xs font-extrabold transition-all flex items-center gap-1.5 shrink-0 shadow-md"
+              className="bg-[#14b8a6] hover:bg-[#0d9488] text-black font-extrabold text-xs px-4 py-2 rounded-full transition-all shadow-md flex items-center justify-center shrink-0"
             >
-              <span>Add Money</span>
-              <ChevronRight size={14} />
+              Add Money +
             </button>
           </div>
 
-          {/* Perforated Dashed Divider with Cutout Notches */}
-          <div className="relative flex items-center justify-between w-full my-1 py-1">
-            {/* Left Cutout Notch */}
-            <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0b1329] border border-[var(--glass-border)] z-20 shadow-inner"></div>
-            {/* Dashed Line */}
-            <div className="w-full border-b-2 border-dashed border-white/20 mx-4"></div>
-            {/* Right Cutout Notch */}
-            <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#0b1329] border border-[var(--glass-border)] z-20 shadow-inner"></div>
+          {/* Middle: Balance amount in large bold white text (32px) */}
+          <div className="mt-3 mb-5">
+            <div className="font-black text-white tracking-tight" style={{ fontSize: '32px', lineHeight: '1.1', fontWeight: 900 }}>
+              ₹{balance.toLocaleString()}
+            </div>
           </div>
 
-          {/* Streak / rewards line with progress bar */}
-          <div className="p-4 sm:px-6 bg-[var(--color-bg)]/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs rounded-b-2xl">
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-teal-500/25 text-teal-300 flex items-center justify-center font-bold text-xs border border-teal-500/40 shrink-0 shadow-sm">🎁</span>
-              <span className="font-semibold text-[var(--color-text)]">Transit Rewards: <span className="text-[var(--color-accent-teal-light)] font-extrabold">3 of 5 rides</span> to a free trip</span>
-            </div>
-            <div className="w-full sm:w-40 bg-[var(--glass-border)] h-2.5 rounded-full overflow-hidden shrink-0 shadow-inner">
-              <div className="bg-gradient-to-r from-teal-500 to-emerald-400 h-full rounded-full transition-all duration-500 shadow-sm" style={{ width: '60%' }}></div>
+          {/* Divider: Proper perforated dashed line with circular cutout notches on both sides */}
+          <div className="relative flex items-center justify-between w-full my-4 -mx-6" style={{ width: 'calc(100% + 48px)' }}>
+            {/* Left Cutout Notch */}
+            <div className="w-6 h-6 rounded-full bg-[#06090f] border-r border-t border-b border-white/10 -ml-3 z-10 shrink-0 shadow-inner" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}></div>
+            {/* Dashed Line */}
+            <div className="w-full border-b border-dashed border-white/20 mx-2"></div>
+            {/* Right Cutout Notch */}
+            <div className="w-6 h-6 rounded-full bg-[#06090f] border-l border-t border-b border-white/10 -mr-3 z-10 shrink-0 shadow-inner" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}></div>
+          </div>
+
+          {/* Bottom section: Transit Rewards & progress bar */}
+          <div className="mt-3 pt-1">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs sm:text-sm">
+              <div className="flex items-center gap-2 font-medium text-white/80">
+                <span className="text-base">🏅</span>
+                <span>
+                  Transit Rewards: <span className="text-[#2dd4bf] font-bold">3 of 5 rides</span> to a free trip
+                </span>
+              </div>
+              <div className="w-full sm:w-48 bg-white/10 h-2 rounded-full overflow-hidden shrink-0 shadow-inner">
+                <div className="bg-[#14b8a6] h-full rounded-full transition-all duration-500 shadow-sm" style={{ width: '60%' }}></div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* 5. RECENT BOOKINGS SECTION */}
+        {/* 4. RECENT BOOKINGS SECTION */}
         <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] flex items-center gap-1.5">
@@ -346,7 +288,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* 6. POPULAR ROUTES NEAR YOU (Real Data from Supabase / No hardcoded fakes) */}
+        {/* 5. POPULAR ROUTES NEAR YOU (Real Data from Supabase / No hardcoded fakes) */}
         <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] flex items-center gap-1.5">
