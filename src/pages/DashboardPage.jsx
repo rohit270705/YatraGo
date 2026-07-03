@@ -445,11 +445,12 @@ export default function DashboardPage() {
           ) : (
             /* PLAN YOUR FIRST TRIP PROMOTIONAL CARD */
             <div
-              className="p-6 rounded-2xl border border-[#14b8a6]/40 shadow-xl text-left relative overflow-hidden"
+              className="rounded-2xl border border-[#14b8a6]/40 shadow-xl text-left relative overflow-hidden"
               style={{
                 background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.18) 0%, rgba(15, 23, 42, 0.95) 50%, rgba(15, 23, 42, 0.98) 100%)',
                 backdropFilter: 'blur(10px)',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                padding: '20px 24px'
               }}
             >
               <div className="flex items-start gap-4 mb-4">
@@ -464,7 +465,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 my-4" style={{ flexWrap: 'wrap' }}>
+              <div className="flex flex-wrap items-center my-4" style={{ flexWrap: 'wrap', gap: '12px' }}>
                 <button
                   onClick={() => navigate('/search')}
                   style={{ padding: '8px 16px' }}
@@ -483,7 +484,7 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-white/10 text-[11px] font-bold text-white/80" style={{ flexWrap: 'wrap' }}>
+              <div className="flex flex-wrap items-center pt-3 border-t border-white/10 text-[11px] font-bold text-white/80" style={{ flexWrap: 'wrap', gap: '8px', margin: '0 4px' }}>
                 <span className="flex items-center gap-1 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">✅ Group Booking</span>
                 <span className="flex items-center gap-1 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">✅ Promo Codes</span>
                 <span className="flex items-center gap-1 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">✅ Live Tracking</span>
