@@ -361,9 +361,11 @@ input, button, textarea, select {
   color: var(--color-text-tertiary);
 }
 
-/* ---------- Bottom Navigation (Mobile) ---------- */
+/* ---------- Bottom Navigation ---------- */
 .bottom-nav {
-  display: none;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
   position: fixed;
   bottom: 0;
   left: 0;
@@ -375,11 +377,18 @@ input, button, textarea, select {
   z-index: var(--z-sticky);
 }
 
-@media (max-width: 1024px) {
+@media (min-width: 1025px) {
   .bottom-nav {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
+    justify-content: center;
+    gap: 3rem;
+    max-width: 500px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    bottom: 16px;
+    border-radius: 50px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
   }
 }
 
