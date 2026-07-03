@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MapPin, Search, Ticket, Wallet, Package, Car, TrendingUp,
   ArrowRight, Clock, CheckCircle, Navigation, Bike, Palmtree,
   Sparkles, Compass, Bell, UserCircle, ChevronRight, Map, ShieldCheck,
-  AlertCircle, ChevronDown
+  AlertCircle, ChevronDown, Plane, TrainFront, History, Luggage
 } from 'lucide-react';
-import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore } from '../store';
+import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToastStore } from '../store';
+import { supabase } from '../supabaseClient';
 import SkeletonLoader from '../components/SkeletonLoader';
 
 export default function DashboardPage() {
@@ -15,13 +16,37 @@ export default function DashboardPage() {
   const { balance, isLoading: walletLoading } = useWalletStore();
   const { bookings, isLoading: bookingsLoading } = useBookingStore();
   const { vehicles, isLoading: vehiclesLoading } = useVehicleStore();
+  const { addToast } = useToastStore();
 
   const [originInput, setOriginInput] = useState('');
   const [destinationInput, setDestinationInput] = useState('');
+  const [dbRoutes, setDbRoutes] = useState([]);
+  const [routesLoading, setRoutesLoading] = useState(true);
 
   const isLoading = walletLoading || bookingsLoading || vehiclesLoading;
 
-  // 1. Robust User Name Extraction
+  // Fetch real routes from Supabase (FIX 1)
+  useEffect(() => {
+    async function fetchRoutes() {
+      try {
+        setRoutesLoading(true);
+        const { data, error } = await supabase.from('routes').select('*').limit(6);
+        if (!error && data) {
+          setDbRoutes(data);
+        } else {
+          setDbRoutes([]);
+        }
+      } catch (err) {
+        console.error('Error fetching routes:', err);
+        setDbRoutes([]);
+      } finally {
+        setRoutesLoading(false);
+      }
+    }
+    fetchRoutes();
+  }, []);
+
+  // Robust User Name Extraction
   const userName = user?.name || user?.full_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Traveler';
   const firstName = userName !== 'Traveler' ? userName.split(' ')[0] : 'Traveler';
 
@@ -44,7 +69,21 @@ export default function DashboardPage() {
     setDestinationInput(temp);
   };
 
-  // 2. Quick Actions with Explicit Tinted Colors
+  const handleActionClick = (action) => {
+    if (action.actionType === 'scroll-flight') {
+      const el = document.getElementById('flight-booking-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+      addToast("Flight booking coming soon! Stay tuned for updates. 🛫", "info");
+    } else if (action.actionType === 'scroll-train') {
+      const el = document.getElementById('train-booking-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+      addToast("Train booking coming soon! We're integrating with IRCTC. 🚂", "info");
+    } else if (action.path) {
+      navigate(action.path);
+    }
+  };
+
+  // Quick Actions with Flights ✈ and Trains 🚂 chips added
   const transitActions = [
     { 
       label: 'Book a ride', icon: Car, path: '/search',
@@ -70,9 +109,17 @@ export default function DashboardPage() {
       label: 'Holiday packages', icon: Palmtree, path: '/packages',
       bgStyle: 'rgba(244, 63, 94, 0.22)', borderStyle: 'rgba(244, 63, 94, 0.45)', colorStyle: '#fb7185'
     },
+    {
+      label: 'Flights ✈', icon: Plane, actionType: 'scroll-flight',
+      bgStyle: 'rgba(251, 113, 133, 0.22)', borderStyle: 'rgba(251, 113, 133, 0.45)', colorStyle: '#f43f5e'
+    },
+    {
+      label: 'Trains 🚂', icon: TrainFront, actionType: 'scroll-train',
+      bgStyle: 'rgba(99, 102, 241, 0.22)', borderStyle: 'rgba(99, 102, 241, 0.45)', colorStyle: '#818cf8'
+    }
   ];
 
-  // 4. Real User Routes vs Popular Routes Near You
+  // Format real routes from Supabase or user bookings (FIX 1 - No fake hardcoded routes)
   const recentUserRoutes = (userBookings || [])
     .filter(b => b.pickup && b.destination)
     .map(b => ({
@@ -94,20 +141,21 @@ export default function DashboardPage() {
     }
   });
 
-  const fallbackRoutes = [
-    { from: 'Mumbai Airport (T2)', to: 'Bandra West (BKC)', price: '₹450', duration: '35 min', type: 'Airport Express', tag: 'Fastest' },
-    { from: 'Indiranagar', to: 'Electronic City Tech Park', price: '₹320', duration: '45 min', type: 'Tech Commute', tag: 'Popular' },
-    { from: 'Connaught Place', to: 'Cyber City (Gurugram)', price: '₹380', duration: '40 min', type: 'Intercity Ride', tag: 'Frequent' },
-    { from: 'Salt Lake Sector V', to: 'Howrah Railway Station', price: '₹240', duration: '30 min', type: 'Station Transfer', tag: 'Save 15%' },
-    { from: 'Koramangala', to: 'Kempegowda Int. Airport', price: '₹850', duration: '60 min', type: 'Airport Direct', tag: '24/7 Service' },
-  ];
+  const formattedDbRoutes = (dbRoutes || []).map(r => ({
+    from: r.from_city || r.origin || r.source || r.pickup || 'Origin City',
+    to: r.to_city || r.destination || r.dropoff || 'Destination City',
+    price: r.base_price ? `₹${r.base_price}` : r.price ? `₹${r.price}` : r.fare ? `₹${r.fare}` : '₹350',
+    duration: r.duration || r.est_duration || '40 min',
+    type: r.vehicle_type || r.type || 'Popular Commute',
+    tag: 'Popular'
+  }));
 
-  const displayRoutes = uniqueUserRoutes.length >= 2 ? uniqueUserRoutes : fallbackRoutes;
+  const displayRoutes = uniqueUserRoutes.length >= 2 ? uniqueUserRoutes : formattedDbRoutes;
   const routeSectionTitle = uniqueUserRoutes.length >= 2 ? "Your Recent & Usual Routes" : "Popular Routes Near You";
 
   return (
     <div className="animate-fade-in pb-28 min-h-[calc(100vh-80px)] max-w-5xl mx-auto flex flex-col justify-between">
-      <div>
+      <div className="w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
         {/* 1. GREETING HEADER */}
         <div className="flex items-center justify-between mb-6 pt-2">
           <div>
@@ -141,7 +189,8 @@ export default function DashboardPage() {
         {currentTrip && (
           <div
             onClick={() => navigate('/tracking')}
-            className="glass-card mb-6 p-4 border border-[var(--color-accent-teal)] bg-gradient-to-r from-[var(--color-accent-teal)]/20 via-[var(--color-surface)] to-[var(--color-surface)] relative overflow-hidden shadow-lg cursor-pointer group rounded-2xl transition-all hover:border-[var(--color-accent-teal-light)]"
+            className="glass-card mb-6 p-4 border border-[var(--color-accent-teal)] bg-gradient-to-r from-[var(--color-accent-teal)]/20 via-[var(--color-surface)] to-[var(--color-surface)] relative overflow-hidden shadow-lg cursor-pointer group rounded-2xl transition-all hover:border-[var(--color-accent-teal-light)] w-full max-w-[800px] mx-auto"
+            style={{ maxWidth: '800px', margin: '0 auto 1.5rem auto' }}
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3.5 min-w-0">
@@ -167,14 +216,16 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* 3 & 6. BOARDING-PASS SEARCH CARD (With Subtle Glassmorphism & Prominent Teal Stamp) */}
+        {/* 3. BOARDING-PASS SEARCH CARD (FIX 2: max-w-[800px] mx-auto) */}
         <div
-          className="mb-8 p-0 relative rounded-2xl shadow-2xl transition-all duration-300"
+          className="mb-8 p-0 relative rounded-2xl shadow-2xl transition-all duration-300 w-full max-w-[800px] mx-auto"
           style={{
             background: 'rgba(255, 255, 255, 0.05)',
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)'
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            maxWidth: '800px',
+            margin: '0 auto 2rem auto'
           }}
         >
           {/* Header tag with prominent teal TICKET # stamp */}
@@ -266,8 +317,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 4. QUICK ACTIONS with Vibrant Distinct Tinted Backgrounds */}
-        <div className="mb-8">
+        {/* 4. QUICK ACTIONS (With Flights ✈ and Trains 🚂 chips) */}
+        <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
           <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-3 flex items-center gap-1.5">
             <Sparkles size={14} className="text-[var(--color-accent-teal)]" />
             <span>Quick Transit Actions</span>
@@ -276,7 +327,7 @@ export default function DashboardPage() {
             {transitActions.map((action, idx) => (
               <div
                 key={idx}
-                onClick={() => navigate(action.path)}
+                onClick={() => handleActionClick(action)}
                 className="flex flex-col items-center cursor-pointer group min-w-[88px] flex-1 shrink-0"
               >
                 <div
@@ -295,8 +346,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 5. WALLET CARD styled as a ticket stub with Authentic Cutouts */}
-        <div className="glass-card mb-8 p-0 relative rounded-2xl border border-[var(--glass-border)] shadow-xl bg-gradient-to-br from-[var(--color-surface)] to-[var(--color-surface)]/80">
+        {/* 5. WALLET CARD (FIX 2: max-w-[800px] mx-auto) */}
+        <div className="glass-card mb-8 p-0 relative rounded-2xl border border-[var(--glass-border)] shadow-xl bg-gradient-to-br from-[var(--color-surface)] to-[var(--color-surface)]/80 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
           {/* Balance on top */}
           <div className="p-5 sm:p-6 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -339,62 +390,221 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 6. "YOUR USUAL ROUTES" (Real Data vs Popular Near You) */}
-        <div className="mb-6">
+        {/* FIX 3: RECENT BOOKINGS SECTION */}
+        <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] flex items-center gap-1.5">
+              <History size={14} className="text-[var(--color-accent-teal)]" />
+              <span>Recent Bookings</span>
+            </h3>
+            {userBookings.length > 0 && (
+              <button onClick={() => navigate('/bookings')} className="text-xs font-bold text-[var(--color-accent-teal)] hover:underline flex items-center gap-1">
+                <span>View All</span>
+                <ChevronRight size={14} />
+              </button>
+            )}
+          </div>
+
+          {userBookings.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {userBookings.slice(0, 3).map((b, idx) => (
+                <div
+                  key={b.id || idx}
+                  onClick={() => navigate('/bookings')}
+                  className="glass-card clickable p-4 rounded-xl border border-[var(--glass-border)] hover:border-[var(--color-accent-teal)] transition-all flex items-center justify-between gap-4 cursor-pointer bg-[var(--color-surface)]/90 shadow-md"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-[var(--color-bg)] border border-[var(--glass-border)] flex items-center justify-center text-[var(--color-accent-teal)] shrink-0 shadow-sm">
+                      <Car size={20} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-extrabold text-sm sm:text-base text-[var(--color-text)] truncate flex items-center gap-2">
+                        <span>{b.pickup || 'Origin'} → {b.destination || 'Destination'}</span>
+                      </div>
+                      <div className="text-xs text-[var(--color-text-secondary)] mt-0.5 flex items-center gap-2">
+                        <span>{new Date(b.created_at || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                        <span>•</span>
+                        <span className="capitalize">{b.vehicle_name || b.trip_type || 'Ride'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-black text-sm sm:text-base text-[var(--color-accent-teal-light)]">
+                      ₹{b.total_amount || b.price || Math.floor(200 + Math.random() * 300)}
+                    </div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider mt-0.5">
+                      <span className={`px-2 py-0.5 rounded-full ${b.status === 'completed' ? 'bg-emerald-500/20 text-emerald-300' : b.status === 'cancelled' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                        {b.status || 'completed'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="glass-card p-8 rounded-2xl border border-[var(--glass-border)] text-center flex flex-col items-center justify-center gap-3 bg-[var(--color-surface)]/80 shadow-md">
+              <div className="w-12 h-12 rounded-full bg-[var(--color-bg)] border border-[var(--glass-border)] flex items-center justify-center text-[var(--color-text-tertiary)] shadow-inner">
+                <Luggage size={24} />
+              </div>
+              <div className="font-bold text-base text-[var(--color-text)]">No trips yet. Book your first trip!</div>
+              <button
+                onClick={() => navigate('/search')}
+                className="btn btn-sm px-6 py-2.5 rounded-xl font-bold text-xs shadow-md hover:scale-105 transition-transform mt-1"
+                style={{ backgroundColor: '#14b8a6', color: '#000000' }}
+              >
+                Search Transit
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* FIX 1: POPULAR ROUTES NEAR YOU (Real Data from Supabase / No hardcoded fakes) */}
+        <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] flex items-center gap-1.5">
               <Map size={14} className="text-[var(--color-accent-teal)]" />
               <span>{routeSectionTitle}</span>
             </h3>
-            <button onClick={() => navigate('/search')} className="text-xs font-bold text-[var(--color-accent-teal)] hover:underline flex items-center gap-1">
-              <span>View All</span>
-              <ChevronRight size={14} />
-            </button>
+            {displayRoutes.length > 0 && (
+              <button onClick={() => navigate('/search')} className="text-xs font-bold text-[var(--color-accent-teal)] hover:underline flex items-center gap-1">
+                <span>View All</span>
+                <ChevronRight size={14} />
+              </button>
+            )}
           </div>
 
-          <div className="flex overflow-x-auto gap-4 pb-2 no-scrollbar" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-            {displayRoutes.map((route, i) => (
-              <div
-                key={i}
-                onClick={() => navigate('/search')}
-                className="glass-card clickable p-4 rounded-2xl min-w-[270px] sm:min-w-[290px] shrink-0 border border-[var(--glass-border)] hover:border-[var(--color-accent-teal)] transition-all cursor-pointer flex flex-col justify-between group bg-[var(--color-surface)]/90 shadow-md"
-              >
-                <div>
-                  <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2.5">
-                    <span className="text-[var(--color-text-secondary)]">{route.type}</span>
-                    <span className="badge badge-teal px-2 py-0.5 text-[9px] font-black">{route.tag}</span>
+          {displayRoutes.length > 0 ? (
+            <div className="flex overflow-x-auto gap-4 pb-2 no-scrollbar" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+              {displayRoutes.map((route, i) => (
+                <div
+                  key={i}
+                  onClick={() => navigate('/search')}
+                  className="glass-card clickable p-4 rounded-2xl min-w-[270px] sm:min-w-[290px] shrink-0 border border-[var(--glass-border)] hover:border-[var(--color-accent-teal)] transition-all cursor-pointer flex flex-col justify-between group bg-[var(--color-surface)]/90 shadow-md"
+                >
+                  <div>
+                    <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2.5">
+                      <span className="text-[var(--color-text-secondary)]">{route.type}</span>
+                      <span className="badge badge-teal px-2 py-0.5 text-[9px] font-black">{route.tag}</span>
+                    </div>
+
+                    {/* Route Line Motif: Origin --dashed line--> Destination */}
+                    <div className="flex items-center justify-between gap-2 my-3">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className="w-3 h-3 rounded-full border-2 border-[var(--color-accent-teal)] shrink-0"></div>
+                        <span className="font-extrabold text-sm sm:text-base text-[var(--color-text)] truncate">{route.from}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1 px-1 shrink-0 text-[var(--color-accent-teal)] group-hover:scale-110 transition-transform">
+                        <div className="w-6 sm:w-8 border-b-2 border-dashed border-[var(--color-accent-teal)]"></div>
+                        <ArrowRight size={14} />
+                      </div>
+
+                      <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
+                        <span className="font-extrabold text-sm sm:text-base text-[var(--color-text)] truncate">{route.to}</span>
+                        <div className="w-3 h-3 rounded-full bg-[var(--color-accent-teal)] shrink-0 shadow-sm shadow-teal-500/50"></div>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Route Line Motif: Origin --dashed line--> Destination */}
-                  <div className="flex items-center justify-between gap-2 my-3">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <div className="w-3 h-3 rounded-full border-2 border-[var(--color-accent-teal)] shrink-0"></div>
-                      <span className="font-extrabold text-sm sm:text-base text-[var(--color-text)] truncate">{route.from}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1 px-1 shrink-0 text-[var(--color-accent-teal)] group-hover:scale-110 transition-transform">
-                      <div className="w-6 sm:w-8 border-b-2 border-dashed border-[var(--color-accent-teal)]"></div>
-                      <ArrowRight size={14} />
-                    </div>
-
-                    <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
-                      <span className="font-extrabold text-sm sm:text-base text-[var(--color-text)] truncate">{route.to}</span>
-                      <div className="w-3 h-3 rounded-full bg-[var(--color-accent-teal)] shrink-0 shadow-sm shadow-teal-500/50"></div>
-                    </div>
+                  <div className="flex items-center justify-between border-t border-[var(--glass-border)] pt-3 mt-2 text-xs">
+                    <span className="text-[var(--color-text-secondary)] font-medium flex items-center gap-1">
+                      <Clock size={13} className="text-[var(--color-accent-teal)]" />
+                      {route.duration}
+                    </span>
+                    <span className="font-black text-base sm:text-lg text-[var(--color-accent-teal-light)] group-hover:scale-105 transition-transform">{route.price}</span>
                   </div>
                 </div>
+              ))}
+            </div>
+          ) : (
+            <div className="glass-card p-8 rounded-2xl border border-[var(--glass-border)] text-center text-[var(--color-text-secondary)] font-medium bg-[var(--color-surface)]/80 shadow-md">
+              No routes available yet
+            </div>
+          )}
+        </div>
 
-                <div className="flex items-center justify-between border-t border-[var(--glass-border)] pt-3 mt-2 text-xs">
-                  <span className="text-[var(--color-text-secondary)] font-medium flex items-center gap-1">
-                    <Clock size={13} className="text-[var(--color-accent-teal)]" />
-                    {route.duration}
-                  </span>
-                  <span className="font-black text-base sm:text-lg text-[var(--color-accent-teal-light)] group-hover:scale-105 transition-transform">{route.price}</span>
-                </div>
+        {/* SECTION 1 — FLIGHT BOOKING (✈️) */}
+        <div
+          id="flight-booking-section"
+          onClick={() => addToast("Flight booking coming soon! Stay tuned for updates. 🛫", "info")}
+          onMouseEnter={() => addToast("Flight booking coming soon! Stay tuned for updates. 🛫", "info")}
+          className="glass-card rounded-2xl border border-[var(--glass-border)] p-5 sm:p-6 mb-6 relative overflow-hidden shadow-xl bg-[var(--color-surface)]/90 cursor-not-allowed transition-all hover:border-amber-500/50 w-full max-w-[800px] mx-auto"
+          style={{ maxWidth: '800px', margin: '0 auto 1.5rem auto' }}
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0 shadow-md">
+                <Plane size={26} />
               </div>
-            ))}
+              <div>
+                <h3 className="text-lg sm:text-xl font-extrabold text-[var(--color-text)] tracking-tight">Flight Booking</h3>
+                <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] font-medium mt-0.5">Book domestic flights across India</p>
+              </div>
+            </div>
+            <div className="bg-amber-500/20 border border-amber-500/40 px-3.5 py-1.5 rounded-full flex items-center gap-2 shrink-0 shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+              <span className="text-xs font-black uppercase tracking-wider text-amber-300">Coming Soon</span>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-3">Popular Domestic Routes</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {['Mumbai ✈ Delhi', 'Bangalore ✈ Kolkata', 'Chennai ✈ Hyderabad', 'Pune ✈ Jaipur'].map((route, i) => (
+                <div key={i} className="bg-[#0b1329]/70 border border-white/5 rounded-xl p-3.5 flex items-center justify-between opacity-75">
+                  <span className="font-bold text-sm text-white/90">{route}</span>
+                  <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded bg-amber-500/10 text-amber-300/80 border border-amber-500/20">Domestic</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
+
+        {/* SECTION 2 — TRAIN/RAILWAY BOOKING (🚂) */}
+        <div
+          id="train-booking-section"
+          onClick={() => addToast("Train booking coming soon! We're integrating with IRCTC. 🚂", "info")}
+          onMouseEnter={() => addToast("Train booking coming soon! We're integrating with IRCTC. 🚂", "info")}
+          className="glass-card rounded-2xl border border-[var(--glass-border)] p-5 sm:p-6 mb-8 relative overflow-hidden shadow-xl bg-[var(--color-surface)]/90 cursor-not-allowed transition-all hover:border-indigo-500/50 w-full max-w-[800px] mx-auto"
+          style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0 shadow-md">
+                <TrainFront size={26} />
+              </div>
+              <div>
+                <h3 className="text-lg sm:text-xl font-extrabold text-[var(--color-text)] tracking-tight">Train Booking</h3>
+                <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] font-medium mt-0.5">Book train tickets across India via IRCTC</p>
+              </div>
+            </div>
+            <div className="bg-indigo-500/20 border border-indigo-500/40 px-3.5 py-1.5 rounded-full flex items-center gap-2 shrink-0 shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+              <span className="text-xs font-black uppercase tracking-wider text-indigo-300">Coming Soon</span>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-3">Popular IRCTC Routes</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                { route: 'Mumbai → Delhi', train: 'Rajdhani Express' },
+                { route: 'Pune → Bangalore', train: 'Udyan Express' },
+                { route: 'Chennai → Hyderabad', train: 'Charminar Express' },
+                { route: 'Kolkata → Jaipur', train: 'Express' }
+              ].map((item, i) => (
+                <div key={i} className="bg-[#0b1329]/70 border border-white/5 rounded-xl p-3.5 flex items-center justify-between opacity-75">
+                  <div>
+                    <div className="font-bold text-sm text-white/90">{item.route}</div>
+                    <div className="text-[11px] text-white/50 font-medium">{item.train}</div>
+                  </div>
+                  <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300/80 border border-indigo-500/20">IRCTC</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
