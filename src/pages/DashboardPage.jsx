@@ -107,10 +107,11 @@ export default function DashboardPage() {
               Your personal transit & travel companion
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center shrink-0" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button
               onClick={() => navigate('/profile')}
-              className="w-10 h-10 rounded-full bg-[var(--color-surface)] border border-[var(--glass-border)] flex items-center justify-center text-[var(--color-text)] hover:border-[var(--color-accent-teal)] transition-all relative shadow-sm"
+              className="rounded-full bg-[var(--color-surface)] border border-[var(--glass-border)] flex items-center justify-center text-[var(--color-text)] hover:border-[var(--color-accent-teal)] transition-all relative shadow-sm cursor-pointer shrink-0"
+              style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               title="Notifications"
             >
               <Bell size={18} />
@@ -118,7 +119,8 @@ export default function DashboardPage() {
             </button>
             <div
               onClick={() => navigate('/profile')}
-              className="w-10 h-10 rounded-full bg-gradient-to-tr from-[var(--color-accent-teal)] to-blue-500 flex items-center justify-center text-white font-bold text-base shadow-md cursor-pointer border-2 border-[var(--color-surface)] hover:scale-105 transition-transform"
+              className="rounded-full bg-gradient-to-tr from-[var(--color-accent-teal)] to-blue-500 flex items-center justify-center text-white font-bold text-base shadow-md cursor-pointer border border-[var(--glass-border)] hover:scale-105 transition-transform shrink-0"
+              style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               title={userName}
             >
               {firstName.charAt(0).toUpperCase()}
@@ -159,53 +161,44 @@ export default function DashboardPage() {
 
         {/* 3. PREMIUM WALLET CARD (Redesigned) */}
         <div
-          className="mb-8 relative w-full max-w-[800px] mx-auto shadow-xl"
+          className="mb-8 w-full max-w-[800px] mx-auto shadow-xl"
           style={{
             background: 'rgba(255, 255, 255, 0.05)',
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             borderRadius: '16px',
-            padding: '20px 24px',
+            padding: '24px',
             maxWidth: '800px',
             margin: '0 auto 2rem auto'
           }}
         >
-          {/* Top section: Left (icon + label) | Right (Add Money + button) */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-sm">
-                <Wallet size={18} />
+          {/* Top part: Left (Icon + Label + Balance) | Right (Add Money + Button) */}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-sm">
+                  <Wallet size={16} />
+                </div>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-white/50">YatraGo Pay Balance</span>
               </div>
-              <span className="text-[11px] font-extrabold uppercase tracking-widest text-white/50">YatraGo Pay Balance</span>
+              <div className="font-black text-white tracking-tight" style={{ fontSize: '32px', lineHeight: '1.1', fontWeight: 900 }}>
+                ₹{balance.toLocaleString()}
+              </div>
             </div>
             <button
               onClick={() => navigate('/wallet')}
-              className="bg-[#14b8a6] hover:bg-[#0d9488] text-black font-extrabold text-xs px-4 py-2 rounded-full transition-all shadow-md flex items-center justify-center shrink-0"
+              className="bg-[#14b8a6] hover:bg-[#0d9488] text-black font-extrabold text-xs px-4 py-2 rounded-full transition-all shadow-md shrink-0 mt-1"
             >
               Add Money +
             </button>
           </div>
 
-          {/* Middle: Balance amount in large bold white text (32px) */}
-          <div className="mt-3 mb-5">
-            <div className="font-black text-white tracking-tight" style={{ fontSize: '32px', lineHeight: '1.1', fontWeight: 900 }}>
-              ₹{balance.toLocaleString()}
-            </div>
-          </div>
+          {/* Clean Subtle Separator Line (No perforated dashed line in middle or outside) */}
+          <div className="w-full border-b border-white/10 my-5"></div>
 
-          {/* Divider: Proper perforated dashed line with circular cutout notches on both sides */}
-          <div className="relative flex items-center justify-between w-full my-4 -mx-6" style={{ width: 'calc(100% + 48px)' }}>
-            {/* Left Cutout Notch */}
-            <div className="w-6 h-6 rounded-full bg-[#06090f] border-r border-t border-b border-white/10 -ml-3 z-10 shrink-0 shadow-inner" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}></div>
-            {/* Dashed Line */}
-            <div className="w-full border-b border-dashed border-white/20 mx-2"></div>
-            {/* Right Cutout Notch */}
-            <div className="w-6 h-6 rounded-full bg-[#06090f] border-l border-t border-b border-white/10 -mr-3 z-10 shrink-0 shadow-inner" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}></div>
-          </div>
-
-          {/* Bottom section: Transit Rewards & progress bar */}
-          <div className="mt-3 pt-1">
+          {/* Bottom part: Transit Rewards & progress bar */}
+          <div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs sm:text-sm">
               <div className="flex items-center gap-2 font-medium text-white/80">
                 <span className="text-base">🏅</span>
