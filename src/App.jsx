@@ -13,6 +13,7 @@ import SkeletonLoader from './components/SkeletonLoader';
 import OfflineBanner from './components/OfflineBanner';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
 import TransportModal from './components/TransportModal';
+import Footer from './components/Footer';
 
 // ===== Lazy Loaded Pages (Priority 7 Code Splitting) =====
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -385,12 +386,13 @@ function AppLayout({ children }) {
 
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <main className="app-main">
-        <div className="app-content">
+      <main className="app-main" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', justifyContent: 'space-between' }}>
+        <div className="app-content" style={{ flex: '1 0 auto', width: '100%' }}>
           <ErrorBoundary key={window.location.hash}>
             {children}
           </ErrorBoundary>
         </div>
+        <Footer />
       </main>
 
       <LogoutConfirmModal />

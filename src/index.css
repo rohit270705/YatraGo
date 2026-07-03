@@ -2141,4 +2141,165 @@ input, button, textarea, select {
   -webkit-overflow-scrolling: touch;
 }
 
+/* ==========================================================================
+   Footer Base Styling & Layout (As Requested)
+   ========================================================================== */
+.custom-footer {
+  background-color: #2a2d34; /* Dark grey color from image */
+  color: #ffffff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding-top: 50px;
+  line-height: 1.5;
+  margin-top: auto;
+  width: 100%;
+}
 
+/* Grid Layout for Desktop */
+.footer-container {
+  display: grid;
+  grid-template-columns: 2.5fr 1fr 1fr 1.5fr 1.5fr;
+  gap: 20px;
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+/* Column Elements Styling */
+.footer-col h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: #ffffff;
+}
+
+.footer-col ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer-col ul li {
+  margin-bottom: 12px;
+}
+
+.footer-col ul li a {
+  color: #b5b6ba; /* Light grey text for links */
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.3s ease;
+}
+
+.footer-col ul li a:hover {
+  color: #ffffff; /* Turns white on hover */
+}
+
+/* Brand Column Specifics */
+.brand-col .footer-logo h2 {
+  margin-top: 0;
+  font-size: 22px;
+  color: #ffffff;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.brand-desc, .company-details {
+  font-size: 13px;
+  color: #b5b6ba;
+  margin-bottom: 20px;
+}
+
+.company-details p {
+  margin-bottom: 10px;
+}
+
+/* Social Media Icons */
+.social-section p {
+  font-size: 13px;
+  margin-bottom: 10px;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.social-icons {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.social-icons a {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid #b5b6ba;
+  color: #b5b6ba;
+  text-decoration: none;
+  transition: all 0.3s;
+}
+
+.social-icons a:hover {
+  border-color: #ffffff;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* App Download Buttons Dummy Styling */
+.app-download {
+  margin-top: 20px;
+}
+
+.app-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: #000000;
+  color: #ffffff;
+  text-decoration: none;
+  padding: 8px 15px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  max-width: 150px;
+  border: 1px solid #444;
+  transition: all 0.2s ease;
+}
+
+.app-btn:hover {
+  border-color: #888;
+  background-color: #111;
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+/* Copyright Bottom Bar */
+.footer-bottom {
+  background-color: #212429; /* Slightly darker than main footer */
+  text-align: center;
+  padding: 20px 0;
+  margin-top: 40px;
+  font-size: 13px;
+  color: #b5b6ba;
+}
+
+/* Responsive Design for Mobile & Tablet */
+@media (max-width: 992px) {
+  .footer-container {
+    grid-template-columns: 1fr 1fr; /* 2 columns on tablet */
+  }
+  .brand-col {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 600px) {
+  .footer-container {
+    grid-template-columns: 1fr; /* 1 column on mobile */
+    padding: 0 20px;
+  }
+  .brand-col {
+    grid-column: span 1;
+  }
+}
