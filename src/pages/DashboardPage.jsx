@@ -4,8 +4,7 @@ import {
   MapPin, Search, Ticket, Wallet, Package, Car, TrendingUp,
   ArrowRight, Clock, CheckCircle, Navigation, Bike, Palmtree,
   Sparkles, Compass, Bell, UserCircle, ChevronRight, Map, ShieldCheck,
-  AlertCircle, ChevronDown, History, Luggage, Pencil, Check, X, RotateCcw,
-  Calendar, Star, Award, DollarSign
+  Calendar, Star, Award, DollarSign, ArrowRightLeft, History
 } from 'lucide-react';
 import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToastStore } from '../store';
 import { supabase } from '../supabaseClient';
@@ -146,61 +145,7 @@ export default function DashboardPage() {
                 <span>{greeting()}, {displayGreetingName}</span>
                 <span>👋</span>
               </h1>
-              <button
-                onClick={() => {
-                  setCustomGreetingInput(user?.preferredGreetingName || user?.preferred_greeting_name || '');
-                  setIsEditingGreeting(!isEditingGreeting);
-                }}
-                className="p-1.5 rounded-full hover:bg-[var(--color-surface-elevated)] text-[var(--color-text-tertiary)] hover:text-[var(--color-text)] transition-colors inline-flex items-center justify-center cursor-pointer ml-1"
-                title="Customize greeting name"
-              >
-                <Pencil size={16} />
-              </button>
             </div>
-
-            {/* Inline edit popover */}
-            {isEditingGreeting && (
-              <div className="mt-2 p-3 rounded-xl bg-[var(--color-surface)] border border-[var(--glass-border)] shadow-xl max-w-xs animate-fade-in z-20 relative">
-                <div className="text-xs font-semibold text-[var(--color-text-secondary)] mb-2">
-                  Customize display name
-                </div>
-                <form onSubmit={handleSaveGreeting} className="flex items-center gap-1.5 mb-2">
-                  <input
-                    type="text"
-                    className="form-input text-xs py-1.5 px-2.5 h-8 flex-1"
-                    placeholder={`e.g. Bhai, Boss, ${firstName}`}
-                    value={customGreetingInput}
-                    onChange={(e) => setCustomGreetingInput(e.target.value)}
-                    maxLength={20}
-                    autoFocus
-                  />
-                  <button
-                    type="submit"
-                    className="btn btn-primary h-8 px-2.5 text-xs flex items-center gap-1 shrink-0"
-                    title="Save"
-                  >
-                    <Check size={14} /> Save
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingGreeting(false)}
-                    className="btn btn-ghost h-8 w-8 p-0 flex items-center justify-center shrink-0"
-                    title="Cancel"
-                  >
-                    <X size={14} />
-                  </button>
-                </form>
-                {(user?.preferredGreetingName || user?.preferred_greeting_name) && (
-                  <button
-                    type="button"
-                    onClick={handleResetGreeting}
-                    className="text-[11px] text-[var(--color-accent-teal)] hover:underline flex items-center gap-1 w-full justify-end font-medium"
-                  >
-                    <RotateCcw size={11} /> Reset to default ({firstName})
-                  </button>
-                )}
-              </div>
-            )}
             <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] font-medium mt-0.5">
               Your personal transit & travel companion
             </p>
@@ -228,52 +173,73 @@ export default function DashboardPage() {
 
         {/* 2. QUICK SEARCH WIDGET (Compact, below greeting) */}
         <div
-          className="mb-6 p-4 rounded-2xl border border-[var(--glass-border)] shadow-lg mx-auto"
+          className="mb-6 rounded-2xl shadow-lg mx-auto text-left"
           style={{
-            background: 'rgba(255, 255, 255, 0.04)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '16px',
+            padding: '16px 20px',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
             maxWidth: '700px'
           }}
         >
-          <form onSubmit={handleQuickSearch} className="flex flex-col sm:flex-row items-center gap-2.5">
-            <div className="flex items-center gap-2 w-full sm:flex-1 bg-[var(--color-bg)]/80 border border-[var(--glass-border)] rounded-xl px-3 py-2">
-              <MapPin size={16} className="text-[var(--color-accent-teal)] shrink-0" />
-              <input
-                type="text"
-                placeholder="From (e.g. Mumbai)"
-                value={quickFrom}
-                onChange={(e) => setQuickFrom(e.target.value)}
-                className="bg-transparent border-none outline-none text-xs sm:text-sm text-[var(--color-text)] w-full placeholder-[var(--color-text-tertiary)]"
-              />
+          <form onSubmit={handleQuickSearch}>
+            {/* Row 1: From and To inputs with swap icon */}
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 flex-1 bg-[var(--color-bg)]/80 border border-[var(--glass-border)] rounded-xl px-3 py-2.5 min-w-0">
+                <MapPin size={16} className="text-[var(--color-accent-teal)] shrink-0" />
+                <input
+                  type="text"
+                  placeholder="From (e.g. Mumbai)"
+                  value={quickFrom}
+                  onChange={(e) => setQuickFrom(e.target.value)}
+                  className="bg-transparent border-none outline-none text-xs sm:text-sm text-[var(--color-text)] w-full placeholder-[var(--color-text-tertiary)] truncate"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const temp = quickFrom;
+                  setQuickFrom(quickTo);
+                  setQuickTo(temp);
+                }}
+                className="p-2 rounded-xl bg-[var(--color-surface)] border border-[var(--glass-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:border-[var(--color-accent-teal)] transition-all shrink-0 cursor-pointer flex items-center justify-center"
+                title="Swap Origin & Destination"
+              >
+                <ArrowRightLeft size={16} />
+              </button>
+
+              <div className="flex items-center gap-2 flex-1 bg-[var(--color-bg)]/80 border border-[var(--glass-border)] rounded-xl px-3 py-2.5 min-w-0">
+                <Navigation size={16} className="text-[#3b82f6] shrink-0" />
+                <input
+                  type="text"
+                  placeholder="To (e.g. Pune)"
+                  value={quickTo}
+                  onChange={(e) => setQuickTo(e.target.value)}
+                  className="bg-transparent border-none outline-none text-xs sm:text-sm text-[var(--color-text)] w-full placeholder-[var(--color-text-tertiary)] truncate"
+                />
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:flex-1 bg-[var(--color-bg)]/80 border border-[var(--glass-border)] rounded-xl px-3 py-2">
-              <Navigation size={16} className="text-[#3b82f6] shrink-0" />
-              <input
-                type="text"
-                placeholder="To (e.g. Pune)"
-                value={quickTo}
-                onChange={(e) => setQuickTo(e.target.value)}
-                className="bg-transparent border-none outline-none text-xs sm:text-sm text-[var(--color-text)] w-full placeholder-[var(--color-text-tertiary)]"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 w-full sm:w-auto bg-[var(--color-bg)]/80 border border-[var(--glass-border)] rounded-xl px-3 py-2 shrink-0">
+            {/* Row 2: Date Picker */}
+            <div className="flex items-center gap-2 w-full bg-[var(--color-bg)]/80 border border-[var(--glass-border)] rounded-xl px-3 py-2.5 mb-3">
               <Calendar size={16} className="text-[var(--color-text-secondary)] shrink-0" />
               <input
                 type="date"
                 value={quickDate}
                 onChange={(e) => setQuickDate(e.target.value)}
-                className="bg-transparent border-none outline-none text-xs text-[var(--color-text)] cursor-pointer"
+                className="bg-transparent border-none outline-none text-xs sm:text-sm text-[var(--color-text)] cursor-pointer w-full font-medium"
               />
             </div>
 
+            {/* Row 3: Full Width Search Button below */}
             <button
               type="submit"
-              className="w-full sm:w-auto bg-[#14b8a6] hover:bg-[#0d9488] text-black font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl transition-all shadow-md shrink-0 flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full bg-[#14b8a6] hover:bg-[#0d9488] text-black font-extrabold text-sm py-3 px-5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
             >
-              <Search size={16} />
+              <Search size={18} />
               <span>Search Transit</span>
             </button>
           </form>
@@ -482,7 +448,8 @@ export default function DashboardPage() {
               className="p-6 rounded-2xl border border-[#14b8a6]/40 shadow-xl text-left relative overflow-hidden"
               style={{
                 background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.18) 0%, rgba(15, 23, 42, 0.95) 50%, rgba(15, 23, 42, 0.98) 100%)',
-                backdropFilter: 'blur(10px)'
+                backdropFilter: 'blur(10px)',
+                overflow: 'hidden'
               }}
             >
               <div className="flex items-start gap-4 mb-4">
@@ -492,29 +459,31 @@ export default function DashboardPage() {
                 <div>
                   <h4 className="text-lg sm:text-xl font-black text-white tracking-tight">Plan Your First Trip!</h4>
                   <p className="text-xs sm:text-sm text-white/75 mt-1 leading-relaxed">
-                    Explore India with YatraGo — comfortable city rides, intercity buses, verified drivers, and real-time live GPS tracking.
+                    Comfortable rides, verified drivers, real-time GPS tracking across India
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 my-5">
+              <div className="flex flex-wrap items-center gap-3 my-4" style={{ flexWrap: 'wrap' }}>
                 <button
                   onClick={() => navigate('/search')}
-                  className="bg-[#14b8a6] hover:bg-[#0d9488] text-black font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                  style={{ padding: '8px 16px' }}
+                  className="bg-[#14b8a6] hover:bg-[#0d9488] text-black font-extrabold text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Search size={16} />
+                  <Search size={14} />
                   <span>Search Transit</span>
                 </button>
                 <button
                   onClick={() => navigate('/packages')}
-                  className="bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl border border-white/20 transition-all flex items-center gap-2 cursor-pointer"
+                  style={{ padding: '8px 16px' }}
+                  className="bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/20 transition-all flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Palmtree size={16} className="text-[#2dd4bf]" />
+                  <Palmtree size={14} className="text-[#2dd4bf]" />
                   <span>View Packages</span>
                 </button>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-white/10 text-[11px] font-bold text-white/80">
+              <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-white/10 text-[11px] font-bold text-white/80" style={{ flexWrap: 'wrap' }}>
                 <span className="flex items-center gap-1 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">✅ Group Booking</span>
                 <span className="flex items-center gap-1 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">✅ Promo Codes</span>
                 <span className="flex items-center gap-1 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">✅ Live Tracking</span>
@@ -580,6 +549,7 @@ export default function DashboardPage() {
               <div
                 key={i}
                 onClick={() => navigate(`/search?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}`)}
+                style={{ minHeight: '140px' }}
                 className="glass-card clickable p-4 rounded-2xl min-w-[270px] sm:min-w-[290px] shrink-0 border border-[var(--glass-border)] hover:border-[var(--color-accent-teal)] transition-all cursor-pointer flex flex-col justify-between group bg-[var(--color-surface)]/90 shadow-md"
               >
                 <div>
@@ -607,15 +577,17 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between border-t border-[var(--glass-border)] pt-3 mt-2 text-xs">
-                  <span className="text-[var(--color-text-secondary)] font-medium flex items-center gap-1">
-                    <Clock size={13} className="text-[var(--color-accent-teal)]" />
-                    {route.duration}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-black text-base sm:text-lg text-[var(--color-accent-teal-light)] group-hover:scale-105 transition-transform">{route.price}</span>
-                    <span className="btn btn-primary px-2.5 py-1 text-[10px] rounded-lg font-bold">Book Now</span>
+                <div className="border-t border-[var(--glass-border)] pt-3 mt-3 flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[var(--color-text-tertiary)] font-medium flex items-center gap-1">
+                      <Clock size={13} className="text-[var(--color-text-tertiary)]" />
+                      {route.duration}
+                    </span>
+                    <span className="font-black text-base sm:text-lg text-[var(--color-accent-teal)]">{route.price}</span>
                   </div>
+                  <button className="w-full btn btn-primary py-2 text-xs rounded-xl font-bold flex items-center justify-center gap-1 shadow-sm">
+                    <span>Book Now</span> <ChevronRight size={14} />
+                  </button>
                 </div>
               </div>
             ))}

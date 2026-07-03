@@ -13,7 +13,6 @@ import SkeletonLoader from './components/SkeletonLoader';
 import OfflineBanner from './components/OfflineBanner';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
 import TransportModal from './components/TransportModal';
-import Footer from './components/Footer';
 import BottomNav from './components/BottomNav';
 
 // ===== Lazy Loaded Pages (Priority 7 Code Splitting) =====
