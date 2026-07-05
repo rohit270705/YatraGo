@@ -134,8 +134,8 @@ export default function DashboardPage() {
     : fallbackPopularRoutes;
 
   return (
-    <div className="animate-fade-in pb-28 min-h-[calc(100vh-80px)] max-w-5xl mx-auto flex flex-col justify-between">
-      <div className="w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
+    <div className="animate-fade-in pb-28 min-h-[calc(100vh-80px)] w-full max-w-5xl mx-auto flex flex-col justify-between" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden', boxSizing: 'border-box' }}>
+      <div className="w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         
         {/* 1. GREETING HEADER */}
         <div className="flex items-center justify-between mb-4 pt-2">
@@ -173,7 +173,7 @@ export default function DashboardPage() {
 
         {/* 2. QUICK SEARCH WIDGET (Compact, below greeting) */}
         <div
-          className="mb-6 rounded-2xl shadow-lg mx-auto text-left"
+          className="mb-6 rounded-2xl shadow-lg mx-auto text-left w-full"
           style={{
             background: 'rgba(255, 255, 255, 0.05)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -181,13 +181,15 @@ export default function DashboardPage() {
             padding: '16px 20px',
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
-            maxWidth: '700px'
+            width: '100%',
+            maxWidth: '700px',
+            boxSizing: 'border-box'
           }}
         >
           <form onSubmit={handleQuickSearch}>
             {/* Row 1: From and To inputs with swap icon */}
-            <div className="flex items-center gap-2 mb-3">
-              <div className="flex items-center gap-2 flex-1 bg-[var(--color-bg)]/80 border border-[var(--glass-border)] rounded-xl px-3 py-2.5 min-w-0">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-3 w-full">
+              <div className="flex items-center gap-2 flex-1 bg-[var(--color-bg)]/80 border border-[var(--glass-border)] rounded-xl px-3 py-2.5 min-w-0 w-full box-border">
                 <MapPin size={16} className="text-[var(--color-accent-teal)] shrink-0" />
                 <input
                   type="text"
@@ -205,13 +207,13 @@ export default function DashboardPage() {
                   setQuickFrom(quickTo);
                   setQuickTo(temp);
                 }}
-                className="p-2 rounded-xl bg-[var(--color-surface)] border border-[var(--glass-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:border-[var(--color-accent-teal)] transition-all shrink-0 cursor-pointer flex items-center justify-center"
+                className="p-2 rounded-xl bg-[var(--color-surface)] border border-[var(--glass-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] hover:border-[var(--color-accent-teal)] transition-all shrink-0 cursor-pointer flex items-center justify-center self-center sm:self-auto"
                 title="Swap Origin & Destination"
               >
-                <ArrowRightLeft size={16} />
+                <ArrowRightLeft size={16} className="rotate-90 sm:rotate-0 transition-transform" />
               </button>
 
-              <div className="flex items-center gap-2 flex-1 bg-[var(--color-bg)]/80 border border-[var(--glass-border)] rounded-xl px-3 py-2.5 min-w-0">
+              <div className="flex items-center gap-2 flex-1 bg-[var(--color-bg)]/80 border border-[var(--glass-border)] rounded-xl px-3 py-2.5 min-w-0 w-full box-border">
                 <Navigation size={16} className="text-[#3b82f6] shrink-0" />
                 <input
                   type="text"
@@ -224,7 +226,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Row 2: Date Picker */}
-            <div className="flex items-center gap-2 w-full bg-[var(--color-bg)]/80 border border-[var(--glass-border)] rounded-xl px-3 py-2.5 mb-3">
+            <div className="flex items-center gap-2 w-full bg-[var(--color-bg)]/80 border border-[var(--glass-border)] rounded-xl px-3 py-2.5 mb-3 min-w-0 box-border">
               <Calendar size={16} className="text-[var(--color-text-secondary)] shrink-0" />
               <input
                 type="date"
@@ -237,7 +239,7 @@ export default function DashboardPage() {
             {/* Row 3: Full Width Search Button below */}
             <button
               type="submit"
-              className="w-full bg-[#14b8a6] hover:bg-[#0d9488] text-black font-extrabold text-sm py-3 px-5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full bg-[#14b8a6] hover:bg-[#0d9488] text-black font-extrabold text-sm py-3 px-5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer box-border"
             >
               <Search size={18} />
               <span>Search Transit</span>
@@ -250,7 +252,7 @@ export default function DashboardPage() {
           <div
             onClick={() => navigate('/tracking')}
             className="glass-card mb-6 p-4 border border-[var(--color-accent-teal)] bg-gradient-to-r from-[var(--color-accent-teal)]/20 via-[var(--color-surface)] to-[var(--color-surface)] relative overflow-hidden shadow-lg cursor-pointer group rounded-2xl transition-all hover:border-[var(--color-accent-teal-light)] w-full max-w-[800px] mx-auto"
-            style={{ maxWidth: '800px', margin: '0 auto 1.5rem auto' }}
+            style={{ maxWidth: '800px', margin: '0 auto 1.5rem auto', width: '100%', boxSizing: 'border-box' }}
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3.5 min-w-0">
@@ -287,11 +289,13 @@ export default function DashboardPage() {
             borderRadius: '16px',
             padding: '24px',
             maxWidth: '800px',
-            margin: '0 auto 2rem auto'
+            margin: '0 auto 2rem auto',
+            width: '100%',
+            boxSizing: 'border-box'
           }}
         >
           {/* Top half: Left (Icon + Label + Balance) | Right (Add Money + Button) */}
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <div className="flex items-center gap-2 mb-1.5">
                 <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-sm">
@@ -338,7 +342,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="text-[11px] font-medium text-white/60 flex items-center justify-between">
+            <div className="text-[11px] font-medium text-white/60 flex items-center justify-between flex-wrap gap-1">
               <span>Keep riding to unlock by Aug 2026 🎉</span>
               <span className="text-[#2dd4bf] font-bold">60% Completed</span>
             </div>
@@ -346,7 +350,7 @@ export default function DashboardPage() {
         </div>
 
         {/* 5. RECENT SEARCHES / FREQUENTLY TRAVELED ROUTES */}
-        <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
+        <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto', width: '100%', boxSizing: 'border-box' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] flex items-center gap-1.5">
               <History size={14} className="text-[var(--color-accent-teal)]" />
@@ -359,7 +363,7 @@ export default function DashboardPage() {
               {uniqueUserRoutes.slice(0, 3).map((r, idx) => (
                 <div
                   key={idx}
-                  className="glass-card p-4 rounded-xl border border-[var(--glass-border)] hover:border-[var(--color-accent-teal)] transition-all flex items-center justify-between gap-4 bg-[var(--color-surface)]/90 shadow-md"
+                  className="glass-card p-4 rounded-xl border border-[var(--glass-border)] hover:border-[var(--color-accent-teal)] transition-all flex items-center justify-between gap-4 bg-[var(--color-surface)]/90 shadow-md box-border"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
                     <div className="w-9 h-9 rounded-xl bg-[var(--color-bg)] border border-[var(--glass-border)] flex items-center justify-center text-[var(--color-accent-teal)] shrink-0">
@@ -392,7 +396,7 @@ export default function DashboardPage() {
         </div>
 
         {/* 6. RECENT BOOKINGS & PLAN YOUR FIRST TRIP PROMO CARD */}
-        <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
+        <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto', width: '100%', boxSizing: 'border-box' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] flex items-center gap-1.5">
               <Ticket size={14} className="text-[var(--color-accent-teal)]" />
@@ -412,7 +416,7 @@ export default function DashboardPage() {
                 <div
                   key={b.id || idx}
                   onClick={() => navigate('/bookings')}
-                  className="glass-card clickable p-4 rounded-xl border border-[var(--glass-border)] hover:border-[var(--color-accent-teal)] transition-all flex items-center justify-between gap-4 cursor-pointer bg-[var(--color-surface)]/90 shadow-md"
+                  className="glass-card clickable p-4 rounded-xl border border-[var(--glass-border)] hover:border-[var(--color-accent-teal)] transition-all flex items-center justify-between gap-4 cursor-pointer bg-[var(--color-surface)]/90 shadow-md box-border"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
                     <div className="w-10 h-10 rounded-xl bg-[var(--color-bg)] border border-[var(--glass-border)] flex items-center justify-center text-[var(--color-accent-teal)] shrink-0 shadow-sm">
@@ -450,7 +454,9 @@ export default function DashboardPage() {
                 background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.18) 0%, rgba(15, 23, 42, 0.95) 50%, rgba(15, 23, 42, 0.98) 100%)',
                 backdropFilter: 'blur(10px)',
                 overflow: 'hidden',
-                padding: '20px 24px'
+                padding: '20px 24px',
+                width: '100%',
+                boxSizing: 'border-box'
               }}
             >
               <div className="flex items-start gap-4 mb-4">
@@ -465,7 +471,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center my-4" style={{ flexWrap: 'wrap', gap: '12px' }}>
+              <div className="flex flex-wrap items-center my-4" style={{ flexWrap: 'wrap', gap: '12px', width: '100%' }}>
                 <button
                   onClick={() => navigate('/search')}
                   style={{ padding: '8px 16px' }}
@@ -484,7 +490,7 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              <div className="flex flex-wrap items-center pt-3 border-t border-white/10 text-[11px] font-bold text-white/80" style={{ flexWrap: 'wrap', gap: '8px', margin: '0 4px' }}>
+              <div className="flex flex-wrap items-center pt-3 border-t border-white/10 text-[11px] font-bold text-white/80" style={{ flexWrap: 'wrap', gap: '8px', margin: '0 4px', width: '100%' }}>
                 <span className="flex items-center gap-1 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">✅ Group Booking</span>
                 <span className="flex items-center gap-1 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">✅ Promo Codes</span>
                 <span className="flex items-center gap-1 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">✅ Live Tracking</span>
@@ -495,7 +501,7 @@ export default function DashboardPage() {
 
         {/* 7. JOURNEY STATS / INSIGHTS (Only show if user has at least 1 booking) */}
         {userBookings.length > 0 && (
-          <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
+          <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto', width: '100%', boxSizing: 'border-box' }}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] flex items-center gap-1.5">
                 <Award size={14} className="text-[var(--color-accent-teal)]" />
@@ -537,7 +543,7 @@ export default function DashboardPage() {
         )}
 
         {/* 8. POPULAR ROUTES NEAR YOU (Real Data or pre-populated fallback) */}
-        <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto' }}>
+        <div className="mb-8 w-full max-w-[800px] mx-auto" style={{ maxWidth: '800px', margin: '0 auto 2rem auto', width: '100%', boxSizing: 'border-box' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-tertiary)] flex items-center gap-1.5">
               <Map size={14} className="text-[var(--color-accent-teal)]" />
@@ -545,13 +551,13 @@ export default function DashboardPage() {
             </h3>
           </div>
 
-          <div className="flex overflow-x-auto gap-4 pb-2 no-scrollbar" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+          <div className="flex flex-col sm:flex-row sm:overflow-x-auto pb-2 no-scrollbar w-full" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', gap: '16px' }}>
             {popularRoutes.map((route, i) => (
               <div
                 key={i}
                 onClick={() => navigate(`/search?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}`)}
-                style={{ minHeight: '140px' }}
-                className="glass-card clickable p-4 rounded-2xl min-w-[270px] sm:min-w-[290px] shrink-0 border border-[var(--glass-border)] hover:border-[var(--color-accent-teal)] transition-all cursor-pointer flex flex-col justify-between group bg-[var(--color-surface)]/90 shadow-md"
+                style={{ minHeight: '140px', boxSizing: 'border-box' }}
+                className="glass-card clickable p-4 rounded-2xl w-full sm:w-auto sm:min-w-[290px] shrink-0 border border-[var(--glass-border)] hover:border-[var(--color-accent-teal)] transition-all cursor-pointer flex flex-col justify-between group bg-[var(--color-surface)]/90 shadow-md"
               >
                 <div>
                   <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-[var(--color-text-tertiary)] mb-2.5">
