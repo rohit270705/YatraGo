@@ -116,13 +116,24 @@ export default function ChatWidget() {
         {aiMessages.length === 0 && !isTyping ? (
           <div className="chat-welcome">
             <Bot size={40} className="text-accent-teal" style={{ marginBottom: 12 }} />
-            <h3>Welcome to Yaara! 🤖</h3>
-            <p>
-              {activeLang === 'hi' ? 'नमस्ते! मैं आपकी यात्रा में कैसे मदद कर सकता हूँ?' :
-               activeLang === 'mr' ? 'नमस्कार! मी तुमच्या प्रवासात कशी मदत करू शकतो?' :
-               activeLang === 'hinglish' ? 'Namaste! Main aapki travel mein kaise help kar sakta hoon?' :
-               'Hi there! How can I help you with your travel today?'}
+            <h3>Welcome to Yaara! ✨</h3>
+            <p style={{ marginBottom: 16 }}>
+              {activeLang === 'hi' ? 'नमस्ते! मैं आपका स्थानीय यात्रा मित्र हूँ। मैं आज आपकी कैसे मदद कर सकता हूँ?' :
+               activeLang === 'mr' ? 'नमस्कार! मी तुमचा स्थानिक प्रवास मित्र आहे. आज मी तुमची कशी मदत करू शकतो?' :
+               activeLang === 'hinglish' ? 'Namaste! Main aapka local travel buddy hoon. Aaj kaise help karoon?' :
+               'Hi there! I am your warm local travel buddy for India. How can I help you today?'}
             </p>
+            <div className="chat-quick-replies" style={{ justifyContent: 'center' }}>
+              {['🚗 Find cabs', '🎒 Book package', '💰 Check wallet', '🎫 Raise Ticket'].map((chip, ci) => (
+                <button
+                  key={ci}
+                  className="chat-quick-chip"
+                  onClick={() => handleQuickReply(chip)}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           aiMessages.map((msg, idx) => {

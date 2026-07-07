@@ -21,14 +21,42 @@ export default function TransportModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in">
-      <div
-        className="glass-card relative w-full max-w-[480px] rounded-2xl border border-white/15 p-6 shadow-2xl overflow-hidden bg-[#0b1329]/95 text-left transition-all"
+    <>
+      {/* Backdrop overlay */}
+      <div 
+        onClick={closeModal}
         style={{
-          background: 'rgba(11, 19, 41, 0.96)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)'
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          zIndex: 450,
+        }}
+        className="animate-fade-in"
+      />
+
+      {/* Centered Modal Box */}
+      <div
+        className="glass-card animate-fade-in text-left transition-all"
+        style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 451,
+          width: '90%',
+          maxWidth: '480px',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          borderRadius: '20px',
+          border: '1px solid rgba(255, 255, 255, 0.18)',
+          padding: '24px',
+          background: 'rgba(11, 19, 41, 0.98)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 40px rgba(27, 153, 139, 0.15)'
         }}
       >
         <button
@@ -129,6 +157,6 @@ export default function TransportModal() {
           <span>Got it, notify me!</span>
         </button>
       </div>
-    </div>
+    </>
   );
 }

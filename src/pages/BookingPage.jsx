@@ -29,23 +29,24 @@ export default function BookingPage() {
   let vehicle = null;
 
   if (isCab) {
-    const cab = location.state.route;
+    const cab = location.state?.route || {};
     route = {
-      id: cab.id,
-      from: cab.from_city,
-      to: cab.to_city,
+      id: cab.id || routeId || 'cab-1',
+      from: cab.from_city || 'Origin',
+      to: cab.to_city || 'Destination',
       date: new Date().toISOString().split('T')[0], // Default to today for cabs
       departureTime: 'Flexible',
       arrivalTime: 'Flexible',
-      price: cab.rate
+      price: cab.rate || 500,
+      luggageAvailable: cab.luggage_available || 50
     };
     vehicle = {
       type: 'Cab',
       registrationNumber: cab.vehicle_details || 'Assigned Driver Vehicle'
     };
   } else {
-    route = routes.find(r => r.id === routeId);
-    vehicle = route ? vehicles.find(v => v.id === route.vehicleId) : null;
+    route = routes.find(r => String(r.id) === String(routeId));
+    vehicle = route ? vehicles.find(v => String(v.id) === String(route.vehicleId || route.vehicle_id)) : null;
   }
 
   const [step, setStep] = useState(1); // 1: details, 2: luggage, 3: summary, 4: confirmed
@@ -435,13 +436,13 @@ export default function BookingPage() {
                   ✓ {freeLuggageLimit}kg Free Luggage Included ({passengers.length} × 15kg)
                 </div>
                 <div style={{ fontSize: '0.875rem', color: 'var(--color-text-tertiary)' }}>
-                  Extra luggage at ₹10/kg. Vehicle capacity: {route.luggageAvailable}kg available.
+                  Extra luggage at ₹10/kg. Vehicle capacity: {route.luggageAvailable || route.luggage_available || 50}kg available.
                 </div>
               </div>
 
               <div className="form-group">
                 <label className="form-label">Your Luggage Weight (kg)</label>
-                <input type="range" min={0} max={Math.min(route.luggageAvailable, passengers.length * 60)}
+                <input type="range" min={0} max={Math.min(route.luggageAvailable || route.luggage_available || 50, passengers.length * 60)}
                   value={totalLuggageKg}
                   onChange={e => setTotalLuggageKg(parseInt(e.target.value))}
                   style={{ width: '100%', accentColor: 'var(--color-accent-teal)' }}
@@ -451,7 +452,7 @@ export default function BookingPage() {
                   <span style={{ fontWeight: 700, fontSize: '1.25rem', color: totalLuggageKg > freeLuggageLimit ? 'var(--color-accent-amber)' : 'var(--color-accent-green)' }}>
                     {totalLuggageKg} kg
                   </span>
-                  <span className="text-muted">{Math.min(route.luggageAvailable, passengers.length * 60)} kg</span>
+                  <span className="text-muted">{Math.min(route.luggageAvailable || route.luggage_available || 50, passengers.length * 60)} kg</span>
                 </div>
               </div>
 

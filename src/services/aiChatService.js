@@ -301,7 +301,7 @@ export async function sendAiMessage(message, userContext, chatHistory, detectedL
       responseTimeMs: 0,
       fallbackUsed: true,
       fallbackReason: 'error',
-      quickReplies: ['🎫 Raise Support Ticket']
+      quickReplies: ['🚗 Find cabs', '🎒 Book package', '💰 Check wallet', '🎫 Raise Support Ticket']
     };
   }
 }
