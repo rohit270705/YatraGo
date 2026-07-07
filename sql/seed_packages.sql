@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS public.holiday_packages (
   itinerary JSONB,
   inclusions TEXT[],
   exclusions TEXT[],
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Ensure all required columns exist even if the table was previously created with an older schema
