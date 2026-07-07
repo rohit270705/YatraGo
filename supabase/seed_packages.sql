@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS public.holiday_packages (
 );
 
 -- Ensure all required columns exist even if the table was previously created with an older schema
+ALTER TABLE public.holiday_packages ALTER COLUMN id TYPE TEXT USING id::text;
 ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS title TEXT;
 ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Adventure';
 ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS duration_days INTEGER DEFAULT 1;
