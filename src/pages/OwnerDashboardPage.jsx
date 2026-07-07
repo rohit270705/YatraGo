@@ -3,7 +3,7 @@ import {
   Car, Plus, Calendar, MapPin, DollarSign, AlertTriangle, CheckCircle,
   Shield, Upload, Clock, Users, Luggage, TrendingUp, Bell, Trash2, Camera, Image, X, FileText, UploadCloud
 } from 'lucide-react';
-import { useVehicleStore, useBookingStore, useToastStore, useAuthStore, useWalletStore, useDriverStore } from '../store';
+import { useVehicleStore, useBookingStore, useToastStore, useAuthStore, useWalletStore, useDriverStore, useVehicleOfferStore } from '../store';
 
 export default function OwnerDashboardPage() {
   const { user } = useAuthStore();
@@ -11,11 +11,16 @@ export default function OwnerDashboardPage() {
   const { bookings, approveBooking, rejectBooking } = useBookingStore();
   const { balance, withdrawals, requestWithdrawal } = useWalletStore();
   const { links: driverLinks, fetchLinks, sendLinkRequest, updateLinkStatus, availableDrivers, fetchAvailableDrivers } = useDriverStore();
+  const { offers, fetchOffers, respondToOffer } = useVehicleOfferStore();
   const { addToast } = useToastStore();
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [showRouteModal, setShowRouteModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPhotoViewer, setShowPhotoViewer] = useState(null);
+  
+  // Base Rate Edit State (Module 17)
+  const [editingRateVehicle, setEditingRateVehicle] = useState(null);
+  const [newBaseRate, setNewBaseRate] = useState(20);
   
   // Document Upload State
   const [showDocUpload, setShowDocUpload] = useState(null);
@@ -34,7 +39,8 @@ export default function OwnerDashboardPage() {
     fetchVehicles();
     if (user?.id) fetchLinks(user.id, 'owner');
     fetchAvailableDrivers(true); // true = vehicleLessOnly
-  }, [fetchVehicles, fetchLinks, user?.id]);
+    fetchOffers();
+  }, [fetchVehicles, fetchLinks, fetchOffers, user?.id]);
 
   const [driverLicenseInput, setDriverLicenseInput] = useState('');
 
@@ -68,6 +74,32 @@ export default function OwnerDashboardPage() {
   const myBookings = (bookings || []).filter(b => myVehicles.some(v => v.id === b.route?.vehicle_id || v.id === b.route?.vehicleId || v.id === b.vehicle?.id));
   const pendingBookings = myBookings.filter(b => b.status === 'pending_owner_approval');
   const totalEarnings = myBookings.filter(b => b.status === 'completed' || b.status === 'confirmed').reduce((s, b) => s + (b.totalAmount || b.total_amount || 0), 0);
+
+  // Negotiable Offers (Module 17)
+  const myVehicleIds = myVehicles.map(v => v.id);
+  const myOffers = (offers || []).filter(o => myVehicleIds.includes(o.vehicleId || o.vehicle_id));
+  const pendingOffers = myOffers.filter(o => o.status === 'pending');
+
+  const handleRespondOffer = async (offerId, status) => {
+    const res = await respondToOffer(offerId, status);
+    if (res.success) {
+      addToast(`Price offer ${status === 'accepted' ? 'accepted & booking confirmed!' : 'rejected.'}`, status === 'accepted' ? 'success' : 'info');
+    } else {
+      addToast(res.error || 'Failed to respond to offer', 'error');
+    }
+  };
+
+  const handleUpdateBaseRate = async () => {
+    if (!editingRateVehicle) return;
+    const { updateVehicleBaseRate } = useVehicleStore.getState();
+    const res = await updateVehicleBaseRate(editingRateVehicle.id, Number(newBaseRate));
+    if (res.success) {
+      addToast(`Base rate for ${editingRateVehicle.registrationNumber} updated to ₹${newBaseRate}/km!`, 'success');
+      setEditingRateVehicle(null);
+    } else {
+      addToast(res.error || 'Failed to update rate', 'error');
+    }
+  };
 
   const handleApproveBooking = async (bookingId) => {
     const res = await approveBooking(bookingId);
@@ -455,6 +487,45 @@ export default function OwnerDashboardPage() {
         </div>
       )}
 
+      {/* Pending Direct Vehicle Price Offers (Module 17) */}
+      {pendingOffers.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <h3 style={{ fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-accent-amber)' }}>
+            <DollarSign size={20} /> Pending Direct Price Offers (Negotiable)
+          </h3>
+          {pendingOffers.map(o => {
+            const veh = myVehicles.find(v => v.id === (o.vehicleId || o.vehicle_id));
+            return (
+              <div key={o.id} className="glass-card" style={{ marginBottom: 10, border: '1px solid rgba(244, 162, 97, 0.4)', background: 'rgba(244, 162, 97, 0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+                  <div style={{ flex: 1, minWidth: 220 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>Direct Offer</span>
+                      <strong style={{ fontSize: '1rem' }}>{o.routeFrom} → {o.routeTo}</strong>
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginTop: 4 }}>
+                      Vehicle: <strong>{veh ? `${veh.registrationNumber} (${veh.type})` : (o.vehicleId || o.vehicle_id)}</strong> • Date: {o.travelDate} • {o.driverIncluded ? 'With Driver' : 'Self Drive'}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginTop: 2 }}>
+                      Passenger: <strong>{o.passengerName}</strong> (System Estimate: ₹{o.systemEstimatedPrice?.toLocaleString()})
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-accent-green)' }}>
+                      Proposed: ₹{o.proposedPrice?.toLocaleString()}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-sm btn-secondary" onClick={() => handleRespondOffer(o.id, 'rejected')}>Reject</button>
+                      <button className="btn btn-sm btn-primary" onClick={() => handleRespondOffer(o.id, 'accepted')}><CheckCircle size={14} /> Accept & Confirm</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* My Vehicles */}
       <h3 style={{ fontWeight: 700, marginBottom: 12 }}>My Active Vehicles</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -507,6 +578,14 @@ export default function OwnerDashboardPage() {
               <span className="badge badge-success">PUC ✓</span>
               <span className="badge badge-success">DL ✓</span>
               <span className="badge badge-success">Insurance ✓</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--color-border-subtle)' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>
+                Base Rate: <strong style={{ color: 'var(--color-accent-teal)', fontSize: '0.95rem' }}>₹{v.baseRate || 20}/km</strong>
+              </div>
+              <button className="btn btn-sm btn-secondary" onClick={() => { setEditingRateVehicle(v); setNewBaseRate(v.baseRate || 20); }}>
+                Edit Rate
+              </button>
             </div>
             <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginTop: 8 }}>
               {(v.journeyHistory || []).length} trips completed
@@ -1057,6 +1136,33 @@ export default function OwnerDashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Base Rate Modal (Module 17) */}
+      {editingRateVehicle && (
+        <div className="modal-backdrop" onClick={() => setEditingRateVehicle(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+            <div className="modal-header">
+              <h3 className="modal-title">Edit Base Rate / km</h3>
+              <button className="modal-close" onClick={() => setEditingRateVehicle(null)}>✕</button>
+            </div>
+            <div style={{ padding: '0 0 16px' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: 16 }}>
+                Set the per-kilometer travel rate for <strong>{editingRateVehicle.registrationNumber} ({editingRateVehicle.type})</strong>. This rate is used to calculate estimated prices for direct bookings.
+              </p>
+              <div className="form-group">
+                <label className="form-label">Base Rate (₹ per km)</label>
+                <input type="number" className="form-input" min="5" max="500" required
+                  value={newBaseRate}
+                  onChange={e => setNewBaseRate(e.target.value)} />
+              </div>
+              <div className="modal-footer" style={{ marginTop: 20 }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setEditingRateVehicle(null)}>Cancel</button>
+                <button type="button" className="btn btn-primary" onClick={handleUpdateBaseRate}>Save Rate</button>
+              </div>
+            </div>
           </div>
         </div>
       )}

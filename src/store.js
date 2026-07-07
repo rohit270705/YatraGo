@@ -9,6 +9,7 @@ const MOCK_VEHICLES = [
     id: 'v1',
     registrationNumber: 'MH-12-AB-1234',
     type: 'SUV',
+    baseRate: 20,
     seatingCapacity: 7,
     luggageCapacity: 60,
     ownerId: 'owner1',
@@ -31,6 +32,7 @@ const MOCK_VEHICLES = [
     id: 'v2',
     registrationNumber: 'MH-04-CD-5678',
     type: 'Sedan',
+    baseRate: 16,
     seatingCapacity: 4,
     luggageCapacity: 35,
     ownerId: 'owner2',
@@ -51,6 +53,7 @@ const MOCK_VEHICLES = [
     id: 'v3',
     registrationNumber: 'KA-01-EF-9012',
     type: 'Mini Bus',
+    baseRate: 25,
     seatingCapacity: 14,
     luggageCapacity: 120,
     ownerId: 'owner3',
@@ -67,6 +70,7 @@ const MOCK_VEHICLES = [
     id: 'v4',
     registrationNumber: 'GJ-05-GH-3456',
     type: 'Tempo Traveller',
+    baseRate: 22,
     seatingCapacity: 12,
     luggageCapacity: 90,
     ownerId: 'owner4',
@@ -83,6 +87,7 @@ const MOCK_VEHICLES = [
     id: 'v5',
     registrationNumber: 'DL-01-BU-7890',
     type: 'Bus',
+    baseRate: 40,
     seatingCapacity: 40,
     luggageCapacity: 200,
     ownerId: 'owner5',
@@ -105,6 +110,7 @@ const MOCK_VEHICLES = [
     id: 'v6',
     registrationNumber: 'TN-07-BU-2345',
     type: 'Bus',
+    baseRate: 38,
     seatingCapacity: 32,
     luggageCapacity: 160,
     ownerId: 'owner6',
@@ -1247,13 +1253,95 @@ export const useBookingStore = create(
     }
   },
 
+  createDirectVehicleBooking: async (bookingData) => {
+    try {
+      const user = useAuthStore.getState().user;
+      if (!user) return { error: 'Not authenticated' };
+
+      const vehicle = useVehicleStore.getState().getVehicle(bookingData.vehicleId) || {
+        id: bookingData.vehicleId,
+        registrationNumber: 'DL-01-DIRECT',
+        type: 'SUV',
+        ownerName: 'Vehicle Owner'
+      };
+
+      const fromCity = bookingData.routeFrom || (bookingData.routeDetails ? bookingData.routeDetails.split('→')[0]?.trim() : 'Origin');
+      const toCity = bookingData.routeTo || (bookingData.routeDetails ? bookingData.routeDetails.split('→')[1]?.trim() : 'Destination');
+      const travelDate = bookingData.travelDate || new Date().toISOString().split('T')[0];
+
+      const newBooking = {
+        id: `dir-${Date.now()}`,
+        userId: user.id,
+        user_id: user.id,
+        routeId: null,
+        vehicleId: bookingData.vehicleId,
+        vehicle_id: bookingData.vehicleId,
+        bookingSource: 'vehicle_direct',
+        booking_source: 'vehicle_direct',
+        routeDetails: `${fromCity} → ${toCity}`,
+        route_details: `${fromCity} → ${toCity}`,
+        travelDate: travelDate,
+        travel_date: travelDate,
+        totalAmount: Number(bookingData.totalAmount),
+        total_amount: Number(bookingData.totalAmount),
+        driverIncluded: bookingData.driverIncluded || false,
+        driver_included: bookingData.driverIncluded || false,
+        status: 'confirmed',
+        createdAt: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        route: {
+          from: fromCity,
+          to: toCity,
+          date: travelDate,
+          departureTime: '08:00 AM',
+          price: Number(bookingData.totalAmount)
+        },
+        vehicle: {
+          id: vehicle.id,
+          registrationNumber: vehicle.registrationNumber || vehicle.registration_number,
+          type: vehicle.type,
+          ownerName: vehicle.ownerName || vehicle.owner_name
+        },
+        passengerDetails: [
+          { name: user.name || 'Passenger', age: 30, gender: 'Other' }
+        ],
+        customerPaymentMode: bookingData.paymentMode || 'wallet'
+      };
+
+      try {
+        await supabase.from('bookings').insert([{
+          id: newBooking.id,
+          user_id: user.id,
+          vehicle_id: bookingData.vehicleId,
+          booking_source: 'vehicle_direct',
+          route_details: newBooking.routeDetails,
+          travel_date: travelDate,
+          total_amount: newBooking.totalAmount,
+          driver_included: newBooking.driverIncluded,
+          status: 'confirmed'
+        }]);
+      } catch (e) {
+        console.warn('Supabase insert fallback for direct booking:', e);
+      }
+
+      const { bookings } = get();
+      set({ bookings: [newBooking, ...bookings] });
+      return newBooking;
+    } catch (err) {
+      console.error('Direct Vehicle Booking error:', err);
+      return { error: 'Booking failed. Please try again.' };
+    }
+  },
+
   // Check if booking can be modified (only 2+ hours before journey)
   canModifyBooking: (bookingId) => {
     const { bookings } = get();
     const booking = bookings.find(b => b.id === bookingId);
     if (!booking || booking.status !== 'confirmed') return { allowed: false, reason: 'Booking is not active' };
 
-    const journeyDate = new Date(booking.route.date + 'T' + booking.route.departureTime);
+    const routeDate = booking.route?.date || booking.travelDate || booking.travel_date || new Date().toISOString().split('T')[0];
+    const routeTime = booking.route?.departureTime || booking.departureTime || '08:00 AM';
+    const journeyDate = new Date(routeDate + 'T' + routeTime);
     const now = new Date();
     const hoursUntilJourney = (journeyDate - now) / (1000 * 60 * 60);
 
@@ -1440,7 +1528,9 @@ export const useBookingStore = create(
     const booking = bookings.find(b => b.id === bookingId);
     if (!booking || booking.status !== 'confirmed') return null;
 
-    const journeyDate = new Date(booking.route.date + 'T' + booking.route.departureTime);
+    const routeDate = booking.route?.date || booking.travelDate || booking.travel_date || new Date().toISOString().split('T')[0];
+    const routeTime = booking.route?.departureTime || booking.departureTime || '08:00 AM';
+    const journeyDate = new Date(routeDate + 'T' + routeTime);
     const now = new Date();
     const hoursUntilJourney = (journeyDate - now) / (1000 * 60 * 60);
 
@@ -1455,9 +1545,11 @@ export const useBookingStore = create(
     }
 
     // Refund to wallet
+    const routeFrom = booking.route?.from || (booking.routeDetails ? booking.routeDetails.split('→')[0]?.trim() : 'Origin');
+    const routeTo = booking.route?.to || (booking.routeDetails ? booking.routeDetails.split('→')[1]?.trim() : 'Destination');
     useWalletStore.getState().refundMoney(
       refundAmount,
-      `Refund: ${booking.route.from} → ${booking.route.to} ${cancellationFee > 0 ? '(₹30 fee deducted)' : '(Full refund)'}`
+      `Refund: ${routeFrom} → ${routeTo} ${cancellationFee > 0 ? '(₹30 fee deducted)' : '(Full refund)'}`
     );
 
     set(state => ({
@@ -1489,6 +1581,7 @@ const mapVehicleFromDB = (v) => ({
   fuelType: v.fuel_type,
   purchaseDate: v.purchase_date,
   type: v.type,
+  baseRate: Number(v.base_rate || (v.type === 'SUV' ? 20 : v.type === 'Sedan' ? 16 : v.type === 'Mini Bus' ? 25 : v.type === 'Bus' ? 40 : 15)),
   seatingCapacity: v.seating_capacity,
   luggageCapacity: v.luggage_capacity,
   approved: v.approved,
@@ -1531,6 +1624,26 @@ export const useVehicleStore = create((set, get) => ({
   },
 
   getVehicle: (id) => get().vehicles.find(v => v.id === id),
+
+  updateVehicleBaseRate: async (vehicleId, newRate) => {
+    try {
+      if (String(vehicleId).startsWith('v')) {
+        set(state => ({
+          vehicles: state.vehicles.map(v => v.id === vehicleId ? { ...v, baseRate: Number(newRate) } : v)
+        }));
+        return { success: true };
+      }
+      const { error } = await supabase.from('vehicles').update({ base_rate: Number(newRate) }).eq('id', vehicleId);
+      if (error) throw error;
+      set(state => ({
+        vehicles: state.vehicles.map(v => v.id === vehicleId ? { ...v, baseRate: Number(newRate) } : v)
+      }));
+      return { success: true };
+    } catch (err) {
+      console.error('Error updating vehicle base rate:', err);
+      return { success: false, error: err.message };
+    }
+  },
 
   // Upload a single photo to Supabase Storage
   uploadVehiclePhoto: async (vehicleId, photoFile, photoType) => {
@@ -3038,5 +3151,144 @@ export const useTransportModalStore = create((set) => ({
   activeModal: null, // null | 'flights' | 'trains'
   openModal: (type) => set({ activeModal: type }),
   closeModal: () => set({ activeModal: null }),
+}));
+
+// 19. VEHICLE BOOKING OFFERS STORE (Negotiable Direct Vehicle Bookings)
+export const useVehicleOfferStore = create((set, get) => ({
+  offers: [
+    {
+      id: 'off-1',
+      vehicleId: 'v1',
+      vehicle_id: 'v1',
+      passengerId: 'user-pass-1',
+      passenger_id: 'user-pass-1',
+      passengerName: 'Ananya Iyer',
+      routeFrom: 'Mumbai',
+      routeTo: 'Pune',
+      travelDate: '2026-06-25',
+      driverIncluded: true,
+      systemEstimatedPrice: 3200,
+      proposedPrice: 2800,
+      status: 'pending',
+      createdAt: new Date(Date.now() - 3600000).toISOString()
+    }
+  ],
+  isLoading: false,
+
+  fetchOffers: async (vehicleIds = []) => {
+    try {
+      set({ isLoading: true });
+      let query = supabase.from('vehicle_booking_offers').select('*').order('created_at', { ascending: false });
+      if (vehicleIds && vehicleIds.length > 0) {
+        query = query.in('vehicle_id', vehicleIds);
+      }
+      const { data, error } = await query;
+      if (!error && data) {
+        const mapped = data.map(o => ({
+          id: o.id,
+          vehicleId: o.vehicle_id,
+          vehicle_id: o.vehicle_id,
+          passengerId: o.passenger_id,
+          passenger_id: o.passenger_id,
+          passengerName: o.passenger_name || 'Passenger',
+          routeFrom: o.route_from,
+          routeTo: o.route_to,
+          travelDate: o.travel_date,
+          driverIncluded: o.driver_included,
+          systemEstimatedPrice: o.system_estimated_price,
+          proposedPrice: o.proposed_price,
+          status: o.status,
+          createdAt: o.created_at
+        }));
+        const combined = [...get().offers.filter(o => String(o.id).startsWith('off-')), ...mapped];
+        set({ offers: combined, isLoading: false });
+      } else {
+        set({ isLoading: false });
+      }
+    } catch (err) {
+      console.error('Error fetching offers:', err);
+      set({ isLoading: false });
+    }
+  },
+
+  createOffer: async (offerData) => {
+    try {
+      const user = useAuthStore.getState().user;
+      const newOffer = {
+        id: `off-${Date.now()}`,
+        vehicleId: offerData.vehicleId,
+        vehicle_id: offerData.vehicleId,
+        passengerId: user?.id || 'guest',
+        passenger_id: user?.id || 'guest',
+        passengerName: user?.name || 'Passenger',
+        routeFrom: offerData.routeFrom,
+        routeTo: offerData.routeTo,
+        travelDate: offerData.travelDate,
+        driverIncluded: offerData.driverIncluded || false,
+        systemEstimatedPrice: Number(offerData.systemEstimatedPrice),
+        proposedPrice: Number(offerData.proposedPrice),
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        await supabase.from('vehicle_booking_offers').insert([{
+          id: newOffer.id,
+          vehicle_id: newOffer.vehicleId,
+          passenger_id: newOffer.passengerId,
+          route_from: newOffer.routeFrom,
+          route_to: newOffer.routeTo,
+          travel_date: newOffer.travelDate,
+          driver_included: newOffer.driverIncluded,
+          system_estimated_price: newOffer.systemEstimatedPrice,
+          proposed_price: newOffer.proposedPrice,
+          status: 'pending'
+        }]);
+      } catch (e) {
+        console.warn('Supabase insert fallback for offer:', e);
+      }
+
+      set(state => ({ offers: [newOffer, ...state.offers] }));
+      return { success: true, offer: newOffer };
+    } catch (err) {
+      console.error('Error creating offer:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  respondToOffer: async (offerId, responseStatus) => {
+    try {
+      const offer = get().offers.find(o => o.id === offerId);
+      if (!offer) return { success: false, error: 'Offer not found' };
+
+      set(state => ({
+        offers: state.offers.map(o => o.id === offerId ? { ...o, status: responseStatus } : o)
+      }));
+
+      try {
+        await supabase.from('vehicle_booking_offers').update({ status: responseStatus }).eq('id', offerId);
+      } catch (e) {
+        console.warn('Supabase update fallback for offer:', e);
+      }
+
+      if (responseStatus === 'accepted') {
+        const bookingRes = await useBookingStore.getState().createDirectVehicleBooking({
+          vehicleId: offer.vehicleId,
+          routeFrom: offer.routeFrom,
+          routeTo: offer.routeTo,
+          travelDate: offer.travelDate,
+          driverIncluded: offer.driverIncluded,
+          totalAmount: offer.proposedPrice,
+          paymentMode: 'wallet'
+        });
+        return { success: true, booking: bookingRes };
+      }
+
+      return { success: true };
+    } catch (err) {
+      console.error('Error responding to offer:', err);
+      return { success: false, error: err.message };
+    }
+  }
 }));
 
