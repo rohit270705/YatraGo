@@ -20,6 +20,7 @@ export default function DashboardPage() {
 
   const [dbRoutes, setDbRoutes] = useState([]);
   const [routesLoading, setRoutesLoading] = useState(true);
+  const [searchHistory, setSearchHistory] = useState([]);
 
   // Quick search widget state
   const [quickFrom, setQuickFrom] = useState('Mumbai');
@@ -33,7 +34,7 @@ export default function DashboardPage() {
     async function fetchRoutes() {
       try {
         setRoutesLoading(true);
-        const { data, error } = await supabase.from('routes').select('*').limit(6);
+        const { data, error } = await supabase.from('routes').select('*').limit(25);
         if (!error && data) {
           setDbRoutes(data);
         } else {
@@ -48,6 +49,27 @@ export default function DashboardPage() {
     }
     fetchRoutes();
   }, []);
+
+  // Fetch user search history
+  useEffect(() => {
+    async function fetchHistory() {
+      if (!user?.id) return;
+      try {
+        const { data, error } = await supabase
+          .from('search_history')
+          .select('*')
+          .eq('user_id', String(user.id))
+          .order('searched_at', { ascending: false })
+          .limit(15);
+        if (!error && data) {
+          setSearchHistory(data);
+        }
+      } catch (e) {
+        console.warn('Error fetching search history:', e);
+      }
+    }
+    fetchHistory();
+  }, [user?.id]);
 
   // Robust User Name Extraction
   const userName = user?.name || user?.full_name || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Traveler';
@@ -84,46 +106,88 @@ export default function DashboardPage() {
   };
 
   // Format unique user routes for Frequently Travelled Routes section
-  const recentUserRoutes = (userBookings || [])
+  // Group completed/confirmed bookings by route, ordered by frequency
+  const routeFreqMap = new Map();
+  (userBookings || [])
     .filter(b => b.pickup && b.destination)
-    .map(b => ({
-      from: b.pickup,
-      to: b.destination,
-      date: b.created_at || Date.now(),
-      price: `₹${b.total_amount || b.price || Math.floor(150 + Math.random() * 300)}`,
-      duration: `${b.duration || '25 min'}`,
-      type: b.trip_type || 'Ride'
-    }));
+    .forEach(b => {
+      const key = `${b.pickup.trim()} -> ${b.destination.trim()}`;
+      const existing = routeFreqMap.get(key) || { count: 0, from: b.pickup, to: b.destination, date: b.created_at || Date.now(), price: b.total_amount || b.price || 350, duration: b.duration || '25 min', isSearch: false };
+      existing.count += 1;
+      if (new Date(b.created_at || 0) > new Date(existing.date || 0)) {
+        existing.date = b.created_at;
+        existing.price = b.total_amount || b.price || existing.price;
+      }
+      routeFreqMap.set(key, existing);
+    });
+
+  const sortedBookingRoutes = Array.from(routeFreqMap.values()).sort((a, b) => b.count - a.count || new Date(b.date) - new Date(a.date));
 
   const uniqueUserRoutes = [];
   const seenRoutes = new Set();
-  recentUserRoutes.forEach(r => {
+
+  sortedBookingRoutes.forEach(r => {
     const key = `${r.from} -> ${r.to}`;
     if (!seenRoutes.has(key)) {
       seenRoutes.add(key);
-      uniqueUserRoutes.push(r);
+      uniqueUserRoutes.push({
+        from: r.from,
+        to: r.to,
+        date: r.date,
+        price: typeof r.price === 'number' ? `₹${r.price}` : r.price.toString().startsWith('₹') ? r.price : `₹${r.price}`,
+        duration: `${r.duration}`,
+        isSearch: false
+      });
     }
   });
 
-  // Pre-populated Indian Popular Routes fallback
+  (searchHistory || []).forEach(s => {
+    if (!s.from_location || !s.to_location) return;
+    const key = `${s.from_location.trim()} -> ${s.to_location.trim()}`;
+    if (!seenRoutes.has(key)) {
+      seenRoutes.add(key);
+      uniqueUserRoutes.push({
+        from: s.from_location,
+        to: s.to_location,
+        date: s.searched_at || Date.now(),
+        price: '₹350',
+        duration: 'Est. 3h',
+        isSearch: true
+      });
+    }
+  });
+
+  // Pre-populated Indian Popular Routes fallback with rich Mumbai routes
   const fallbackPopularRoutes = [
-    { id: 'r1', type: 'Intercity express', from: 'Mumbai', to: 'Pune', duration: '3h 30m', price: 550, badge: 'Popular' },
-    { id: 'r7', type: 'Highway shuttle', from: 'Mumbai', to: 'Nashik', duration: '4h 15m', price: 480, badge: 'Popular' },
-    { id: 'r8', type: 'Overnight express', from: 'Mumbai', to: 'Ahmedabad', duration: '9h 30m', price: 850, badge: 'Top rated' },
-    { id: 'r4', type: 'Coastal route', from: 'Mumbai', to: 'Goa', duration: '10h 0m', price: 1200, badge: 'Scenic' },
+    { id: 'r1', from: 'Mumbai', to: 'Pune', duration: '3h 30m', price: 550 },
+    { id: 'r7', from: 'Mumbai', to: 'Nashik', duration: '4h 15m', price: 480 },
+    { id: 'r11', from: 'Mumbai', to: 'Surat', duration: '5h 00m', price: 600 },
+    { id: 'r12', from: 'Mumbai', to: 'Shirdi', duration: '6h 00m', price: 700 },
+    { id: 'r13', from: 'Mumbai', to: 'Lonavala', duration: '2h 00m', price: 350 },
+    { id: 'r14', from: 'Mumbai', to: 'Mahabaleshwar', duration: '5h 30m', price: 650 },
+    { id: 'r15', from: 'Mumbai', to: 'Aurangabad', duration: '7h 00m', price: 750 },
+    { id: 'r16', from: 'Mumbai', to: 'Indore', duration: '11h 30m', price: 1100 },
+    { id: 'r17', from: 'Mumbai', to: 'Bangalore', duration: '16h 00m', price: 1600 },
+    { id: 'r18', from: 'Mumbai', to: 'Hyderabad', duration: '14h 00m', price: 1400 },
+    { id: 'r8', from: 'Mumbai', to: 'Ahmedabad', duration: '9h 30m', price: 850 },
+    { id: 'r4', from: 'Mumbai', to: 'Goa', duration: '10h 00m', price: 1200 },
   ];
 
-  const popularRoutes = (dbRoutes && dbRoutes.length > 0)
+  const fetchedRoutes = (dbRoutes && dbRoutes.length > 0)
     ? dbRoutes.map((r, i) => ({
         id: r.id || `db_${i}`,
         from: r.from_city || r.origin || r.source || r.pickup || 'Origin City',
         to: r.to_city || r.destination || r.dropoff || 'Destination City',
         price: r.base_price ? r.base_price : r.price ? r.price : r.fare ? r.fare : 350,
-        duration: r.duration || r.est_duration || '3h',
-        type: r.vehicle_type || r.type || 'Intercity Express',
-        badge: i === 0 ? 'Popular' : i === 1 ? 'Top rated' : 'Scenic'
+        duration: r.duration || r.est_duration || '3h 30m',
       }))
-    : fallbackPopularRoutes;
+    : [];
+
+  const seenRouteKeys = new Set(fetchedRoutes.map(r => `${r.from}->${r.to}`));
+  const popularRoutes = [
+    ...fetchedRoutes,
+    ...fallbackPopularRoutes.filter(r => !seenRouteKeys.has(`${r.from}->${r.to}`))
+  ];
 
   const stats = [
     { icon: Ticket, label: 'Total trips', value: userBookings.length || 0, color: 'teal' },
@@ -338,11 +402,11 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="flex flex-col">
-              {uniqueUserRoutes.slice(0, 3).map((r, idx) => (
+              {uniqueUserRoutes.slice(0, 5).map((r, idx) => (
                 <div key={idx} className="pax-booking-row" onClick={() => navigate(`/search?from=${encodeURIComponent(r.from)}&to=${encodeURIComponent(r.to)}`)}>
                   <div>
                     <div className="pax-booking-route">{r.from} → {r.to}</div>
-                    <div className="pax-booking-meta">Last traveled: {new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {r.duration}</div>
+                    <div className="pax-booking-meta">{r.isSearch ? 'Recent search' : 'Last traveled'}: {new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {r.duration}</div>
                   </div>
                   <div className="text-right flex items-center gap-3">
                     <span className="text-sm font-bold text-[var(--color-accent-teal)]">{r.price}</span>
@@ -367,7 +431,7 @@ export default function DashboardPage() {
               <div className="pax-empty-icon"><Ticket size={22} className="text-[var(--color-text-tertiary)]" /></div>
               <div className="pax-empty-title">Plan your first trip</div>
               <p className="pax-empty-body">Comfortable rides, verified drivers, real-time GPS tracking across India.</p>
-              <div className="flex gap-2.5 justify-center flex-wrap">
+              <div className="flex gap-4 sm:gap-5 justify-center flex-wrap my-3">
                 <button className="pax-empty-cta" onClick={() => navigate('/search')}>
                   <Search size={14} />
                   <span>Search transit</span>
@@ -412,10 +476,6 @@ export default function DashboardPage() {
           <div className="pax-routes-grid">
             {popularRoutes.map((route, idx) => (
               <div key={route.id || idx} className="pax-route-card">
-                <div className="pax-route-meta">
-                  <span className="pax-route-type">{route.type}</span>
-                  <span className="pax-route-badge">{route.badge || 'Popular'}</span>
-                </div>
                 <div className="pax-route-cities">
                   <span className="pax-city-name">{route.from}</span>
                   <div className="pax-route-arrow">

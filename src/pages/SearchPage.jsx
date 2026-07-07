@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Calendar, ArrowRight, Clock, Users, Luggage, Car, Filter, Bus, X, SlidersHorizontal } from 'lucide-react';
-import { useBookingStore, useVehicleStore, useDriverStore } from '../store';
+import { useBookingStore, useVehicleStore, useDriverStore, useAuthStore } from '../store';
+import { supabase } from '../supabaseClient';
 
 const VEHICLE_TYPES = [
   { id: 'all', label: 'All Types', icon: '🚀', desc: 'Show all vehicles' },
@@ -38,6 +39,17 @@ export default function SearchPage() {
   const handleSearch = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    if (from && to) {
+      const userId = useAuthStore.getState().user?.id || 'guest';
+      supabase.from('search_history').insert({
+        user_id: String(userId),
+        from_location: from.trim(),
+        to_location: to.trim(),
+        searched_at: new Date().toISOString()
+      }).then(({ error }) => {
+        if (error) console.warn('Could not log search history:', error);
+      });
+    }
     if (searchMode === 'shuttles') {
       await searchRoutes(from, to, date);
     } else {

@@ -1,23 +1,54 @@
-import React from 'react';
-import { X, Plane, TrainFront } from 'lucide-react';
-import { useTransportModalStore, useToastStore } from '../store';
+import React, { useState, useEffect } from 'react';
+import { X, Plane, TrainFront, Bell, CheckCircle2, Sparkles } from 'lucide-react';
+import { useTransportModalStore, useToastStore, useAuthStore } from '../store';
+import { supabase } from '../supabaseClient';
 
 export default function TransportModal() {
   const { activeModal, closeModal } = useTransportModalStore();
   const { addToast } = useToastStore();
-
-  if (!activeModal) return null;
+  const { user } = useAuthStore();
+  const [notified, setNotified] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const isFlight = activeModal === 'flights';
 
-  const handleNotify = () => {
+  useEffect(() => {
+    setNotified(false);
+    if (!activeModal || !user?.id) return;
+    const featureName = activeModal === 'flights' ? 'flights' : 'trains';
+    supabase
+      .from('feature_interest')
+      .select('id')
+      .eq('user_id', String(user.id))
+      .eq('feature_name', featureName)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setNotified(true);
+      });
+  }, [activeModal, user?.id]);
+
+  if (!activeModal) return null;
+
+  const handleNotify = async () => {
+    if (notified || loading) return;
+    setLoading(true);
+    const userId = user?.id || 'guest';
+    const featureName = isFlight ? 'flights' : 'trains';
+    
+    await supabase.from('feature_interest').insert({
+      user_id: String(userId),
+      feature_name: featureName,
+      subscribed_at: new Date().toISOString()
+    }).catch(e => console.warn('Could not log feature interest:', e));
+
     addToast(
       isFlight
-        ? "We'll notify you when flight bookings go live! 🛫"
-        : "We'll notify you when IRCTC train bookings go live! 🚂",
+        ? "We'll let you know as soon as flight booking opens!"
+        : "We'll let you know as soon as train booking opens!",
       "success"
     );
-    closeModal();
+    setNotified(true);
+    setLoading(false);
   };
 
   return (
@@ -31,9 +62,9 @@ export default function TransportModal() {
           left: 0,
           width: '100vw',
           height: '100vh',
-          background: 'rgba(0, 0, 0, 0.65)',
-          backdropFilter: 'blur(6px)',
-          WebkitBackdropFilter: 'blur(6px)',
+          background: 'rgba(0, 0, 0, 0.7)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
           zIndex: 450,
         }}
         className="animate-fade-in"
@@ -49,113 +80,79 @@ export default function TransportModal() {
           transform: 'translate(-50%, -50%)',
           zIndex: 451,
           width: '90%',
-          maxWidth: '480px',
+          maxWidth: '460px',
           maxHeight: '90vh',
           overflowY: 'auto',
-          borderRadius: '20px',
-          border: '1px solid rgba(255, 255, 255, 0.18)',
-          padding: '24px',
-          background: 'rgba(11, 19, 41, 0.98)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 40px rgba(27, 153, 139, 0.15)'
+          borderRadius: '24px',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          padding: '32px 28px',
+          background: 'linear-gradient(145deg, rgba(15, 25, 54, 0.98), rgba(9, 15, 33, 0.99))',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.85), 0 0 40px rgba(20, 184, 166, 0.15)'
         }}
       >
         <button
           onClick={closeModal}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+          className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
           title="Close"
         >
           <X size={18} />
         </button>
 
-        <div className="flex items-center gap-3.5 mb-4 pr-8">
+        <div className="flex flex-col items-center text-center my-4">
           <div
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-md border ${
+            className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-xl border relative ${
               isFlight
-                ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
-                : 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400'
+                ? 'bg-gradient-to-br from-amber-500/20 to-amber-500/5 border-amber-500/40 text-amber-400'
+                : 'bg-gradient-to-br from-indigo-500/20 to-indigo-500/5 border-indigo-500/40 text-indigo-400'
             }`}
           >
-            {isFlight ? <Plane size={26} /> : <TrainFront size={26} />}
-          </div>
-          <div>
-            <h3 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
-              <span>{isFlight ? '✈️ Flight Booking' : '🚂 Train Booking'}</span>
-            </h3>
-            <div className="mt-1 flex items-center">
-              <div
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-1.5 ${
-                  isFlight
-                    ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                    : 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
-                }`}
-              >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full animate-pulse ${
-                    isFlight ? 'bg-amber-400' : 'bg-indigo-400'
-                  }`}
-                ></span>
-                <span>Coming Soon</span>
-              </div>
+            {isFlight ? <Plane size={40} className="animate-bounce" /> : <TrainFront size={40} className="animate-bounce" />}
+            <div className="absolute -top-2 -right-2 bg-white/10 border border-white/20 p-1.5 rounded-full shadow-md">
+              <Sparkles size={14} className={isFlight ? 'text-amber-300' : 'text-indigo-300'} />
             </div>
           </div>
-        </div>
 
-        <p className="text-sm text-white/80 font-medium mb-5 leading-relaxed">
-          {isFlight
-            ? "Domestic flight booking across India is coming soon! We're working on integrating top airlines."
-            : "Book train tickets across India via IRCTC — coming soon!"}
-        </p>
-
-        <div className="mb-6">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-2.5">
-            Popular Routes Preview
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider border mb-3 bg-white/5 border-white/10 text-white/80">
+            <span className={`w-2 h-2 rounded-full animate-pulse ${isFlight ? 'bg-amber-400' : 'bg-indigo-400'}`}></span>
+            <span>Coming Soon</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {isFlight ? (
-              ['Mumbai ✈ Delhi', 'Bangalore ✈ Kolkata', 'Chennai ✈ Hyderabad', 'Pune ✈ Jaipur'].map((route, i) => (
-                <div
-                  key={i}
-                  className="bg-[#0f1936]/80 border border-white/5 rounded-xl p-3 flex items-center justify-between opacity-75 cursor-not-allowed"
-                >
-                  <span className="font-bold text-xs sm:text-sm text-white/90">{route}</span>
-                  <span className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                    Domestic
-                  </span>
-                </div>
-              ))
+
+          <h3 className="text-2xl font-black text-white tracking-tight leading-snug mb-3">
+            {isFlight
+              ? "Flight bookings are landing soon on YatraGo!"
+              : "Train ticket booking is on track to arrive soon!"}
+          </h3>
+
+          <p className="text-sm text-white/70 font-medium leading-relaxed max-w-[340px] mb-8">
+            {isFlight
+              ? "We are building a seamless flight reservation experience across top domestic and international airlines. Stay tuned for exclusive launch offers!"
+              : "We are integrating with IRCTC to bring effortless train ticket bookings, instant seat layouts, and live PNR status right to your dashboard."}
+          </p>
+
+          <button
+            onClick={handleNotify}
+            disabled={notified || loading}
+            className={`w-full py-4 rounded-2xl font-extrabold text-base flex items-center justify-center gap-2.5 shadow-xl transition-all duration-300 ${
+              notified
+                ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 cursor-not-allowed'
+                : isFlight
+                  ? 'bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black hover:scale-[1.02] shadow-amber-500/20'
+                  : 'bg-gradient-to-r from-indigo-400 to-indigo-500 hover:from-indigo-300 hover:to-indigo-400 text-black hover:scale-[1.02] shadow-indigo-500/20'
+            }`}
+          >
+            {notified ? (
+              <>
+                <CheckCircle2 size={20} className="text-emerald-400" />
+                <span>You're on the list! ✓</span>
+              </>
             ) : (
-              [
-                { route: 'Mumbai → Delhi', train: 'Rajdhani Express' },
-                { route: 'Pune → Bangalore', train: 'Udyan Express' },
-                { route: 'Chennai → Hyderabad', train: 'Charminar Express' },
-                { route: 'Kolkata → Jaipur', train: 'Express' }
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  className="bg-[#0f1936]/80 border border-white/5 rounded-xl p-3 flex items-center justify-between opacity-75 cursor-not-allowed"
-                >
-                  <div className="min-w-0 pr-2">
-                    <div className="font-bold text-xs sm:text-sm text-white/90 truncate">{item.route}</div>
-                    <div className="text-[10px] text-white/50 font-medium truncate">{item.train}</div>
-                  </div>
-                  <span className="text-[9px] uppercase font-extrabold px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 shrink-0">
-                    IRCTC
-                  </span>
-                </div>
-              ))
+              <>
+                <Bell size={18} />
+                <span>{loading ? 'Saving...' : 'Notify Me When Live'}</span>
+              </>
             )}
-          </div>
+          </button>
         </div>
-
-        <button
-          onClick={handleNotify}
-          className={`btn w-full py-3.5 rounded-xl font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg hover:scale-[1.02] transition-all text-black ${
-            isFlight ? 'bg-[#14b8a6] hover:bg-[#0d9488]' : 'bg-[#818cf8] hover:bg-[#6366f1]'
-          }`}
-          style={{ backgroundColor: isFlight ? '#14b8a6' : '#818cf8', color: '#000000' }}
-        >
-          <span>Got it, notify me!</span>
-        </button>
       </div>
     </>
   );
