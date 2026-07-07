@@ -18,8 +18,25 @@ CREATE TABLE IF NOT EXISTS public.holiday_packages (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all required columns exist even if the table was previously created with an older schema
+-- Step 1: Drop referencing foreign keys if they exist (e.g., from package_bookings)
+ALTER TABLE IF EXISTS public.package_bookings DROP CONSTRAINT IF EXISTS package_bookings_package_id_fkey;
+ALTER TABLE IF EXISTS public.package_bookings ALTER COLUMN package_id TYPE TEXT USING package_id::text;
+
+-- Step 2: Ensure id column is of type TEXT (in case older schema used UUID)
 ALTER TABLE public.holiday_packages ALTER COLUMN id TYPE TEXT USING id::text;
+
+-- Step 3: Re-add foreign key if package_bookings table exists
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'package_bookings') THEN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'package_bookings_package_id_fkey') THEN
+      ALTER TABLE public.package_bookings 
+        ADD CONSTRAINT package_bookings_package_id_fkey 
+        FOREIGN KEY (package_id) REFERENCES public.holiday_packages(id) ON DELETE CASCADE;
+    END IF;
+  END IF;
+END $$;
+
 ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS title TEXT;
 ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Adventure';
 ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS duration_days INTEGER DEFAULT 1;
