@@ -409,55 +409,77 @@ export const useAuthStore = create(
         const adminId = adminAuth?.user?.id || 'a1b2c3d4-e5f6-4a1b-8c9d-0123456789ab';
         
         // Try to fetch saved admin profile from database
-        const { data: dbAdmins } = await supabase
+        let { data: dbAdmins } = await supabase
           .from('users')
           .select('*')
           .eq('id', adminId);
         
-        const dbAdmin = Array.isArray(dbAdmins) && dbAdmins.length > 0 ? dbAdmins[0] : (dbAdmins || null);
+        let dbAdmin = Array.isArray(dbAdmins) && dbAdmins.length > 0 ? dbAdmins[0] : (dbAdmins || null);
+
+        if (!dbAdmin) {
+          const { data: byEmail } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', 'admin@yatrago.com');
+          dbAdmin = Array.isArray(byEmail) && byEmail.length > 0 ? byEmail[0] : (byEmail || null);
+        }
 
         const adminUser = dbAdmin ? {
-          id: dbAdmin.id,
-          email: dbAdmin.email,
-          name: dbAdmin.name,
-          phone: dbAdmin.phone,
+          id: dbAdmin.id || adminId,
+          email: dbAdmin.email || 'admin@yatrago.com',
+          name: dbAdmin.name || 'Super Admin',
+          phone: dbAdmin.phone || '9999999999',
           role: dbAdmin.role || 'admin',
           emailVerified: dbAdmin.email_verified ?? true,
           phoneVerified: dbAdmin.phone_verified ?? true,
-          bloodGroup: dbAdmin.blood_group,
-          dob: dbAdmin.dob,
-          age: dbAdmin.age,
-          gender: dbAdmin.gender,
-          address: dbAdmin.address,
-          aadharNumber: dbAdmin.aadhar_number,
-          panNumber: dbAdmin.pan_number,
-          avatarUrl: dbAdmin.avatar_url,
+          bloodGroup: dbAdmin.blood_group || 'O+',
+          dob: dbAdmin.dob || '1990-01-01',
+          age: dbAdmin.age || '35',
+          gender: dbAdmin.gender || 'Male',
+          address: dbAdmin.address || 'New Delhi, India',
+          aadharNumber: dbAdmin.aadhar_number || '',
+          panNumber: dbAdmin.pan_number || '',
+          avatarUrl: dbAdmin.avatar_url || '',
           wallet: 9999999,
-          createdAt: dbAdmin.created_at,
+          createdAt: dbAdmin.created_at || new Date().toISOString(),
         } : {
           // Fallback if admin row doesn't exist yet in DB
           id: adminId,
-          email: 'admin@yatraGo.com',
+          email: 'admin@yatrago.com',
           name: 'Super Admin',
           phone: '9999999999',
           role: 'admin',
           emailVerified: true,
           phoneVerified: true,
+          bloodGroup: 'O+',
+          dob: '1990-01-01',
+          age: '35',
+          gender: 'Male',
+          address: 'New Delhi, India',
           wallet: 9999999,
           createdAt: new Date().toISOString()
         };
         
         // If admin doesn't exist in DB, create the row so future profile saves persist
         if (!dbAdmin) {
-          await supabase.from('users').insert([{
-            id: adminId,
-            email: 'admin@yatraGo.com',
-            name: 'Super Admin',
-            phone: '9999999999',
-            role: 'admin',
-            email_verified: true,
-            phone_verified: true
-          }]).select();
+          try {
+            await supabase.from('users').insert([{
+              id: adminUser.id,
+              email: 'admin@yatrago.com',
+              name: 'Super Admin',
+              phone: '9999999999',
+              role: 'admin',
+              email_verified: true,
+              phone_verified: true,
+              blood_group: 'O+',
+              dob: '1990-01-01',
+              age: '35',
+              gender: 'Male',
+              address: 'New Delhi, India'
+            }]).select();
+          } catch (insertErr) {
+            console.warn('Admin DB insert fallback warning:', insertErr?.message);
+          }
         }
 
         const newSession = {
@@ -615,7 +637,9 @@ export const useAuthStore = create(
   updateProfile: async (updates) => {
     try {
       const { user } = get();
-      if (!user) return { error: 'Not authenticated' };
+      if (!user || (!user.id && !user.email)) {
+        return { error: 'User account identifier missing. Please log in again.' };
+      }
 
       // ===== AVATAR UPLOAD FIX =====
       // Base64 string DB mein mat bhejo — Supabase Storage use karo
@@ -702,8 +726,10 @@ export const useAuthStore = create(
       let query = supabase.from('users').update(dbUpdates);
       if (user.email) {
         query = query.eq('email', user.email);
-      } else {
+      } else if (user.id && user.id !== 'undefined') {
         query = query.eq('id', user.id);
+      } else {
+        return { error: 'Invalid user account ID or email.' };
       }
       let { data: rawData, error } = await query.select();
 
@@ -714,7 +740,8 @@ export const useAuthStore = create(
         delete fallbackUpdates.preferred_greeting_name;
         let retryQuery = supabase.from('users').update(fallbackUpdates);
         if (user.email) retryQuery = retryQuery.eq('email', user.email);
-        else retryQuery = retryQuery.eq('id', user.id);
+        else if (user.id && user.id !== 'undefined') retryQuery = retryQuery.eq('id', user.id);
+        else return { error: 'Invalid user account ID or email.' };
         const retryRes = await retryQuery.select();
         error = retryRes.error;
         rawData = retryRes.data;
@@ -758,11 +785,11 @@ export const useAuthStore = create(
   
   verifyPhone: async () => {
     const { user } = get();
-    if (!user) return;
+    if (!user || (!user.email && !user.id)) return;
     let query = supabase.from('users').update({ phone_verified: true });
     if (user.email) {
       await query.eq('email', user.email);
-    } else {
+    } else if (user.id && user.id !== 'undefined') {
       await query.eq('id', user.id);
     }
     set(state => ({ user: { ...state.user, phoneVerified: true } }));

@@ -47,34 +47,35 @@ export default function DailyReportPage() {
   };
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in" style={{ width: '100%', maxWidth: '100vw', overflowX: 'hidden', boxSizing: 'border-box', paddingBottom: '32px' }}>
       <div className="page-header">
         <h1>Daily Booking Report</h1>
         <p>Track your daily transactions, passengers, and payment modes</p>
       </div>
 
       {/* Filters and Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 16, marginBottom: 24, width: '100%', boxSizing: 'border-box' }}>
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 8, boxSizing: 'border-box' }}>
           <div style={{ color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>Select Date</div>
           <input 
             type="date" 
             className="form-input" 
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
+            style={{ width: '100%', boxSizing: 'border-box' }}
           />
         </div>
-        <div className="stat-card" style={{ padding: 16 }}>
+        <div className="stat-card" style={{ padding: 16, boxSizing: 'border-box' }}>
           <div className="stat-card-icon green"><DollarSign size={20} /></div>
           <div className="stat-card-label">Total Revenue</div>
           <div className="stat-card-value" style={{ fontSize: '1.25rem' }}>₹{totalRevenue.toLocaleString()}</div>
         </div>
-        <div className="stat-card" style={{ padding: 16 }}>
+        <div className="stat-card" style={{ padding: 16, boxSizing: 'border-box' }}>
           <div className="stat-card-icon teal"><DollarSign size={20} /></div>
           <div className="stat-card-label">Cash Collected</div>
           <div className="stat-card-value" style={{ fontSize: '1.25rem' }}>₹{cashBookings.toLocaleString()}</div>
         </div>
-        <div className="stat-card" style={{ padding: 16 }}>
+        <div className="stat-card" style={{ padding: 16, boxSizing: 'border-box' }}>
           <div className="stat-card-icon purple"><DollarSign size={20} /></div>
           <div className="stat-card-label">UPI Collected</div>
           <div className="stat-card-value" style={{ fontSize: '1.25rem' }}>₹{upiBookings.toLocaleString()}</div>
@@ -82,8 +83,8 @@ export default function DailyReportPage() {
       </div>
 
       {/* Bookings Table */}
-      <div className="glass-card" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+      <div className="glass-card" style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch', boxSizing: 'border-box' }}>
+        <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border-subtle)', color: 'var(--color-text-tertiary)' }}>
               <th style={{ padding: '12px 16px', fontWeight: 600 }}>Booking ID</th>

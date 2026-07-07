@@ -33,8 +33,8 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user) {
       setForm({
-        name: user.name || '',
-        email: user.email || '',
+        name: user.name || (user.role === 'admin' ? 'Super Admin' : '') || '',
+        email: user.email || (user.role === 'admin' ? 'admin@yatrago.com' : '') || '',
         phone: user.phone || '',
         bloodGroup: user.bloodGroup || '',
         dob: user.dob || '',
@@ -127,6 +127,11 @@ export default function ProfilePage() {
   };
 
   const handleSave = async () => {
+    if (!user || (!user.id && !user.email)) {
+      addToast('User authentication identifier missing. Please log in again.', 'error');
+      return;
+    }
+
     // Absolutely enforce mandatory fields
     if (!form.phone || !form.dob || !form.bloodGroup) {
       addToast('Please complete Phone Number, Date of Birth, and Blood Group first.', 'error');

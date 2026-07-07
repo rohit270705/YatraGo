@@ -26,13 +26,13 @@ export default function PackagesPage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 16, marginBottom: 24 }} className="hide-scrollbar">
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 16, marginBottom: 24, width: '100%', boxSizing: 'border-box' }} className="hide-scrollbar">
         {categories.map(cat => (
           <button
             key={cat}
             onClick={() => setFilter(cat)}
             className={`btn btn-sm ${filter === cat ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ whiteSpace: 'nowrap', borderRadius: 20 }}
+            style={{ whiteSpace: 'nowrap', borderRadius: 20, padding: '8px 16px', fontSize: '0.875rem' }}
           >
             {cat}
           </button>
