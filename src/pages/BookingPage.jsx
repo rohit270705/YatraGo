@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   MapPin, Calendar, Clock, Car, User, Heart, CreditCard, Luggage,
   CheckCircle, ArrowRight, AlertCircle, Wallet, Shield
