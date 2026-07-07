@@ -15,8 +15,20 @@ CREATE TABLE IF NOT EXISTS public.holiday_packages (
   itinerary JSONB,
   inclusions TEXT[],
   exclusions TEXT[],
-  created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure all required columns exist even if the table was previously created with an older schema
+ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Adventure';
+ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS duration_days INTEGER DEFAULT 1;
+ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS duration_nights INTEGER DEFAULT 0;
+ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS destinations TEXT[] DEFAULT '{}';
+ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS base_price INTEGER DEFAULT 1000;
+ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS itinerary JSONB;
+ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS inclusions TEXT[] DEFAULT '{}';
+ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS exclusions TEXT[] DEFAULT '{}';
+ALTER TABLE public.holiday_packages ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 
 ALTER TABLE public.holiday_packages ENABLE ROW LEVEL SECURITY;
 
