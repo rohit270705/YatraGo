@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, MapPin, Calendar, ArrowRightLeft, Wallet, Award,
   Clock, ArrowRight, Ticket, Star, Navigation, Gift, Repeat,
-  ClipboardList, Route, Plus, Package, TrendingUp, Car, ChevronRight
+  ClipboardList, Route, Plus, Package, TrendingUp, Car, ChevronRight,
+  Plane, TrainFront, Bell, CheckCircle2, Shield, LayoutGrid, Wifi, Zap
 } from 'lucide-react';
-import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToastStore } from '../store';
+import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToastStore, useTransportModalStore } from '../store';
 import { supabase } from '../supabaseClient';
 import SkeletonLoader from '../components/SkeletonLoader';
 import NotificationBell from '../components/NotificationBell';
@@ -467,6 +468,9 @@ export default function DashboardPage() {
           )}
         </Section>
 
+        {/* ── COMING SOON: FLIGHTS & TRAINS ── */}
+        <ComingSoonSection openModal={useTransportModalStore.getState().openModal} userId={user?.id} addToast={addToast} />
+
         {/* ── POPULAR ROUTES ── */}
         <Section
           icon={<TrendingUp size={15} className="text-[var(--color-text-tertiary)]" />}
@@ -519,6 +523,207 @@ function Section({ icon, title, action, children }) {
         )}
       </div>
       <div className="pax-section-body">{children}</div>
+    </div>
+  );
+}
+
+/* ── Coming Soon section (Flights + Trains inline cards) ── */
+const COMING_SOON_CONFIG = {
+  flights: {
+    icon: Plane,
+    accent: '#a855f7',
+    ring: 'rgba(168,85,247,0.5)',
+    ringBg: 'rgba(168,85,247,0.12)',
+    glow: 'rgba(168,85,247,0.22)',
+    badgeBg: 'rgba(168,85,247,0.15)',
+    badgeBorder: 'rgba(168,85,247,0.4)',
+    badgeColor: '#c084fc',
+    btnBg: 'linear-gradient(135deg,#9333ea,#a855f7,#c084fc)',
+    btnShadow: 'rgba(168,85,247,0.35)',
+    headline: '✈️ Flight Booking',
+    sub: 'Domestic flights across India — integrating top airlines.',
+    features: [
+      { icon: Ticket,     label: 'Easy Bookings' },
+      { icon: Star,       label: 'Best Fares' },
+      { icon: Shield,     label: 'Secure Payments' },
+      { icon: Wifi,       label: 'Live Status' },
+    ],
+    feature_name: 'flights',
+  },
+  trains: {
+    icon: TrainFront,
+    accent: '#14b8a6',
+    ring: 'rgba(20,184,166,0.5)',
+    ringBg: 'rgba(20,184,166,0.12)',
+    glow: 'rgba(20,184,166,0.22)',
+    badgeBg: 'rgba(20,184,166,0.15)',
+    badgeBorder: 'rgba(20,184,166,0.4)',
+    badgeColor: '#2dd4bf',
+    btnBg: 'linear-gradient(135deg,#0d9488,#14b8a6,#2dd4bf)',
+    btnShadow: 'rgba(20,184,166,0.35)',
+    headline: '🚂 Train Booking',
+    sub: 'IRCTC integration — seats, PNR status & more.',
+    features: [
+      { icon: Ticket,     label: 'Easy Bookings' },
+      { icon: LayoutGrid, label: 'Seat Layouts' },
+      { icon: Clock,      label: 'Live PNR' },
+      { icon: Shield,     label: 'Reliable' },
+    ],
+    feature_name: 'trains',
+  },
+};
+
+function ComingSoonSection({ openModal, userId, addToast }) {
+  const [notified, setNotified] = useState({ flights: false, trains: false });
+  const [loading, setLoading] = useState({ flights: false, trains: false });
+
+  useEffect(() => {
+    if (!userId) return;
+    const check = async () => {
+      const { data } = await supabase
+        .from('feature_interest')
+        .select('feature_name')
+        .eq('user_id', String(userId))
+        .in('feature_name', ['flights', 'trains']);
+      if (data) {
+        const found = { flights: false, trains: false };
+        data.forEach(r => { if (r.feature_name in found) found[r.feature_name] = true; });
+        setNotified(found);
+      }
+    };
+    check();
+  }, [userId]);
+
+  const handleNotify = async (e, type) => {
+    e.stopPropagation();
+    if (notified[type] || loading[type]) return;
+    setLoading(prev => ({ ...prev, [type]: true }));
+    await supabase.from('feature_interest').insert({
+      user_id: String(userId || 'guest'),
+      feature_name: type,
+      subscribed_at: new Date().toISOString(),
+    }).catch(() => {});
+    const label = type === 'flights' ? 'Flights' : 'Trains';
+    addToast(`We'll notify you when ${label} launches! 🎉`, 'success');
+    setNotified(prev => ({ ...prev, [type]: true }));
+    setLoading(prev => ({ ...prev, [type]: false }));
+  };
+
+  return (
+    <div className="pax-section">
+      <div className="pax-section-header">
+        <div className="pax-section-title">
+          <Zap size={15} className="text-[var(--color-text-tertiary)]" />
+          <span>Coming Soon</span>
+        </div>
+      </div>
+      <div className="pax-section-body">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          {Object.entries(COMING_SOON_CONFIG).map(([type, cfg]) => {
+            const IconCmp = cfg.icon;
+            const isNotified = notified[type];
+            const isLoading = loading[type];
+            return (
+              <div
+                key={type}
+                onClick={() => openModal(type)}
+                style={{
+                  background: 'linear-gradient(145deg,#0d1b3e 0%,#070f22 70%,#0a0f1e 100%)',
+                  border: `1px solid ${cfg.ring}`,
+                  borderRadius: '20px',
+                  padding: '20px 16px 16px',
+                  cursor: 'pointer',
+                  boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 30px ${cfg.glow}`,
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  display: 'flex', flexDirection: 'column', gap: '12px',
+                  position: 'relative', overflow: 'hidden',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 14px 40px rgba(0,0,0,0.6), 0 0 40px ${cfg.glow}`; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `0 8px 32px rgba(0,0,0,0.5), 0 0 30px ${cfg.glow}`; }}
+              >
+                {/* Icon + ring */}
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <div style={{
+                    width: '62px', height: '62px', borderRadius: '50%',
+                    background: cfg.ringBg,
+                    border: `2px solid ${cfg.ring}`,
+                    color: cfg.accent,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: `0 0 18px ${cfg.glow}`,
+                  }}>
+                    <IconCmp size={28} strokeWidth={1.8} />
+                  </div>
+                </div>
+
+                {/* Badge */}
+                <div style={{ textAlign: 'center' }}>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '5px',
+                    padding: '3px 10px', borderRadius: '999px',
+                    fontSize: '9px', fontWeight: 800, letterSpacing: '0.12em',
+                    background: cfg.badgeBg, border: `1px solid ${cfg.badgeBorder}`,
+                    color: cfg.badgeColor,
+                  }}>
+                    <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: cfg.badgeColor, display: 'inline-block' }} />
+                    COMING SOON
+                  </span>
+                </div>
+
+                {/* Headline */}
+                <div style={{ textAlign: 'center', fontWeight: 800, fontSize: '0.95rem', color: '#fff', lineHeight: 1.25 }}>
+                  {cfg.headline}
+                </div>
+
+                {/* Sub */}
+                <div style={{ textAlign: 'center', fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)', lineHeight: 1.5 }}>
+                  {cfg.sub}
+                </div>
+
+                {/* Feature icons row */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                  {cfg.features.map(({ icon: Ic, label }) => (
+                    <div key={label} style={{
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      padding: '6px 8px', borderRadius: '10px',
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.07)',
+                    }}>
+                      <Ic size={13} color={cfg.accent} strokeWidth={1.8} style={{ flexShrink: 0 }} />
+                      <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', lineHeight: 1.2 }}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Notify Me button */}
+                <button
+                  onClick={e => handleNotify(e, type)}
+                  disabled={isNotified || isLoading}
+                  style={{
+                    width: '100%', padding: '10px', borderRadius: '12px',
+                    fontSize: '0.8rem', fontWeight: 800, border: 'none',
+                    cursor: isNotified ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+                    background: isNotified
+                      ? 'rgba(16,185,129,0.12)'
+                      : cfg.btnBg,
+                    border: isNotified ? '1px solid rgba(16,185,129,0.3)' : 'none',
+                    color: isNotified ? '#34d399' : '#fff',
+                    boxShadow: isNotified ? 'none' : `0 4px 14px ${cfg.btnShadow}`,
+                    transition: 'filter 0.18s, transform 0.18s',
+                  }}
+                  onMouseEnter={e => { if (!isNotified) { e.currentTarget.style.filter = 'brightness(1.1)'; e.currentTarget.style.transform = 'scale(1.02)'; } }}
+                  onMouseLeave={e => { e.currentTarget.style.filter = ''; e.currentTarget.style.transform = ''; }}
+                >
+                  {isNotified
+                    ? <><CheckCircle2 size={15} /><span>On the list ✓</span></>
+                    : <><Bell size={14} /><span>{isLoading ? 'Saving…' : 'Notify Me'}</span></>
+                  }
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

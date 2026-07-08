@@ -1,7 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plane, TrainFront, Bell, CheckCircle2, Sparkles } from 'lucide-react';
+import {
+  X, Plane, TrainFront, Bell, CheckCircle2,
+  Ticket, Shield, Zap, LayoutGrid, MapPin, Clock, Wifi, Star
+} from 'lucide-react';
 import { useTransportModalStore, useToastStore, useAuthStore } from '../store';
 import { supabase } from '../supabaseClient';
+
+/* ─── per-type config ─── */
+const config = {
+  flights: {
+    icon: Plane,
+    ringClass: 'transport-ring-purple',
+    badgeClass: 'transport-badge-purple',
+    btnClass: 'transport-btn-purple',
+    glowClass: 'transport-glow-purple',
+    accent: '#a855f7',
+    accentLight: '#c084fc',
+    label: 'Flights',
+    headline: '✈️ Flight Booking Coming Soon',
+    sub: 'Domestic flight booking across India is coming soon! We\'re working on integrating top airlines.',
+    features: [
+      { icon: Ticket,     label: 'Easy Bookings' },
+      { icon: Star,       label: 'Best Fares' },
+      { icon: Shield,     label: 'Secure Payments' },
+      { icon: Wifi,       label: 'Live Flight Status' },
+    ],
+  },
+  trains: {
+    icon: TrainFront,
+    ringClass: 'transport-ring-teal',
+    badgeClass: 'transport-badge-teal',
+    btnClass: 'transport-btn-teal',
+    glowClass: 'transport-glow-teal',
+    accent: '#14b8a6',
+    accentLight: '#2dd4bf',
+    label: 'Trains',
+    headline: '🚂 Train Booking Coming Soon',
+    sub: 'Book train tickets across India via IRCTC — coming soon! Seat layouts, PNR status & more.',
+    features: [
+      { icon: Ticket,     label: 'Easy Bookings' },
+      { icon: LayoutGrid, label: 'Instant Seat Layouts' },
+      { icon: Clock,      label: 'Live PNR Status' },
+      { icon: Shield,     label: 'Secure & Reliable' },
+    ],
+  },
+};
 
 export default function TransportModal() {
   const { activeModal, closeModal } = useTransportModalStore();
@@ -10,21 +53,19 @@ export default function TransportModal() {
   const [notified, setNotified] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const isFlight = activeModal === 'flights';
+  const cfg = config[activeModal] || config.flights;
+  const IconCmp = cfg.icon;
 
   useEffect(() => {
     setNotified(false);
     if (!activeModal || !user?.id) return;
-    const featureName = activeModal === 'flights' ? 'flights' : 'trains';
     supabase
       .from('feature_interest')
       .select('id')
       .eq('user_id', String(user.id))
-      .eq('feature_name', featureName)
+      .eq('feature_name', activeModal)
       .maybeSingle()
-      .then(({ data }) => {
-        if (data) setNotified(true);
-      });
+      .then(({ data }) => { if (data) setNotified(true); });
   }, [activeModal, user?.id]);
 
   if (!activeModal) return null;
@@ -32,128 +73,315 @@ export default function TransportModal() {
   const handleNotify = async () => {
     if (notified || loading) return;
     setLoading(true);
-    const userId = user?.id || 'guest';
-    const featureName = isFlight ? 'flights' : 'trains';
-    
     await supabase.from('feature_interest').insert({
-      user_id: String(userId),
-      feature_name: featureName,
-      subscribed_at: new Date().toISOString()
-    }).catch(e => console.warn('Could not log feature interest:', e));
-
-    addToast(
-      isFlight
-        ? "We'll let you know as soon as flight booking opens!"
-        : "We'll let you know as soon as train booking opens!",
-      "success"
-    );
+      user_id: String(user?.id || 'guest'),
+      feature_name: activeModal,
+      subscribed_at: new Date().toISOString(),
+    }).catch(e => console.warn('feature_interest insert error:', e));
+    addToast(`We'll notify you when ${cfg.label} launches! 🎉`, 'success');
     setNotified(true);
     setLoading(false);
   };
 
   return (
     <>
-      {/* Backdrop overlay */}
-      <div 
+      {/* ── Backdrop ── */}
+      <div
         onClick={closeModal}
         style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          background: 'rgba(0, 0, 0, 0.7)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.75)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
           zIndex: 450,
         }}
         className="animate-fade-in"
       />
 
-      {/* Centered Modal Box */}
+      {/* ── Card ── */}
       <div
-        className="glass-card animate-fade-in text-left transition-all"
+        className={`transport-modal-card animate-fade-in ${cfg.glowClass}`}
         style={{
           position: 'fixed',
-          top: '50%',
-          left: '50%',
+          top: '50%', left: '50%',
           transform: 'translate(-50%, -50%)',
           zIndex: 451,
-          width: '90%',
+          width: '92%',
           maxWidth: '460px',
-          maxHeight: '90vh',
+          maxHeight: '92vh',
           overflowY: 'auto',
-          borderRadius: '24px',
-          border: '1px solid rgba(255, 255, 255, 0.15)',
-          padding: '32px 28px',
-          background: 'linear-gradient(145deg, rgba(15, 25, 54, 0.98), rgba(9, 15, 33, 0.99))',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.85), 0 0 40px rgba(20, 184, 166, 0.15)'
         }}
       >
-        <button
-          onClick={closeModal}
-          className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-          title="Close"
-        >
+        {/* Close */}
+        <button onClick={closeModal} className="transport-close-btn" title="Close">
           <X size={18} />
         </button>
 
-        <div className="flex flex-col items-center text-center my-4">
-          <div
-            className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-xl border relative ${
-              isFlight
-                ? 'bg-gradient-to-br from-amber-500/20 to-amber-500/5 border-amber-500/40 text-amber-400'
-                : 'bg-gradient-to-br from-indigo-500/20 to-indigo-500/5 border-indigo-500/40 text-indigo-400'
-            }`}
-          >
-            {isFlight ? <Plane size={40} className="animate-bounce" /> : <TrainFront size={40} className="animate-bounce" />}
-            <div className="absolute -top-2 -right-2 bg-white/10 border border-white/20 p-1.5 rounded-full shadow-md">
-              <Sparkles size={14} className={isFlight ? 'text-amber-300' : 'text-indigo-300'} />
+        {/* ── Icon ring ── */}
+        <div className="transport-icon-wrap">
+          <div className={`transport-icon-ring ${cfg.ringClass}`}>
+            <div className="transport-icon-inner">
+              <IconCmp size={38} strokeWidth={1.8} />
             </div>
+            {/* animated pulse ring */}
+            <div className={`transport-pulse-ring ${cfg.ringClass}`} />
           </div>
-
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider border mb-3 bg-white/5 border-white/10 text-white/80">
-            <span className={`w-2 h-2 rounded-full animate-pulse ${isFlight ? 'bg-amber-400' : 'bg-indigo-400'}`}></span>
-            <span>Coming Soon</span>
-          </div>
-
-          <h3 className="text-2xl font-black text-white tracking-tight leading-snug mb-3">
-            {isFlight
-              ? "Flight bookings are landing soon on YatraGo!"
-              : "Train ticket booking is on track to arrive soon!"}
-          </h3>
-
-          <p className="text-sm text-white/70 font-medium leading-relaxed max-w-[340px] mb-8">
-            {isFlight
-              ? "We are building a seamless flight reservation experience across top domestic and international airlines. Stay tuned for exclusive launch offers!"
-              : "We are integrating with IRCTC to bring effortless train ticket bookings, instant seat layouts, and live PNR status right to your dashboard."}
-          </p>
-
-          <button
-            onClick={handleNotify}
-            disabled={notified || loading}
-            className={`w-full py-4 rounded-2xl font-extrabold text-base flex items-center justify-center gap-2.5 shadow-xl transition-all duration-300 ${
-              notified
-                ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 cursor-not-allowed'
-                : isFlight
-                  ? 'bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black hover:scale-[1.02] shadow-amber-500/20'
-                  : 'bg-gradient-to-r from-indigo-400 to-indigo-500 hover:from-indigo-300 hover:to-indigo-400 text-black hover:scale-[1.02] shadow-indigo-500/20'
-            }`}
-          >
-            {notified ? (
-              <>
-                <CheckCircle2 size={20} className="text-emerald-400" />
-                <span>You're on the list! ✓</span>
-              </>
-            ) : (
-              <>
-                <Bell size={18} />
-                <span>{loading ? 'Saving...' : 'Notify Me When Live'}</span>
-              </>
-            )}
-          </button>
         </div>
+
+        {/* ── COMING SOON badge ── */}
+        <div className="transport-badge-row">
+          <span className={`transport-badge ${cfg.badgeClass}`}>
+            <span className="transport-badge-dot" />
+            COMING SOON
+          </span>
+        </div>
+
+        {/* ── Headline ── */}
+        <h2 className="transport-headline">{cfg.headline}</h2>
+
+        {/* ── Description ── */}
+        <p className="transport-desc">{cfg.sub}</p>
+
+        {/* ── Feature grid ── */}
+        <div className="transport-features-grid">
+          {cfg.features.map(({ icon: Ic, label }) => (
+            <div key={label} className="transport-feature-item">
+              <div className={`transport-feature-icon ${cfg.ringClass}`}>
+                <Ic size={18} strokeWidth={1.8} />
+              </div>
+              <span className="transport-feature-label">{label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Notify Me button ── */}
+        <button
+          onClick={handleNotify}
+          disabled={notified || loading}
+          className={`transport-notify-btn ${notified ? 'transport-notify-done' : cfg.btnClass}`}
+        >
+          {notified ? (
+            <>
+              <CheckCircle2 size={20} />
+              <span>You're on the list! ✓</span>
+            </>
+          ) : (
+            <>
+              <Bell size={18} />
+              <span>{loading ? 'Saving…' : 'Notify Me When Live'}</span>
+            </>
+          )}
+        </button>
+
+        {/* ── subtle footer note ── */}
+        <p className="transport-footer-note">
+          No spam. You'll receive one notification when we launch.
+        </p>
       </div>
+
+      {/* ── Scoped styles ── */}
+      <style>{`
+        .transport-modal-card {
+          background: linear-gradient(145deg, #0d1b3e 0%, #070f22 60%, #0a0f1e 100%);
+          border: 1px solid rgba(255,255,255,0.10);
+          border-radius: 28px;
+          padding: 36px 28px 28px;
+          box-shadow: 0 32px 64px -12px rgba(0,0,0,0.9);
+          text-align: center;
+        }
+
+        /* Glow variants */
+        .transport-glow-purple { box-shadow: 0 32px 64px -12px rgba(0,0,0,0.9), 0 0 60px rgba(168,85,247,0.18); }
+        .transport-glow-teal   { box-shadow: 0 32px 64px -12px rgba(0,0,0,0.9), 0 0 60px rgba(20,184,166,0.18); }
+
+        /* Close button */
+        .transport-close-btn {
+          position: absolute; top: 16px; right: 16px;
+          width: 36px; height: 36px;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.12);
+          color: rgba(255,255,255,0.55);
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer;
+          transition: background 0.2s, color 0.2s;
+        }
+        .transport-close-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+        /* Icon ring */
+        .transport-icon-wrap {
+          display: flex; justify-content: center;
+          margin-bottom: 24px;
+        }
+        .transport-icon-ring {
+          position: relative;
+          width: 96px; height: 96px;
+          border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .transport-ring-purple {
+          background: radial-gradient(circle at 40% 40%, rgba(168,85,247,0.25), rgba(168,85,247,0.05));
+          border: 2.5px solid rgba(168,85,247,0.55);
+          color: #c084fc;
+        }
+        .transport-ring-teal {
+          background: radial-gradient(circle at 40% 40%, rgba(20,184,166,0.25), rgba(20,184,166,0.05));
+          border: 2.5px solid rgba(20,184,166,0.55);
+          color: #2dd4bf;
+        }
+        .transport-icon-inner {
+          position: relative; z-index: 1;
+          display: flex; align-items: center; justify-content: center;
+          width: 100%; height: 100%;
+        }
+        /* Pulse ring */
+        .transport-pulse-ring {
+          position: absolute; inset: -10px;
+          border-radius: 50%;
+          opacity: 0;
+          animation: transport-pulse 2.4s ease-out infinite;
+        }
+        .transport-pulse-ring.transport-ring-purple { border: 2px solid rgba(168,85,247,0.4); }
+        .transport-pulse-ring.transport-ring-teal   { border: 2px solid rgba(20,184,166,0.4); }
+        @keyframes transport-pulse {
+          0%   { transform: scale(0.88); opacity: 0.7; }
+          100% { transform: scale(1.35); opacity: 0; }
+        }
+
+        /* Badge */
+        .transport-badge-row { margin-bottom: 14px; }
+        .transport-badge {
+          display: inline-flex; align-items: center; gap: 7px;
+          padding: 5px 14px;
+          border-radius: 999px;
+          font-size: 11px; font-weight: 800;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+        .transport-badge-purple {
+          background: rgba(168,85,247,0.12);
+          border: 1px solid rgba(168,85,247,0.35);
+          color: #c084fc;
+        }
+        .transport-badge-teal {
+          background: rgba(20,184,166,0.12);
+          border: 1px solid rgba(20,184,166,0.35);
+          color: #2dd4bf;
+        }
+        .transport-badge-dot {
+          width: 7px; height: 7px;
+          border-radius: 50%;
+          animation: transport-blink 1.5s ease-in-out infinite;
+        }
+        .transport-badge-purple .transport-badge-dot { background: #c084fc; }
+        .transport-badge-teal   .transport-badge-dot { background: #2dd4bf; }
+        @keyframes transport-blink {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0.35; }
+        }
+
+        /* Headline */
+        .transport-headline {
+          font-size: 1.45rem;
+          font-weight: 900;
+          color: #fff;
+          line-height: 1.3;
+          letter-spacing: -0.01em;
+          margin-bottom: 12px;
+        }
+
+        /* Description */
+        .transport-desc {
+          font-size: 0.875rem;
+          color: rgba(255,255,255,0.62);
+          line-height: 1.65;
+          margin-bottom: 26px;
+          max-width: 340px;
+          margin-left: auto; margin-right: auto;
+        }
+
+        /* Feature grid */
+        .transport-features-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-bottom: 26px;
+        }
+        .transport-feature-item {
+          display: flex; align-items: center; gap: 10px;
+          padding: 12px 14px;
+          border-radius: 14px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.07);
+          transition: background 0.2s;
+          text-align: left;
+        }
+        .transport-feature-item:hover { background: rgba(255,255,255,0.07); }
+        .transport-feature-icon {
+          width: 36px; height: 36px;
+          border-radius: 10px;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .transport-feature-icon.transport-ring-purple {
+          background: rgba(168,85,247,0.15);
+          border: 1px solid rgba(168,85,247,0.3);
+          color: #c084fc;
+        }
+        .transport-feature-icon.transport-ring-teal {
+          background: rgba(20,184,166,0.15);
+          border: 1px solid rgba(20,184,166,0.3);
+          color: #2dd4bf;
+        }
+        .transport-feature-label {
+          font-size: 0.82rem;
+          font-weight: 600;
+          color: rgba(255,255,255,0.8);
+          line-height: 1.2;
+        }
+
+        /* Notify Me button */
+        .transport-notify-btn {
+          width: 100%;
+          padding: 15px 24px;
+          border-radius: 18px;
+          font-size: 1rem;
+          font-weight: 800;
+          display: flex; align-items: center; justify-content: center; gap: 10px;
+          border: none; cursor: pointer;
+          transition: transform 0.18s, box-shadow 0.18s, filter 0.18s;
+          margin-bottom: 14px;
+          letter-spacing: 0.01em;
+        }
+        .transport-notify-btn:hover:not(:disabled) {
+          transform: translateY(-2px) scale(1.015);
+          filter: brightness(1.1);
+        }
+        .transport-notify-btn:active:not(:disabled) { transform: scale(0.985); }
+        .transport-btn-purple {
+          background: linear-gradient(135deg, #9333ea, #a855f7, #c084fc);
+          color: #fff;
+          box-shadow: 0 8px 24px rgba(168,85,247,0.35);
+        }
+        .transport-btn-teal {
+          background: linear-gradient(135deg, #0d9488, #14b8a6, #2dd4bf);
+          color: #fff;
+          box-shadow: 0 8px 24px rgba(20,184,166,0.35);
+        }
+        .transport-notify-done {
+          background: rgba(16,185,129,0.12);
+          border: 1px solid rgba(16,185,129,0.3);
+          color: #34d399;
+          cursor: not-allowed;
+        }
+
+        /* Footer */
+        .transport-footer-note {
+          font-size: 0.75rem;
+          color: rgba(255,255,255,0.3);
+          letter-spacing: 0.01em;
+        }
+      `}</style>
     </>
   );
 }

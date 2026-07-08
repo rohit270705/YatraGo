@@ -873,6 +873,53 @@ export const usePlatformStore = create((set, get) => ({
       console.error('Error updating platform setting:', error);
       return false;
     }
+  },
+  launchFeature: async (featureName) => {
+    try {
+      const settingKey = featureName === 'flights' ? 'FLIGHTS_LIVE' : 'TRAINS_LIVE';
+      await get().updateSetting(settingKey, 'true');
+
+      const { data: subscribers, error } = await supabase
+        .from('feature_interest')
+        .select('user_id')
+        .eq('feature_name', featureName);
+
+      if (error) {
+        console.warn('Error querying feature_interest:', error);
+        return 0;
+      }
+
+      if (!subscribers || subscribers.length === 0) {
+        return 0;
+      }
+
+      const title = featureName === 'flights' ? 'Flight Booking is now live!' : 'Train Booking is now live!';
+      const message = featureName === 'flights'
+        ? 'Good news! Domestic flight booking across India is now live on YatraGo. Book your next trip today!'
+        : 'Good news! Book train tickets across India via IRCTC — now live on YatraGo!';
+
+      const notificationsPayload = subscribers.map(sub => ({
+        user_id: sub.user_id,
+        title: title,
+        message: message,
+        type: 'feature_launch',
+        reference_type: featureName,
+        reference_id: 'launch'
+      }));
+
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .insert(notificationsPayload);
+
+      if (notifError) {
+        console.warn('Error inserting notifications:', notifError);
+      }
+
+      return subscribers.length;
+    } catch (error) {
+      console.error('Error launching feature:', error);
+      throw error;
+    }
   }
 }));
 

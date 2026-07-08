@@ -3,7 +3,7 @@ import {
   ShieldCheck, Users, Car, Ticket, Wallet, TrendingUp, CheckCircle,
   XCircle, AlertTriangle, Eye, Ban, DollarSign, FileCheck, BarChart3,
   Bike, UserCheck, UserX, Clock, Search, MapPin, Star, Zap, Filter, Plus, Calendar,
-  Settings, Headphones, Tag, Home, MessageSquare
+  Settings, Headphones, Tag, Home, MessageSquare, Rocket, Bell
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useVehicleStore, useBookingStore, useWalletStore, useToastStore, useRentalStore, usePlatformStore, useChatStore, useAuthStore, usePromoStore, useSupportStore } from '../store';
@@ -34,7 +34,7 @@ export default function AdminDashboardPage() {
   const { vehicles, approveVehicle, rejectVehicle, getPendingApprovals, fetchVehicles } = useVehicleStore();
   const { bookings } = useBookingStore();
   const { transactions, withdrawals, fetchAllWithdrawals, approveWithdrawal, rejectWithdrawal } = useWalletStore();
-  const { settings, fetchSettings, updateSetting } = usePlatformStore();
+  const { settings, fetchSettings, updateSetting, launchFeature } = usePlatformStore();
   const { promos, fetchPromos, createPromo, updatePromoStatus } = usePromoStore();
   const { tickets, fetchAllTickets, addMessage, updateTicketStatus } = useSupportStore();
   const { user: currentUser } = useAuthStore();
@@ -271,6 +271,21 @@ export default function AdminDashboardPage() {
       addToast(`Agent KYC ${isVerified ? 'Verified' : 'Unverified'}`, 'success');
     } catch (err) {
       addToast(err.message, 'error');
+    }
+  };
+
+  const handleLaunchFeature = async (featureName) => {
+    const featureLabel = featureName === 'flights' ? 'Flight Booking' : 'Train Booking';
+    if (!window.confirm(`Are you sure you want to mark ${featureLabel} as LIVE and notify all subscribed users?`)) {
+      return;
+    }
+    try {
+      const count = await launchFeature(featureName);
+      addToast(`🎉 ${featureLabel} marked as LIVE! Sent notifications to ${count} subscribed user(s).`, 'success');
+      fetchSettings();
+    } catch (err) {
+      console.error('Launch failed:', err);
+      addToast('Failed to launch feature or dispatch notifications.', 'error');
     }
   };
 
@@ -1276,42 +1291,90 @@ export default function AdminDashboardPage() {
 
       {/* ===== SETTINGS ===== */}
       {activeSection === 'settings' && (
-        <div className="glass-card" style={{ maxWidth: 600, margin: '0 auto' }}>
-          <h3 style={{ fontWeight: 700, marginBottom: 24 }}><Settings size={20} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} /> Platform Global Settings</h3>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <div>
-              <label className="form-label">Agent Commission Rate (%)</label>
-              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Percentage commission rate for agents when they book tickets.</div>
-              <input type="number" className="form-input" value={localSettings.AGENT_COMMISSION_PERCENT || ''} onChange={e => setLocalSettings({...localSettings, AGENT_COMMISSION_PERCENT: e.target.value})} />
-            </div>
+        <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <div className="glass-card">
+            <h3 style={{ fontWeight: 700, marginBottom: 24 }}><Settings size={20} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} /> Platform Global Settings</h3>
             
-            <div>
-              <label className="form-label">Owner Platform Fee Flat (₹)</label>
-              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Fixed flat fee deducted from owner payouts per booking.</div>
-              <input type="number" className="form-input" value={localSettings.PLATFORM_FEE_FIXED || ''} onChange={e => setLocalSettings({...localSettings, PLATFORM_FEE_FIXED: e.target.value})} />
-            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div>
+                <label className="form-label">Agent Commission Rate (%)</label>
+                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Percentage commission rate for agents when they book tickets.</div>
+                <input type="number" className="form-input" value={localSettings.AGENT_COMMISSION_PERCENT || ''} onChange={e => setLocalSettings({...localSettings, AGENT_COMMISSION_PERCENT: e.target.value})} />
+              </div>
+              
+              <div>
+                <label className="form-label">Owner Platform Fee Flat (₹)</label>
+                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Fixed flat fee deducted from owner payouts per booking.</div>
+                <input type="number" className="form-input" value={localSettings.PLATFORM_FEE_FIXED || ''} onChange={e => setLocalSettings({...localSettings, PLATFORM_FEE_FIXED: e.target.value})} />
+              </div>
 
-            <div>
-              <label className="form-label">Cancellation Fee Max (₹)</label>
-              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Max transport deduction for cancellations within 24 hours.</div>
-              <input type="number" className="form-input" value={localSettings.CANCELLATION_FEE_MAX || ''} onChange={e => setLocalSettings({...localSettings, CANCELLATION_FEE_MAX: e.target.value})} />
-            </div>
-            
-            <div>
-              <label className="form-label">Support Email</label>
-              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Official email address for user support.</div>
-              <input type="email" className="form-input" value={localSettings.SUPPORT_EMAIL || ''} onChange={e => setLocalSettings({...localSettings, SUPPORT_EMAIL: e.target.value})} />
-            </div>
+              <div>
+                <label className="form-label">Cancellation Fee Max (₹)</label>
+                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Max transport deduction for cancellations within 24 hours.</div>
+                <input type="number" className="form-input" value={localSettings.CANCELLATION_FEE_MAX || ''} onChange={e => setLocalSettings({...localSettings, CANCELLATION_FEE_MAX: e.target.value})} />
+              </div>
+              
+              <div>
+                <label className="form-label">Support Email</label>
+                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginBottom: 8 }}>Official email address for user support.</div>
+                <input type="email" className="form-input" value={localSettings.SUPPORT_EMAIL || ''} onChange={e => setLocalSettings({...localSettings, SUPPORT_EMAIL: e.target.value})} />
+              </div>
 
-            <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={async () => {
-              try {
-                for (const [key, val] of Object.entries(localSettings)) {
-                  await updateSetting(key, val);
-                }
-                addToast('Settings updated successfully!', 'success');
-              } catch (e) { addToast('Error updating settings', 'error'); }
-            }}>Save Changes</button>
+              <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={async () => {
+                try {
+                  for (const [key, val] of Object.entries(localSettings)) {
+                    await updateSetting(key, val);
+                  }
+                  addToast('Settings updated successfully!', 'success');
+                } catch (e) { addToast('Error updating settings', 'error'); }
+              }}>Save Changes</button>
+            </div>
+          </div>
+
+          <div className="glass-card" style={{ padding: '24px' }}>
+            <h3 style={{ fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Rocket size={20} className="text-amber-400" /> Feature Launch Management
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: 20, lineHeight: 1.5 }}>
+              Triggering a launch will mark the feature as live and automatically dispatch a "Feature is now live!" notification to all users subscribed in feature_interest.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
+                    ✈️ Flight Reservations
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+                    Status: <span style={{ color: localSettings.FLIGHTS_LIVE === 'true' || localSettings.FLIGHTS_LIVE === true ? '#10b981' : '#f59e0b', fontWeight: 600 }}>{localSettings.FLIGHTS_LIVE === 'true' || localSettings.FLIGHTS_LIVE === true ? 'LIVE 🟢' : 'Coming Soon 🟡'}</span>
+                  </div>
+                </div>
+                <button
+                  className={`btn btn-sm ${localSettings.FLIGHTS_LIVE === 'true' || localSettings.FLIGHTS_LIVE === true ? 'btn-secondary' : 'btn-primary'}`}
+                  onClick={() => handleLaunchFeature('flights')}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <Bell size={14} /> {localSettings.FLIGHTS_LIVE === 'true' || localSettings.FLIGHTS_LIVE === true ? 'Dispatch Notice Again' : 'Launch Flights 🚀'}
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem' }}>
+                    🚂 IRCTC Train Bookings
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+                    Status: <span style={{ color: localSettings.TRAINS_LIVE === 'true' || localSettings.TRAINS_LIVE === true ? '#10b981' : '#f59e0b', fontWeight: 600 }}>{localSettings.TRAINS_LIVE === 'true' || localSettings.TRAINS_LIVE === true ? 'LIVE 🟢' : 'Coming Soon 🟡'}</span>
+                  </div>
+                </div>
+                <button
+                  className={`btn btn-sm ${localSettings.TRAINS_LIVE === 'true' || localSettings.TRAINS_LIVE === true ? 'btn-secondary' : 'btn-primary'}`}
+                  onClick={() => handleLaunchFeature('trains')}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <Bell size={14} /> {localSettings.TRAINS_LIVE === 'true' || localSettings.TRAINS_LIVE === true ? 'Dispatch Notice Again' : 'Launch Trains 🚀'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
