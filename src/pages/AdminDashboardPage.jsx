@@ -133,10 +133,15 @@ export default function AdminDashboardPage() {
     }
     if (userSearch) {
       const q = userSearch.toLowerCase();
-      list = list.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.city.toLowerCase().includes(q));
+      list = list.filter(u =>
+        (u.name || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q) ||
+        (u.city || '').toLowerCase().includes(q) ||
+        (u.phone || '').toLowerCase().includes(q)
+      );
     }
     return list;
-  }, [userFilter, userSearch]);
+  }, [users, userFilter, userSearch]);
 
   // Filtered Vehicles (combined)
   const combinedVehicles = useMemo(() => {
@@ -530,25 +535,27 @@ export default function AdminDashboardPage() {
                           background: 'var(--gradient-accent)', display: 'flex',
                           alignItems: 'center', justifyContent: 'center',
                           color: 'white', fontWeight: 700, fontSize: '0.75rem', flexShrink: 0,
-                        }}>{user.name[0]}</div>
+                        }}>{(user.name || '?')[0].toUpperCase()}</div>
                         <div>
-                          <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{user.name}</div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>{user.email}</div>
+                          <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{user.name || '—'}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>{user.email || '—'}</div>
                         </div>
                       </div>
                     </td>
                     <td>{getRoleBadge(user.role)}</td>
                     <td style={{ fontSize: '0.85rem' }}>
                       <MapPin size={12} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: 3 }} />
-                      {user.city}
+                      {user.city || '—'}
                     </td>
-                    <td style={{ fontWeight: 600 }}>{user.bookings}</td>
+                    <td style={{ fontWeight: 600 }}>{user.bookings ?? '—'}</td>
                     <td>{getStatusBadge(user)}</td>
                     <td style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>
                       <Clock size={12} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: 3 }} />
-                      {user.lastActive}
+                      {user.last_active ? new Date(user.last_active).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' }) : user.lastActive || '—'}
                     </td>
-                    <td style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>{user.joinDate}</td>
+                    <td style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>
+                      {user.created_at ? new Date(user.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' }) : user.joinDate || '—'}
+                    </td>
                     <td>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {(!user.status || user.status === 'active') ? (
