@@ -158,12 +158,18 @@ export default function TransportModal() {
         <button
           onClick={handleNotify}
           disabled={notified || loading}
-          className={`transport-notify-btn ${notified ? 'transport-notify-done' : cfg.btnClass}`}
+          className={`transport-notify-btn ${
+            notified
+              ? 'transport-notify-done'
+              : loading
+                ? `transport-notify-saving ${cfg.btnClass}`
+                : cfg.btnClass
+          }`}
         >
           {notified ? (
             <>
               <CheckCircle2 size={20} />
-              <span>You're on the list! ✓</span>
+              <span>Notified ✓</span>
             </>
           ) : (
             <>
@@ -172,11 +178,6 @@ export default function TransportModal() {
             </>
           )}
         </button>
-
-        {/* ── subtle footer note ── */}
-        <p className="transport-footer-note">
-          No spam. You'll receive one notification when we launch.
-        </p>
       </div>
 
       {/* ── Scoped styles ── */}
@@ -349,8 +350,8 @@ export default function TransportModal() {
           font-weight: 800;
           display: flex; align-items: center; justify-content: center; gap: 10px;
           border: none; cursor: pointer;
-          transition: transform 0.18s, box-shadow 0.18s, filter 0.18s;
-          margin-bottom: 14px;
+          transition: transform 0.18s, box-shadow 0.18s, filter 0.18s, opacity 0.3s;
+          margin-bottom: 4px;
           letter-spacing: 0.01em;
         }
         .transport-notify-btn:hover:not(:disabled) {
@@ -368,18 +369,22 @@ export default function TransportModal() {
           color: #fff;
           box-shadow: 0 8px 24px rgba(20,184,166,0.35);
         }
-        .transport-notify-done {
-          background: rgba(16,185,129,0.12);
-          border: 1px solid rgba(16,185,129,0.3);
-          color: #34d399;
+        /* Faded state while saving */
+        .transport-notify-saving {
+          opacity: 0.45;
+          filter: saturate(0.5);
           cursor: not-allowed;
+          box-shadow: none !important;
         }
-
-        /* Footer */
-        .transport-footer-note {
-          font-size: 0.75rem;
-          color: rgba(255,255,255,0.3);
-          letter-spacing: 0.01em;
+        /* Faded done state — clearly already pressed */
+        .transport-notify-done {
+          opacity: 0.45;
+          filter: grayscale(0.4) saturate(0.6);
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.12);
+          color: rgba(255,255,255,0.55);
+          cursor: not-allowed;
+          box-shadow: none;
         }
       `}</style>
     </>

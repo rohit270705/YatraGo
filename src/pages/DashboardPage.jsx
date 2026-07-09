@@ -701,21 +701,23 @@ function ComingSoonSection({ openModal, userId, addToast }) {
                   style={{
                     width: '100%', padding: '10px', borderRadius: '12px',
                     fontSize: '0.8rem', fontWeight: 800, border: 'none',
-                    cursor: isNotified ? 'not-allowed' : 'pointer',
+                    cursor: (isNotified || isLoading) ? 'not-allowed' : 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
                     background: isNotified
-                      ? 'rgba(16,185,129,0.12)'
+                      ? 'rgba(255,255,255,0.06)'
                       : cfg.btnBg,
-                    border: isNotified ? '1px solid rgba(16,185,129,0.3)' : 'none',
-                    color: isNotified ? '#34d399' : '#fff',
-                    boxShadow: isNotified ? 'none' : `0 4px 14px ${cfg.btnShadow}`,
-                    transition: 'filter 0.18s, transform 0.18s',
+                    border: isNotified ? '1px solid rgba(255,255,255,0.12)' : 'none',
+                    color: isNotified ? 'rgba(255,255,255,0.55)' : '#fff',
+                    boxShadow: (isNotified || isLoading) ? 'none' : `0 4px 14px ${cfg.btnShadow}`,
+                    opacity: (isNotified || isLoading) ? 0.45 : 1,
+                    filter: (isNotified || isLoading) ? 'grayscale(0.4) saturate(0.6)' : 'none',
+                    transition: 'opacity 0.3s, filter 0.3s, transform 0.18s',
                   }}
-                  onMouseEnter={e => { if (!isNotified) { e.currentTarget.style.filter = 'brightness(1.1)'; e.currentTarget.style.transform = 'scale(1.02)'; } }}
-                  onMouseLeave={e => { e.currentTarget.style.filter = ''; e.currentTarget.style.transform = ''; }}
+                  onMouseEnter={e => { if (!isNotified && !isLoading) { e.currentTarget.style.filter = 'brightness(1.1)'; e.currentTarget.style.transform = 'scale(1.02)'; } }}
+                  onMouseLeave={e => { if (!isNotified && !isLoading) { e.currentTarget.style.filter = ''; e.currentTarget.style.transform = ''; } }}
                 >
                   {isNotified
-                    ? <><CheckCircle2 size={15} /><span>On the list ✓</span></>
+                    ? <><CheckCircle2 size={15} /><span>Notified ✓</span></>
                     : <><Bell size={14} /><span>{isLoading ? 'Saving…' : 'Notify Me'}</span></>
                   }
                 </button>
