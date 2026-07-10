@@ -7,6 +7,7 @@ import {
   Plane, TrainFront, Shield, LayoutGrid, Wifi, Zap
 } from 'lucide-react';
 import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToastStore, useTransportModalStore } from '../store';
+import { supabase } from '../supabaseClient';
 import SkeletonLoader from '../components/SkeletonLoader';
 import NotificationBell from '../components/NotificationBell';
 
