@@ -586,8 +586,6 @@ function ComingSoonSection({ openModal }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
           {Object.entries(COMING_SOON_CONFIG).map(([type, cfg]) => {
             const IconCmp = cfg.icon;
-            const isNotified = notified[type];
-            const isLoading = loading[type];
             return (
               <div
                 key={type}
