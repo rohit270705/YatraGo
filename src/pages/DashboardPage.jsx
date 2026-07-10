@@ -4,10 +4,9 @@ import {
   Search, MapPin, Calendar, ArrowRightLeft, Wallet, Award,
   Clock, ArrowRight, Ticket, Star, Navigation, Gift, Repeat,
   ClipboardList, Route, Plus, Package, TrendingUp, Car, ChevronRight,
-  Plane, TrainFront, Bell, CheckCircle2, Shield, LayoutGrid, Wifi, Zap
+  Plane, TrainFront, Shield, LayoutGrid, Wifi, Zap
 } from 'lucide-react';
 import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToastStore, useTransportModalStore } from '../store';
-import { supabase } from '../supabaseClient';
 import SkeletonLoader from '../components/SkeletonLoader';
 import NotificationBell from '../components/NotificationBell';
 
@@ -469,7 +468,7 @@ export default function DashboardPage() {
         </Section>
 
         {/* ── COMING SOON: FLIGHTS & TRAINS ── */}
-        <ComingSoonSection openModal={useTransportModalStore.getState().openModal} userId={user?.id} addToast={addToast} />
+        <ComingSoonSection openModal={useTransportModalStore.getState().openModal} />
 
         {/* ── POPULAR ROUTES ── */}
         <Section
@@ -573,42 +572,7 @@ const COMING_SOON_CONFIG = {
   },
 };
 
-function ComingSoonSection({ openModal, userId, addToast }) {
-  const [notified, setNotified] = useState({ flights: false, trains: false });
-  const [loading, setLoading] = useState({ flights: false, trains: false });
-
-  useEffect(() => {
-    if (!userId) return;
-    const check = async () => {
-      const { data } = await supabase
-        .from('feature_interest')
-        .select('feature_name')
-        .eq('user_id', String(userId))
-        .in('feature_name', ['flights', 'trains']);
-      if (data) {
-        const found = { flights: false, trains: false };
-        data.forEach(r => { if (r.feature_name in found) found[r.feature_name] = true; });
-        setNotified(found);
-      }
-    };
-    check();
-  }, [userId]);
-
-  const handleNotify = async (e, type) => {
-    e.stopPropagation();
-    if (notified[type] || loading[type]) return;
-    setLoading(prev => ({ ...prev, [type]: true }));
-    await supabase.from('feature_interest').insert({
-      user_id: String(userId || 'guest'),
-      feature_name: type,
-      subscribed_at: new Date().toISOString(),
-    }).catch(() => {});
-    const label = type === 'flights' ? 'Flights' : 'Trains';
-    addToast(`We'll notify you when ${label} launches! 🎉`, 'success');
-    setNotified(prev => ({ ...prev, [type]: true }));
-    setLoading(prev => ({ ...prev, [type]: false }));
-  };
-
+function ComingSoonSection({ openModal }) {
   return (
     <div className="pax-section">
       <div className="pax-section-header">
@@ -694,33 +658,6 @@ function ComingSoonSection({ openModal, userId, addToast }) {
                   ))}
                 </div>
 
-                {/* Notify Me button */}
-                <button
-                  onClick={e => handleNotify(e, type)}
-                  disabled={isNotified || isLoading}
-                  style={{
-                    width: '100%', padding: '10px', borderRadius: '12px',
-                    fontSize: '0.8rem', fontWeight: 800, border: 'none',
-                    cursor: (isNotified || isLoading) ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
-                    background: isNotified
-                      ? 'rgba(255,255,255,0.06)'
-                      : cfg.btnBg,
-                    border: isNotified ? '1px solid rgba(255,255,255,0.12)' : 'none',
-                    color: isNotified ? 'rgba(255,255,255,0.55)' : '#fff',
-                    boxShadow: (isNotified || isLoading) ? 'none' : `0 4px 14px ${cfg.btnShadow}`,
-                    opacity: (isNotified || isLoading) ? 0.45 : 1,
-                    filter: (isNotified || isLoading) ? 'grayscale(0.4) saturate(0.6)' : 'none',
-                    transition: 'opacity 0.3s, filter 0.3s, transform 0.18s',
-                  }}
-                  onMouseEnter={e => { if (!isNotified && !isLoading) { e.currentTarget.style.filter = 'brightness(1.1)'; e.currentTarget.style.transform = 'scale(1.02)'; } }}
-                  onMouseLeave={e => { if (!isNotified && !isLoading) { e.currentTarget.style.filter = ''; e.currentTarget.style.transform = ''; } }}
-                >
-                  {isNotified
-                    ? <><CheckCircle2 size={15} /><span>Notified ✓</span></>
-                    : <><Bell size={14} /><span>{isLoading ? 'Saving…' : 'Notify Me'}</span></>
-                  }
-                </button>
               </div>
             );
           })}

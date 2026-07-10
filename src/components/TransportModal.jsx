@@ -73,14 +73,26 @@ export default function TransportModal() {
   const handleNotify = async () => {
     if (notified || loading) return;
     setLoading(true);
-    await supabase.from('feature_interest').insert({
-      user_id: String(user?.id || 'guest'),
-      feature_name: activeModal,
-      subscribed_at: new Date().toISOString(),
-    }).catch(e => console.warn('feature_interest insert error:', e));
-    addToast(`We'll notify you when ${cfg.label} launches! 🎉`, 'success');
-    setNotified(true);
-    setLoading(false);
+    try {
+      // Race against 5s timeout so button never stays stuck
+      await Promise.race([
+        supabase.from('feature_interest').upsert({
+          user_id: String(user?.id || 'guest'),
+          feature_name: activeModal,
+          subscribed_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,feature_name', ignoreDuplicates: true }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+      ]);
+      addToast(`We'll notify you when ${cfg.label} launches! 🎉`, 'success');
+      setNotified(true);
+    } catch (e) {
+      // Even on error, mark as notified locally so button doesn't stay stuck
+      console.warn('feature_interest error (non-critical):', e.message);
+      setNotified(true);
+      addToast(`We'll notify you when ${cfg.label} launches! 🎉`, 'success');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
