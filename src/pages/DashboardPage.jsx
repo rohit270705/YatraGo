@@ -215,14 +215,20 @@ export default function DashboardPage() {
     <div className="pax-dashboard animate-fade-in">
       {/* TOP BAR */}
       <div className="pax-topbar">
-        <div>
+        {/* Left spacer — mirrors icon width so greeting stays perfectly centered */}
+        <div className="pax-topbar-left" style={{ width: 90 }} />
+
+        {/* Center — greeting */}
+        <div className="pax-topbar-center">
           <h1 className="pax-greeting">
             <span>{greeting()}, {displayGreetingName}</span>
             <span>👋</span>
           </h1>
-          <p className="pax-sub-greeting">Your personal transit & travel companion</p>
+          <p className="pax-sub-greeting">Your personal transit &amp; travel companion</p>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+
+        {/* Right — Bell + Profile */}
+        <div className="pax-topbar-right">
           <NotificationBell
             buttonClassName="rounded-full bg-[var(--color-surface)] border border-[var(--glass-border)] flex items-center justify-center text-[var(--color-text)] hover:border-[var(--color-accent-teal)] transition-all relative shadow-sm cursor-pointer shrink-0"
             buttonStyle={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
