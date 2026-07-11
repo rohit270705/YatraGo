@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Home, Plus, Edit3, Trash2, Clock, CheckCircle, XCircle, IndianRupee, MapPin, Shield } from 'lucide-react';
 import { useAccommodationStore, useAuthStore, useToastStore } from '../store';
+import DashboardHeader from '../components/DashboardHeader';
 
 export default function HostDashboardPage() {
   const { user } = useAuthStore();
@@ -61,10 +62,10 @@ export default function HostDashboardPage() {
 
   return (
     <div className="page-container animate-fade-in">
+      <DashboardHeader subtitle="List your home for travellers" />
       <div className="page-header">
         <div>
           <h1 className="page-title">My Homestay Listings</h1>
-          <p className="page-subtitle">List your home for travellers. Admin approval required.</p>
         </div>
         <button className="btn btn-primary" onClick={() => setShowForm(true)}>
           <Plus size={16} /> List My Home

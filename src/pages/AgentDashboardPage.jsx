@@ -7,6 +7,7 @@ import {
   Upload, Sparkles, ChevronDown
 } from 'lucide-react';
 import { useAgentStore, useBookingStore, useToastStore, useAuthStore } from '../store';
+import DashboardHeader from '../components/DashboardHeader';
 
 const GRADIENT_PRESETS = [
   { id: 'ocean', name: 'Ocean', gradient: 'linear-gradient(135deg, #0c3547 0%, #1b6b93 50%, #1bb5c0 100%)' },
@@ -95,7 +96,9 @@ export default function AgentDashboardPage() {
 
   return (
     <div className="animate-fade-in">
+      <DashboardHeader subtitle="Agent Partner Portal — Bookings &amp; Commissions" />
       {/* ===== CUSTOMIZABLE BANNER ===== */}
+
       <div style={{
         background: currentGradient.gradient,
         borderRadius: 'var(--radius-xl)',

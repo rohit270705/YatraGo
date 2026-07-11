@@ -9,7 +9,7 @@ import {
 import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToastStore, useTransportModalStore } from '../store';
 import { supabase } from '../supabaseClient';
 import SkeletonLoader from '../components/SkeletonLoader';
-import NotificationBell from '../components/NotificationBell';
+import DashboardHeader from '../components/DashboardHeader';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -214,36 +214,8 @@ export default function DashboardPage() {
   return (
     <div className="pax-dashboard animate-fade-in">
       {/* TOP BAR */}
-      <div className="pax-topbar">
-        {/* Left spacer — mirrors icon width so greeting stays perfectly centered */}
-        <div className="pax-topbar-left" style={{ width: 90 }} />
+      <DashboardHeader subtitle="Your personal transit &amp; travel companion" />
 
-        {/* Center — greeting */}
-        <div className="pax-topbar-center">
-          <h1 className="pax-greeting">
-            <span>{greeting()}, {displayGreetingName}</span>
-            <span>👋</span>
-          </h1>
-          <p className="pax-sub-greeting">Your personal transit &amp; travel companion</p>
-        </div>
-
-        {/* Right — Bell + Profile */}
-        <div className="pax-topbar-right">
-          <NotificationBell
-            buttonClassName="rounded-full bg-[var(--color-surface)] border border-[var(--glass-border)] flex items-center justify-center text-[var(--color-text)] hover:border-[var(--color-accent-teal)] transition-all relative shadow-sm cursor-pointer shrink-0"
-            buttonStyle={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            iconSize={18}
-          />
-          <div
-            onClick={() => navigate('/profile')}
-            className="rounded-full bg-gradient-to-tr from-[var(--color-accent-teal)] to-blue-500 flex items-center justify-center text-white font-bold text-base shadow-md cursor-pointer border border-[var(--glass-border)] hover:scale-105 transition-transform shrink-0"
-            style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            title={userName}
-          >
-            {firstName.charAt(0).toUpperCase()}
-          </div>
-        </div>
-      </div>
 
       <div className="pax-content">
         {/* ── HERO SEARCH ── */}

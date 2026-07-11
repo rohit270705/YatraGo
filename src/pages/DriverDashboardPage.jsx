@@ -5,6 +5,7 @@ import {
 import { useAuthStore, useBookingStore, useToastStore, useDriverStore } from '../store';
 import { supabase } from '../supabaseClient';
 import SkeletonLoader from '../components/SkeletonLoader';
+import DashboardHeader from '../components/DashboardHeader';
 
 export default function DriverDashboardPage() {
   const { user } = useAuthStore();
@@ -89,12 +90,8 @@ export default function DriverDashboardPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header" style={{ marginBottom: '32px' }}>
-        <div>
-          <h1 className="page-title">Driver Dashboard</h1>
-          <p className="page-subtitle">Welcome back, {user?.name}</p>
-        </div>
-      </div>
+      <DashboardHeader subtitle="Your driver &amp; trip companion" />
+
 
       {bookingsLoading ? (
         <div className="stats-grid">

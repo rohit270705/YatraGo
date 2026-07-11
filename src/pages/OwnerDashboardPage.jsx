@@ -4,6 +4,7 @@ import {
   Shield, Upload, Clock, Users, Luggage, TrendingUp, Bell, Trash2, Camera, Image, X, FileText, UploadCloud
 } from 'lucide-react';
 import { useVehicleStore, useBookingStore, useToastStore, useAuthStore, useWalletStore, useDriverStore, useVehicleOfferStore } from '../store';
+import DashboardHeader from '../components/DashboardHeader';
 
 export default function OwnerDashboardPage() {
   const { user } = useAuthStore();
@@ -295,10 +296,8 @@ export default function OwnerDashboardPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
-        <h1>Vehicle Owner Dashboard</h1>
-        <p>Manage your vehicles, routes, and earnings</p>
-      </div>
+      <DashboardHeader subtitle="Manage your vehicles, routes, and earnings" />
+
 
       {/* Stats */}
       <div className="stats-grid stagger-children">
