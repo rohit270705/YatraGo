@@ -2891,6 +2891,30 @@ input, button, textarea, select {
   overflow: hidden;
 }
 
+/* Coming Soon Section Responsive Grids */
+.pax-coming-soon-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 680px) {
+  .pax-coming-soon-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.pax-coming-soon-features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+@media (max-width: 380px) {
+  .pax-coming-soon-features {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Empty State */
 .pax-empty-state {
   text-align: center;

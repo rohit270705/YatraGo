@@ -320,7 +320,13 @@ export default function TransportModal() {
           gap: 12px;
           margin-bottom: 26px;
         }
+        @media (max-width: 440px) {
+          .transport-features-grid {
+            grid-template-columns: 1fr;
+          }
+        }
         .transport-feature-item {
+
           display: flex; align-items: center; gap: 10px;
           padding: 12px 14px;
           border-radius: 14px;

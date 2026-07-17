@@ -560,8 +560,8 @@ function ComingSoonSection({ openModal }) {
           <span>Coming Soon</span>
         </div>
       </div>
-      <div className="pax-section-body">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+      <div className="pax-section-body" style={{ background: 'transparent', border: 'none', overflow: 'visible' }}>
+        <div className="pax-coming-soon-grid">
           {Object.entries(COMING_SOON_CONFIG).map(([type, cfg]) => {
             const IconCmp = cfg.icon;
             return (
@@ -572,11 +572,11 @@ function ComingSoonSection({ openModal }) {
                   background: 'linear-gradient(145deg,#0d1b3e 0%,#070f22 70%,#0a0f1e 100%)',
                   border: `1px solid ${cfg.ring}`,
                   borderRadius: '20px',
-                  padding: '20px 16px 16px',
+                  padding: '22px 18px 18px',
                   cursor: 'pointer',
                   boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 30px ${cfg.glow}`,
                   transition: 'transform 0.2s, box-shadow 0.2s',
-                  display: 'flex', flexDirection: 'column', gap: '12px',
+                  display: 'flex', flexDirection: 'column', gap: '14px',
                   position: 'relative', overflow: 'hidden',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 14px 40px rgba(0,0,0,0.6), 0 0 40px ${cfg.glow}`; }}
@@ -600,8 +600,8 @@ function ComingSoonSection({ openModal }) {
                 <div style={{ textAlign: 'center' }}>
                   <span style={{
                     display: 'inline-flex', alignItems: 'center', gap: '5px',
-                    padding: '3px 10px', borderRadius: '999px',
-                    fontSize: '9px', fontWeight: 800, letterSpacing: '0.12em',
+                    padding: '4px 12px', borderRadius: '999px',
+                    fontSize: '9.5px', fontWeight: 800, letterSpacing: '0.12em',
                     background: cfg.badgeBg, border: `1px solid ${cfg.badgeBorder}`,
                     color: cfg.badgeColor,
                   }}>
@@ -611,26 +611,26 @@ function ComingSoonSection({ openModal }) {
                 </div>
 
                 {/* Headline */}
-                <div style={{ textAlign: 'center', fontWeight: 800, fontSize: '0.95rem', color: '#fff', lineHeight: 1.25 }}>
+                <div style={{ textAlign: 'center', fontWeight: 800, fontSize: '1.02rem', color: '#fff', lineHeight: 1.25 }}>
                   {cfg.headline}
                 </div>
 
                 {/* Sub */}
-                <div style={{ textAlign: 'center', fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)', lineHeight: 1.5 }}>
+                <div style={{ textAlign: 'center', fontSize: '0.78rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.5, padding: '0 4px' }}>
                   {cfg.sub}
                 </div>
 
                 {/* Feature icons row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                <div className="pax-coming-soon-features">
                   {cfg.features.map(({ icon: Ic, label }) => (
                     <div key={label} style={{
-                      display: 'flex', alignItems: 'center', gap: '6px',
-                      padding: '6px 8px', borderRadius: '10px',
+                      display: 'flex', alignItems: 'center', gap: '7px',
+                      padding: '8px 10px', borderRadius: '10px',
                       background: 'rgba(255,255,255,0.04)',
                       border: '1px solid rgba(255,255,255,0.07)',
                     }}>
-                      <Ic size={13} color={cfg.accent} strokeWidth={1.8} style={{ flexShrink: 0 }} />
-                      <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', lineHeight: 1.2 }}>{label}</span>
+                      <Ic size={14} color={cfg.accent} strokeWidth={1.8} style={{ flexShrink: 0 }} />
+                      <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.85)', lineHeight: 1.25, whiteSpace: 'nowrap' }}>{label}</span>
                     </div>
                   ))}
                 </div>
