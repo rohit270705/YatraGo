@@ -1,18 +1,23 @@
 import { useState, useEffect } from 'react';
 import {
   Wallet, Plus, ArrowUpRight, ArrowDownLeft, Clock, CheckCircle,
-  CreditCard, Smartphone, Building2, TrendingUp, Filter
+  CreditCard, Smartphone, Building2, TrendingUp, Filter, Banknote
 } from 'lucide-react';
 import { useWalletStore, useToastStore, useAuthStore } from '../store';
 import SkeletonLoader from '../components/SkeletonLoader';
 
 export default function WalletPage() {
-  const { balance, transactions, isLoading, addMoney, initializeWallet } = useWalletStore();
+  const { balance, transactions, isLoading, addMoney, initializeWallet, requestWithdrawal } = useWalletStore();
   const { user } = useAuthStore();
   const { addToast } = useToastStore();
   const [showAddMoney, setShowAddMoney] = useState(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [amount, setAmount] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [wBankAccount, setWBankAccount] = useState('');
+  const [wIfscCode, setWIfscCode] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [filterType, setFilterType] = useState('all');
   const [selectedPayment, setSelectedPayment] = useState('Debit/Credit Card');
   const [bankAccount, setBankAccount] = useState('');
@@ -52,6 +57,34 @@ export default function WalletPage() {
     setIsAdding(false);
   };
 
+  const handleWithdraw = async () => {
+    const amt = parseInt(withdrawAmount);
+    if (!amt || amt <= 0) {
+      addToast('Enter a valid withdrawal amount', 'warning');
+      return;
+    }
+    if (amt > balance) {
+      addToast('Insufficient wallet balance', 'warning');
+      return;
+    }
+    if (!wBankAccount || !wIfscCode) {
+      addToast('Please enter Bank Account Number/UPI and IFSC Code', 'warning');
+      return;
+    }
+    setIsWithdrawing(true);
+    const result = await requestWithdrawal(amt, wBankAccount, wIfscCode);
+    if (result.success) {
+      addToast(`Withdrawal request of ₹${amt.toLocaleString()} submitted successfully!`, 'success');
+      setShowWithdrawModal(false);
+      setWithdrawAmount('');
+      setWBankAccount('');
+      setWIfscCode('');
+    } else {
+      addToast(result.error || 'Withdrawal failed. Please try again.', 'error');
+    }
+    setIsWithdrawing(false);
+  };
+
   const filteredTxns = filterType === 'all'
     ? transactions
     : transactions.filter(t => t.type === filterType);
@@ -61,7 +94,9 @@ export default function WalletPage() {
       case 'WALLET_TOPUP': return <ArrowDownLeft size={18} color="var(--color-accent-green)" />;
       case 'TICKET_PAYMENT': return <ArrowUpRight size={18} color="var(--color-accent-red)" />;
       case 'TICKET_REFUND': return <ArrowDownLeft size={18} color="var(--color-accent-blue)" />;
-      case 'AGENT_COMMISSION': return <ArrowUpRight size={18} color="var(--color-accent-amber)" />;
+      case 'AGENT_COMMISSION': return <ArrowDownLeft size={18} color="var(--color-accent-amber)" />;
+      case 'WITHDRAWAL_REQUEST':
+      case 'WITHDRAWAL': return <ArrowUpRight size={18} color="var(--color-accent-purple)" />;
       default: return <Clock size={18} />;
     }
   };
@@ -72,6 +107,8 @@ export default function WalletPage() {
       case 'TICKET_PAYMENT': return 'Ticket Payment';
       case 'TICKET_REFUND': return 'Refund Received';
       case 'AGENT_COMMISSION': return 'Agent Commission';
+      case 'WITHDRAWAL_REQUEST': return 'Withdrawal Request';
+      case 'WITHDRAWAL': return 'Withdrawal Processed';
       default: return type;
     }
   };
@@ -91,7 +128,13 @@ export default function WalletPage() {
           <button className="wallet-action-btn" onClick={() => setShowAddMoney(true)}>
             <Plus size={16} /> Add Money
           </button>
-          <button className="wallet-action-btn">
+          <button className="wallet-action-btn" onClick={() => setShowWithdrawModal(true)}>
+            <ArrowUpRight size={16} /> Withdraw
+          </button>
+          <button className="wallet-action-btn" onClick={() => {
+            document.getElementById('transaction-history-section')?.scrollIntoView({ behavior: 'smooth' });
+            setFilterType('all');
+          }}>
             <TrendingUp size={16} /> Statement
           </button>
         </div>
@@ -121,7 +164,7 @@ export default function WalletPage() {
       </div>
 
       {/* Transaction History */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div id="transaction-history-section" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h3 style={{ fontWeight: 700 }}>Transaction History</h3>
         <select className="form-select" style={{ width: 'auto', padding: '8px 36px 8px 12px' }}
           value={filterType} onChange={e => setFilterType(e.target.value)}>
@@ -129,6 +172,8 @@ export default function WalletPage() {
           <option value="WALLET_TOPUP">Top-ups</option>
           <option value="TICKET_PAYMENT">Payments</option>
           <option value="TICKET_REFUND">Refunds</option>
+          <option value="AGENT_COMMISSION">Commission</option>
+          <option value="WITHDRAWAL_REQUEST">Withdrawals</option>
         </select>
       </div>
 
@@ -166,12 +211,12 @@ export default function WalletPage() {
                     {txn.amount > 0 ? '+' : ''}₹{Math.abs(txn.amount).toLocaleString()}
                   </div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>
-                    Bal: ₹{txn.balance_after ? txn.balance_after.toLocaleString() : txn.balanceAfter.toLocaleString()}
+                    Bal: ₹{(txn.balance_after !== undefined ? txn.balance_after : (txn.balanceAfter || 0)).toLocaleString()}
                   </div>
                 </div>
               </div>
               <div style={{ marginTop: 6, fontSize: '0.7rem', color: 'var(--color-text-tertiary)', textAlign: 'right' }}>
-                {new Date(txn.created_at || txn.timestamp).toLocaleString()}
+                {new Date(txn.created_at || txn.timestamp || Date.now()).toLocaleString()}
               </div>
             </div>
           ))}
@@ -257,6 +302,63 @@ export default function WalletPage() {
                 {isAdding
                   ? <span className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
                   : `Add ₹${amount || '0'}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Withdraw Modal */}
+      {showWithdrawModal && (
+        <div className="modal-backdrop" onClick={() => setShowWithdrawModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">Withdraw from Wallet</h3>
+              <button className="modal-close" onClick={() => setShowWithdrawModal(false)}>✕</button>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Available Balance: ₹{balance.toLocaleString()}</label>
+              <input
+                type="number"
+                className="form-input"
+                placeholder="Enter amount to withdraw"
+                value={withdrawAmount}
+                onChange={e => setWithdrawAmount(e.target.value)}
+                min={1}
+                max={balance}
+                style={{ fontSize: '1.3rem', fontWeight: 700, textAlign: 'center' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Bank Account / UPI ID</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. 9876543210@upi or 1234567890"
+                value={wBankAccount}
+                onChange={e => setWBankAccount(e.target.value)}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">IFSC Code / Bank Name</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. SBIN0001234 or HDFC Bank"
+                value={wIfscCode}
+                onChange={e => setWIfscCode(e.target.value.toUpperCase())}
+              />
+            </div>
+
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setShowWithdrawModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleWithdraw} disabled={isWithdrawing}>
+                {isWithdrawing
+                  ? <span className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
+                  : `Withdraw ₹${withdrawAmount || '0'}`}
               </button>
             </div>
           </div>

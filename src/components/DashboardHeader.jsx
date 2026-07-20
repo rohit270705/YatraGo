@@ -54,8 +54,8 @@ export default function DashboardHeader({ subtitle = "Your personal transit & tr
         </p>
       </div>
 
-      {/* Right — Bell + Profile pinned to absolute top right */}
-      <div style={{
+      {/* Right — Bell + Profile pinned to absolute top right on desktop */}
+      <div className="dashboard-header-right" style={{
         position: 'absolute',
         right: '32px',
         top: '50%',
