@@ -531,12 +531,6 @@ export default function App() {
           </ProtectedRoute>
         } />
 
-        {/* Admin-only Routes */}
-        <Route path="/admin" element={
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AppLayout><AdminDashboardPage /></AppLayout>
-          </ProtectedRoute>
-        } />
 
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/login" replace />} />

@@ -582,9 +582,9 @@ export const useAuthStore = create(
         address: data.address,
         aadharNumber: data.aadhar_number,
         panNumber: data.pan_number,
-        // FIX: DB se fresh avatar_url lo, aur sessionStorage se bhi try karo
         avatarUrl: data.avatar_url || null,
-        preferredGreetingName: data.preferred_greeting_name || authUser?.user_metadata?.preferred_greeting_name || null,
+        preferredGreetingName: data.preferred_greeting_name || null,
+
         createdAt: data.created_at,
       };
 
@@ -1630,7 +1630,8 @@ export const useBookingStore = create(
   cancelBooking: (bookingId) => {
     const { bookings } = get();
     const booking = bookings.find(b => b.id === bookingId);
-    if (!booking || booking.status !== 'confirmed') return null;
+    const cancellableStatuses = ['confirmed', 'pending_owner_approval', 'approved_awaiting_payment'];
+    if (!booking || !cancellableStatuses.includes(booking.status)) return null;
 
     const routeDate = booking.route?.date || booking.travelDate || booking.travel_date || new Date().toISOString().split('T')[0];
     const routeTime = booking.route?.departureTime || booking.departureTime || '08:00 AM';
@@ -1638,23 +1639,27 @@ export const useBookingStore = create(
     const now = new Date();
     const hoursUntilJourney = (journeyDate - now) / (1000 * 60 * 60);
 
-    let refundAmount;
+    let refundAmount = 0;
     let cancellationFee = 0;
 
-    if (hoursUntilJourney <= 24) {
-      cancellationFee = 30;
-      refundAmount = booking.totalAmount - cancellationFee;
-    } else {
-      refundAmount = booking.totalAmount;
-    }
+    // Only apply refund logic if wallet was already charged (confirmed/approved_awaiting_payment with payment made)
+    const wasCharged = booking.status === 'confirmed' || (booking.status === 'approved_awaiting_payment' && booking.paidAt);
 
-    // Refund to wallet
-    const routeFrom = booking.route?.from || (booking.routeDetails ? booking.routeDetails.split('→')[0]?.trim() : 'Origin');
-    const routeTo = booking.route?.to || (booking.routeDetails ? booking.routeDetails.split('→')[1]?.trim() : 'Destination');
-    useWalletStore.getState().refundMoney(
-      refundAmount,
-      `Refund: ${routeFrom} → ${routeTo} ${cancellationFee > 0 ? '(₹30 fee deducted)' : '(Full refund)'}`
-    );
+    if (wasCharged) {
+      if (hoursUntilJourney <= 24) {
+        cancellationFee = 30;
+        refundAmount = (booking.totalAmount || 0) - cancellationFee;
+      } else {
+        refundAmount = booking.totalAmount || 0;
+      }
+
+      const routeFrom = booking.route?.from || (booking.routeDetails ? booking.routeDetails.split('→')[0]?.trim() : 'Origin');
+      const routeTo = booking.route?.to || (booking.routeDetails ? booking.routeDetails.split('→')[1]?.trim() : 'Destination');
+      useWalletStore.getState().refundMoney(
+        refundAmount,
+        `Refund: ${routeFrom} → ${routeTo} ${cancellationFee > 0 ? '(₹30 fee deducted)' : '(Full refund)'}`
+      );
+    }
 
     set(state => ({
       bookings: state.bookings.map(b =>
@@ -1664,8 +1669,16 @@ export const useBookingStore = create(
       ),
     }));
 
+    // Sync with Supabase in background
+    try {
+      supabase.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId);
+    } catch (e) {
+      console.warn('Supabase cancelBooking sync:', e);
+    }
+
     return { refundAmount, cancellationFee };
   },
+
 }),
 {
   name: 'booking-storage',

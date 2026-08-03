@@ -42,7 +42,9 @@ export default function LoginPage() {
       const dest = user.role === 'admin' ? '/admin'
         : user.role === 'agent' ? '/agent'
         : user.role === 'owner' ? '/owner'
+        : user.role === 'driver' ? '/driver'
         : '/dashboard';
+
       navigate(dest, { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
@@ -80,7 +82,9 @@ export default function LoginPage() {
       const dest = currentUser?.role === 'admin' ? '/admin'
         : currentUser?.role === 'agent' ? '/agent'
         : currentUser?.role === 'owner' ? '/owner'
+        : currentUser?.role === 'driver' ? '/driver'
         : '/dashboard';
+
       navigate(dest);
     } else {
       // Show actual error from store if available, or fallback

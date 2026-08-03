@@ -53,8 +53,9 @@ export default function AgentDashboardPage() {
   const { addToast } = useToastStore();
   const { user } = useAuthStore();
 
-  const agentBookings = bookings.filter(b => b.isAgentBooking);
+  const agentBookings = bookings.filter(b => b.isAgentBooking && (b.agentId === user?.id || b.agentId === user?.email));
   const totalCommission = agentBookings.reduce((sum, b) => sum + (b.commissionAmount || 0), 0);
+
 
   // Initialize banner with user's profile details
   const initialBanner = {
