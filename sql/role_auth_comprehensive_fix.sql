@@ -1,7 +1,8 @@
 -- =========================================================
--- YatraGo Role & Auth Comprehensive Fix Migration
--- Safe to run on existing database (uses IF NOT EXISTS / IF EXISTS guards)
--- Run in Supabase SQL Editor: Dashboard → SQL Editor → New Query
+-- YatraGo Role & Auth Comprehensive Fix Migration v3
+-- Fixes text vs uuid type mismatch errors.
+-- Safe to run on existing database.
+-- Run in Supabase SQL Editor → New Query → Run
 -- =========================================================
 
 -- =========================================================
@@ -13,19 +14,20 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
-ALTER TABLE public.users 
-  ADD CONSTRAINT users_role_check 
+ALTER TABLE public.users
+  ADD CONSTRAINT users_role_check
   CHECK (role IN ('passenger','agent','owner','admin','driver'));
 
 -- =========================================================
--- 2. Create driver_profiles table if it doesn't exist
+-- 2. Ensure driver_profiles table exists and has all needed columns
+--    Uses text-safe approach: id stored as uuid (matches auth.uid())
 -- =========================================================
 CREATE TABLE IF NOT EXISTS public.driver_profiles (
   id uuid PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
-  name text NOT NULL,
+  name text,
   age integer,
   blood_group text,
-  license_number text UNIQUE,
+  license_number text,
   license_validity timestamp with time zone,
   license_photo_url text,
   has_own_vehicle boolean DEFAULT false,
@@ -36,9 +38,11 @@ CREATE TABLE IF NOT EXISTS public.driver_profiles (
   created_at timestamp with time zone DEFAULT now()
 );
 
--- Safely add any columns that may be missing from a pre-existing driver_profiles table
+-- Safely add columns that may be missing from a pre-existing table
+ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS name text;
 ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS age integer;
 ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS blood_group text;
+ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS license_number text;
 ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS license_validity timestamp with time zone;
 ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS license_photo_url text;
 ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS has_own_vehicle boolean DEFAULT false;
@@ -49,52 +53,65 @@ ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS rating numeric DEFAU
 
 ALTER TABLE public.driver_profiles ENABLE ROW LEVEL SECURITY;
 
+-- Drop all old policies first to avoid conflicts
 DROP POLICY IF EXISTS "Drivers view own profile" ON public.driver_profiles;
-CREATE POLICY "Drivers view own profile" ON public.driver_profiles
-  FOR SELECT USING (auth.uid() = id);
-
 DROP POLICY IF EXISTS "Drivers update own profile" ON public.driver_profiles;
-CREATE POLICY "Drivers update own profile" ON public.driver_profiles
-  FOR UPDATE USING (auth.uid() = id);
-
 DROP POLICY IF EXISTS "Drivers insert own profile" ON public.driver_profiles;
-CREATE POLICY "Drivers insert own profile" ON public.driver_profiles
-  FOR INSERT WITH CHECK (auth.uid() = id);
-
 DROP POLICY IF EXISTS "Owners can view driver profiles" ON public.driver_profiles;
+
+-- Recreate with explicit uuid cast to handle both uuid and text id columns
+CREATE POLICY "Drivers view own profile" ON public.driver_profiles
+  FOR SELECT USING (id::text = auth.uid()::text);
+
+CREATE POLICY "Drivers update own profile" ON public.driver_profiles
+  FOR UPDATE USING (id::text = auth.uid()::text);
+
+CREATE POLICY "Drivers insert own profile" ON public.driver_profiles
+  FOR INSERT WITH CHECK (id::text = auth.uid()::text);
+
 CREATE POLICY "Owners can view driver profiles" ON public.driver_profiles
   FOR SELECT USING (
     public.current_user_role() IN ('owner', 'admin')
     OR is_available = true
   );
 
-
 -- =========================================================
 -- 3. Create driver_owner_link table if it doesn't exist
 -- =========================================================
 CREATE TABLE IF NOT EXISTS public.driver_owner_link (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  driver_id uuid REFERENCES public.driver_profiles(id) ON DELETE CASCADE,
-  owner_id uuid REFERENCES public.users(id) ON DELETE CASCADE,
+  driver_id text,
+  owner_id text,
   relationship_type text DEFAULT 'employed' CHECK (relationship_type IN ('employed','freelance')),
   status text DEFAULT 'pending' CHECK (status IN ('pending','accepted','rejected','terminated')),
-  created_at timestamp with time zone DEFAULT now(),
-  UNIQUE (driver_id, owner_id)
+  created_at timestamp with time zone DEFAULT now()
 );
+
+-- Add columns safely if table already exists
+ALTER TABLE public.driver_owner_link ADD COLUMN IF NOT EXISTS driver_id text;
+ALTER TABLE public.driver_owner_link ADD COLUMN IF NOT EXISTS owner_id text;
+ALTER TABLE public.driver_owner_link ADD COLUMN IF NOT EXISTS relationship_type text DEFAULT 'employed';
+ALTER TABLE public.driver_owner_link ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending';
 
 ALTER TABLE public.driver_owner_link ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Drivers and owners view their links" ON public.driver_owner_link;
 CREATE POLICY "Drivers and owners view their links" ON public.driver_owner_link
-  FOR SELECT USING (auth.uid() = driver_id OR auth.uid() = owner_id);
+  FOR SELECT USING (
+    driver_id::text = auth.uid()::text
+    OR owner_id::text = auth.uid()::text
+  );
 
 DROP POLICY IF EXISTS "Owners create link requests" ON public.driver_owner_link;
 CREATE POLICY "Owners create link requests" ON public.driver_owner_link
-  FOR INSERT WITH CHECK (auth.uid() = owner_id);
+  FOR INSERT WITH CHECK (owner_id::text = auth.uid()::text);
 
 DROP POLICY IF EXISTS "Drivers and owners update link status" ON public.driver_owner_link;
 CREATE POLICY "Drivers and owners update link status" ON public.driver_owner_link
-  FOR UPDATE USING (auth.uid() = driver_id OR auth.uid() = owner_id);
+  FOR UPDATE USING (
+    driver_id::text = auth.uid()::text
+    OR owner_id::text = auth.uid()::text
+  );
 
 DROP POLICY IF EXISTS "Admins view all driver links" ON public.driver_owner_link;
 CREATE POLICY "Admins view all driver links" ON public.driver_owner_link
@@ -105,7 +122,7 @@ CREATE POLICY "Admins view all driver links" ON public.driver_owner_link
 -- =========================================================
 CREATE TABLE IF NOT EXISTS public.driver_route_rate (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  driver_id uuid REFERENCES public.users(id) ON DELETE CASCADE,
+  driver_id text,
   from_city text NOT NULL,
   to_city text NOT NULL,
   rate numeric NOT NULL CHECK (rate > 0),
@@ -113,25 +130,34 @@ CREATE TABLE IF NOT EXISTS public.driver_route_rate (
   created_at timestamp with time zone DEFAULT now()
 );
 
+-- Add columns safely
+ALTER TABLE public.driver_route_rate ADD COLUMN IF NOT EXISTS driver_id text;
+ALTER TABLE public.driver_route_rate ADD COLUMN IF NOT EXISTS from_city text;
+ALTER TABLE public.driver_route_rate ADD COLUMN IF NOT EXISTS to_city text;
+ALTER TABLE public.driver_route_rate ADD COLUMN IF NOT EXISTS rate numeric;
+ALTER TABLE public.driver_route_rate ADD COLUMN IF NOT EXISTS vehicle_details text;
+
 ALTER TABLE public.driver_route_rate ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Drivers manage own rates" ON public.driver_route_rate;
 CREATE POLICY "Drivers manage own rates" ON public.driver_route_rate
-  FOR ALL USING (auth.uid() = driver_id) WITH CHECK (auth.uid() = driver_id);
+  FOR ALL
+  USING (driver_id::text = auth.uid()::text)
+  WITH CHECK (driver_id::text = auth.uid()::text);
 
 DROP POLICY IF EXISTS "Anyone can view driver rates" ON public.driver_route_rate;
 CREATE POLICY "Anyone can view driver rates" ON public.driver_route_rate
   FOR SELECT USING (true);
 
 -- =========================================================
--- 5. Fix bookings RLS — add owner and admin policies
+-- 5. Fix bookings RLS — owner approve/reject + admin full access
 -- =========================================================
 DROP POLICY IF EXISTS "Owners view bookings for their vehicles" ON public.bookings;
 CREATE POLICY "Owners view bookings for their vehicles" ON public.bookings
   FOR SELECT USING (
     EXISTS (
       SELECT 1 FROM public.vehicles v
-      WHERE v.owner_id = auth.uid()
+      WHERE v.owner_id::text = auth.uid()::text
     )
   );
 
@@ -140,7 +166,7 @@ CREATE POLICY "Owners update bookings for their vehicles" ON public.bookings
   FOR UPDATE USING (
     EXISTS (
       SELECT 1 FROM public.vehicles v
-      WHERE v.owner_id = auth.uid()
+      WHERE v.owner_id::text = auth.uid()::text
     )
   );
 
@@ -150,19 +176,22 @@ CREATE POLICY "Admins manage all bookings" ON public.bookings
 
 DROP POLICY IF EXISTS "Users update own bookings" ON public.bookings;
 CREATE POLICY "Users update own bookings" ON public.bookings
-  FOR UPDATE USING (auth.uid() = user_id OR auth.uid() = agent_id);
+  FOR UPDATE USING (
+    user_id::text = auth.uid()::text
+    OR agent_id::text = auth.uid()::text
+  );
 
 -- =========================================================
--- 6. Fix bookings status CHECK constraint to include all app statuses
+-- 6. Fix bookings status CHECK to include all app statuses
 -- =========================================================
-ALTER TABLE public.bookings 
+ALTER TABLE public.bookings
   DROP CONSTRAINT IF EXISTS bookings_status_check;
 
-ALTER TABLE public.bookings 
+ALTER TABLE public.bookings
   ADD CONSTRAINT bookings_status_check
   CHECK (status IN (
     'confirmed',
-    'cancelled', 
+    'cancelled',
     'completed',
     'pending_owner_approval',
     'approved_awaiting_payment',
@@ -172,14 +201,14 @@ ALTER TABLE public.bookings
   ));
 
 -- =========================================================
--- 7. Fix vehicles RLS — admin can view/manage all vehicles
+-- 7. Fix vehicles RLS — admin full access
 -- =========================================================
 DROP POLICY IF EXISTS "Admins manage all vehicles" ON public.vehicles;
 CREATE POLICY "Admins manage all vehicles" ON public.vehicles
   FOR ALL USING (public.current_user_role() = 'admin');
 
 -- =========================================================
--- 8. Create withdrawals table if it doesn't exist
+-- 8. Create withdrawals table
 -- =========================================================
 CREATE TABLE IF NOT EXISTS public.withdrawals (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -197,49 +226,44 @@ ALTER TABLE public.withdrawals ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users view own withdrawals" ON public.withdrawals;
 CREATE POLICY "Users view own withdrawals" ON public.withdrawals
-  FOR SELECT USING (auth.uid() = user_id);
+  FOR SELECT USING (user_id::text = auth.uid()::text);
 
 DROP POLICY IF EXISTS "Users create own withdrawals" ON public.withdrawals;
 CREATE POLICY "Users create own withdrawals" ON public.withdrawals
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK (user_id::text = auth.uid()::text);
 
 DROP POLICY IF EXISTS "Admins manage all withdrawals" ON public.withdrawals;
 CREATE POLICY "Admins manage all withdrawals" ON public.withdrawals
   FOR ALL USING (public.current_user_role() = 'admin');
 
 -- =========================================================
--- 9. Fix wallet RLS — allow client-side wallet ops until real gateway
+-- 9. Fix wallet RLS — client-side wallet ops
 -- =========================================================
 DROP POLICY IF EXISTS "Users update own wallet" ON public.wallets;
 CREATE POLICY "Users update own wallet" ON public.wallets
-  FOR UPDATE USING (auth.uid() = user_id);
+  FOR UPDATE USING (user_id::text = auth.uid()::text);
 
 DROP POLICY IF EXISTS "System can insert wallets" ON public.wallets;
 CREATE POLICY "System can insert wallets" ON public.wallets
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK (user_id::text = auth.uid()::text);
 
 DROP POLICY IF EXISTS "Users insert own wallet transactions" ON public.wallet_transactions;
 CREATE POLICY "Users insert own wallet transactions" ON public.wallet_transactions
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK (user_id::text = auth.uid()::text);
 
 DROP POLICY IF EXISTS "Admins view all wallet transactions" ON public.wallet_transactions;
 CREATE POLICY "Admins view all wallet transactions" ON public.wallet_transactions
   FOR SELECT USING (public.current_user_role() = 'admin');
 
 -- =========================================================
--- 10. Add missing performance indexes
+-- 10. Performance indexes
 -- =========================================================
 CREATE INDEX IF NOT EXISTS idx_users_role ON public.users(role);
 CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
-CREATE INDEX IF NOT EXISTS idx_driver_profiles_license ON public.driver_profiles(license_number);
-CREATE INDEX IF NOT EXISTS idx_driver_owner_link_owner ON public.driver_owner_link(owner_id);
-CREATE INDEX IF NOT EXISTS idx_driver_owner_link_driver ON public.driver_owner_link(driver_id);
-CREATE INDEX IF NOT EXISTS idx_driver_route_rate_driver ON public.driver_route_rate(driver_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_status ON public.bookings(status);
-CREATE INDEX IF NOT EXISTS idx_withdrawals_user ON public.withdrawals(user_id);
 CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON public.withdrawals(status);
 
 -- =========================================================
 -- DONE
 -- =========================================================
-SELECT 'YatraGo Role & Auth migration v2 applied successfully.' AS result;
+SELECT 'YatraGo Role & Auth migration v3 applied successfully.' AS result;
