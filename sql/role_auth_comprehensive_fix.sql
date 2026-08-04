@@ -36,6 +36,17 @@ CREATE TABLE IF NOT EXISTS public.driver_profiles (
   created_at timestamp with time zone DEFAULT now()
 );
 
+-- Safely add any columns that may be missing from a pre-existing driver_profiles table
+ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS age integer;
+ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS blood_group text;
+ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS license_validity timestamp with time zone;
+ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS license_photo_url text;
+ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS has_own_vehicle boolean DEFAULT false;
+ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS license_category text;
+ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS is_verified boolean DEFAULT false;
+ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS is_available boolean DEFAULT true;
+ALTER TABLE public.driver_profiles ADD COLUMN IF NOT EXISTS rating numeric DEFAULT 0.0;
+
 ALTER TABLE public.driver_profiles ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Drivers view own profile" ON public.driver_profiles;
@@ -56,6 +67,7 @@ CREATE POLICY "Owners can view driver profiles" ON public.driver_profiles
     public.current_user_role() IN ('owner', 'admin')
     OR is_available = true
   );
+
 
 -- =========================================================
 -- 3. Create driver_owner_link table if it doesn't exist
