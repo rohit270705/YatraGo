@@ -518,23 +518,41 @@ export const useAuthStore = create(
       });
 
       if (authError) {
-        // Check if user exists in public.users (which indicates they registered via Google OAuth or another provider without a password)
-        const { data: existingDbUsers } = await supabase
-          .from('users')
-          .select('email, role')
-          .eq('email', email.trim());
+        // Only show "Google linked" message if the error is specifically "invalid login credentials"
+        // AND the user exists in public.users but has no password set (true Google-OAuth-only user).
+        // If the user simply entered the wrong password, show a clear error message instead.
+        const isInvalidCreds = authError.message?.toLowerCase().includes('invalid login credentials') 
+          || authError.message?.toLowerCase().includes('email not confirmed')
+          || authError.message?.toLowerCase().includes('invalid password');
         
-        const existingDbUser = Array.isArray(existingDbUsers) && existingDbUsers.length > 0 ? existingDbUsers[0] : (existingDbUsers || null);
-
-        if (existingDbUser || authError.message.toLowerCase().includes('invalid login credentials')) {
+        if (isInvalidCreds) {
+          // Check if this email exists in public.users
+          const { data: existingDbUsers } = await supabase
+            .from('users')
+            .select('email, role')
+            .eq('email', email.trim());
+          
+          const existingDbUser = Array.isArray(existingDbUsers) && existingDbUsers.length > 0 
+            ? existingDbUsers[0] 
+            : null;
+          
+          // Only show Google-linked message if email exists in DB but auth fails
+          // This means they signed up via Google and have no password
           if (existingDbUser) {
-            const googleErr = new Error("Aapka account Google se linked hai. Neeche 'Sign in with Google' button use karein.");
+            // Try to distinguish: wrong password vs Google-only account
+            // A Google-only user would have no password set in Supabase Auth.
+            // We can't directly check this without service_role key,
+            // so we show a helpful message that covers both cases.
+            const googleErr = new Error("Invalid credentials. If you signed up with Google, please use the 'Sign in with Google' button below.");
             googleErr.isGoogleLinked = true;
             throw googleErr;
           }
         }
-        throw new Error(authError.message);
+        
+        // Generic error for email not found or other errors  
+        throw new Error('Invalid email or password. Please check your credentials and try again.');
       }
+
 
       // Fetch the user's public profile and verify role
       let { data: idUsers, error } = await supabase

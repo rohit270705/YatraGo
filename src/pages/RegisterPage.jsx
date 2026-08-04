@@ -17,8 +17,10 @@ export default function RegisterPage() {
       const dest = user.role === 'admin' ? '/admin'
         : user.role === 'agent' ? '/agent'
         : user.role === 'owner' ? '/owner'
+        : user.role === 'driver' ? '/driver'
         : '/dashboard';
       navigate(dest, { replace: true });
+
     }
   }, [isAuthenticated, user, navigate]);
 
