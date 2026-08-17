@@ -223,9 +223,12 @@ function Sidebar({ isOpen, onClose }) {
     <>
       <div className={`sidebar-overlay ${isOpen ? 'open' : ''}`} onClick={onClose} />
       <aside className={`app-sidebar ${isOpen ? 'open' : ''}`}>
-        <div className="sidebar-logo">
-          <img src="/logo.png" alt="YatraGo" className="sidebar-logo-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'white', objectFit: 'contain' }} />
-          <span className="sidebar-logo-text">YatraGo</span>
+        <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingRight: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <img src="/logo.png" alt="YatraGo" className="sidebar-logo-icon" style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'white', objectFit: 'contain' }} />
+            <span className="sidebar-logo-text">YatraGo</span>
+          </div>
+          <ThemeToggle />
         </div>
 
         <nav className="sidebar-nav">
@@ -321,12 +324,9 @@ function Sidebar({ isOpen, onClose }) {
             <div className="sidebar-user-name">{user?.name || 'User'}</div>
             <div className="sidebar-user-role">{role.charAt(0).toUpperCase() + role.slice(1)}</div>
           </div>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            <ThemeToggle />
-            <button className="btn btn-ghost btn-icon" onClick={handleLogout} title="Logout">
-              <LogOut size={18} />
-            </button>
-          </div>
+          <button className="btn btn-ghost btn-icon" onClick={handleLogout} title="Logout">
+            <LogOut size={18} />
+          </button>
         </div>
       </aside>
     </>
@@ -343,7 +343,7 @@ function ThemeToggle() {
     <button 
       onClick={toggleTheme}
       className="btn btn-ghost btn-icon" 
-      style={{ color: 'var(--color-text-secondary)', marginRight: '8px' }}
+      style={{ color: 'var(--color-text-secondary)' }}
       title={`Switch to ${isLight ? 'Dark' : 'Light'} Mode`}
     >
       {isLight ? <Moon size={20} /> : <Sun size={20} />}
