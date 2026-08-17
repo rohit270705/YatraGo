@@ -378,21 +378,6 @@ function AppLayout({ children }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <ThemeToggle />
           <NotificationBell />
-          {user && (
-            <div
-              onClick={() => navigate('/profile')}
-              style={{
-                width: '34px', height: '34px', borderRadius: '50%',
-                background: 'linear-gradient(135deg, var(--color-accent-teal), #3b82f6)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#fff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer',
-                border: '1px solid rgba(255,255,255,0.2)', boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
-              }}
-              title={user.name || 'Profile'}
-            >
-              {(user.name || 'T').charAt(0).toUpperCase()}
-            </div>
-          )}
         </div>
       </div>
 
@@ -404,7 +389,6 @@ function AppLayout({ children }) {
             {children}
           </ErrorBoundary>
         </div>
-        <BottomNav />
       </main>
 
       <LogoutConfirmModal />
