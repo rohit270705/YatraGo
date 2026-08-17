@@ -172,12 +172,19 @@ function Sidebar({ isOpen, onClose }) {
 
   const agentLinks = [
     { path: '/agent', label: 'Agent Dashboard', icon: LayoutDashboard },
-    { path: '/profile', label: 'My Profile', icon: UserCircle },
     { path: '/search', label: 'Book for Customer', icon: Search },
+    { path: '/packages', label: 'Holiday Packages', icon: Palmtree },
+    { path: '#flights', label: 'Flights', icon: Plane, isModal: 'flights' },
+    { path: '#trains', label: 'Trains', icon: TrainFront, isModal: 'trains' },
+    { path: '#ferries', label: 'Ferries', icon: Ship, isModal: 'ferries' },
+    { path: '/host', label: 'Homestay Booking', icon: Home },
+    { path: '/rentals', label: 'Rent Bike/Scooty', icon: Bike },
+    { path: '/vehicles', label: 'Vehicles', icon: Car },
     { path: '/bookings', label: 'All Bookings', icon: Ticket },
     { path: '/daily-report', label: 'Daily Report', icon: ClipboardList },
     { path: '/wallet', label: 'Wallet', icon: Wallet },
-    { path: '/support', label: 'Support Help Desk', icon: ClipboardList },
+    { path: '/profile', label: 'My Profile', icon: UserCircle },
+    { path: '/support', label: 'Support', icon: ClipboardList },
   ];
 
   const ownerLinks = [
