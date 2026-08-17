@@ -3430,3 +3430,18 @@ export const useVehicleOfferStore = create((set, get) => ({
   }
 }));
 
+// ==========================================
+// 19. THEME STORE (Dark / Light Mode)
+// ==========================================
+export const useThemeStore = create(
+  persist(
+    (set) => ({
+      theme: 'dark', // defaults to dark mode
+      toggleTheme: () => set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
+      setTheme: (theme) => set({ theme }),
+    }),
+    {
+      name: 'theme-storage',
+    }
+  )
+);

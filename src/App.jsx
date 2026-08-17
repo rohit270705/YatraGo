@@ -4,9 +4,9 @@ import {
   LayoutDashboard, Search, Ticket, Wallet, Car, Package, Users, ShieldCheck,
   LogOut, Menu, X, MapPin, UserCircle, Settings, Bell, ChevronRight,
   Briefcase, TruckIcon, ClipboardList, FileCheck, CreditCard, BarChart3,
-  Home, Map, Bike, Palmtree, Navigation, User, Plane, TrainFront
+  Home, Map, Bike, Palmtree, Navigation, User, Plane, TrainFront, Sun, Moon
 } from 'lucide-react';
-import { useAuthStore, useToastStore, useNotificationStore, usePlatformStore, useTransportModalStore } from './store';
+import { useAuthStore, useToastStore, useNotificationStore, usePlatformStore, useTransportModalStore, useThemeStore } from './store';
 import { supabase } from './supabaseClient';
 import ErrorBoundary from './components/ErrorBoundary';
 import SkeletonLoader from './components/SkeletonLoader';
@@ -321,15 +321,35 @@ function Sidebar({ isOpen, onClose }) {
             <div className="sidebar-user-name">{user?.name || 'User'}</div>
             <div className="sidebar-user-role">{role.charAt(0).toUpperCase() + role.slice(1)}</div>
           </div>
-          <button className="btn btn-ghost btn-icon" onClick={handleLogout} title="Logout">
-            <LogOut size={18} />
-          </button>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <ThemeToggle />
+            <button className="btn btn-ghost btn-icon" onClick={handleLogout} title="Logout">
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
       </aside>
     </>
   );
 }
 
+
+// ===== Theme Toggle =====
+function ThemeToggle() {
+  const { theme, toggleTheme } = useThemeStore();
+  const isLight = theme === 'light';
+  
+  return (
+    <button 
+      onClick={toggleTheme}
+      className="btn btn-ghost btn-icon" 
+      style={{ color: 'var(--color-text-secondary)', marginRight: '8px' }}
+      title={`Switch to ${isLight ? 'Dark' : 'Light'} Mode`}
+    >
+      {isLight ? <Moon size={20} /> : <Sun size={20} />}
+    </button>
+  );
+}
 
 // ===== App Layout =====
 function AppLayout({ children }) {
@@ -338,10 +358,15 @@ function AppLayout({ children }) {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const closeModal = useTransportModalStore(s => s.closeModal);
+  const { theme } = useThemeStore();
 
   useEffect(() => {
     closeModal();
   }, [location.pathname, closeModal]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   return (
     <div className="app-layout">
@@ -351,6 +376,7 @@ function AppLayout({ children }) {
         </button>
         <span className="sidebar-logo-text" style={{ fontSize: '1.15rem', cursor: 'pointer' }} onClick={() => navigate('/')}>YatraGo</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <ThemeToggle />
           <NotificationBell />
           {user && (
             <div
