@@ -4,7 +4,7 @@ import {
   Search, MapPin, Calendar, ArrowRightLeft, Wallet, Award,
   Clock, ArrowRight, Ticket, Star, Navigation, Gift, Repeat,
   ClipboardList, Route, Plus, Package, TrendingUp, Car, ChevronRight,
-  Plane, TrainFront, Shield, LayoutGrid, Wifi, Zap
+  Plane, TrainFront, Shield, LayoutGrid, Wifi, Zap, Ship
 } from 'lucide-react';
 import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToastStore, useTransportModalStore } from '../store';
 import { supabase } from '../supabaseClient';
@@ -222,7 +222,7 @@ export default function DashboardPage() {
         <div className="pax-search-card">
           <div className="pax-search-header">
             <span className="pax-search-title">Search transit</span>
-            <span className="pax-search-sub">Bus · Train · Shared cab</span>
+            <span className="pax-search-sub">Bus · Train · Cab · Ferry</span>
           </div>
           <form onSubmit={handleQuickSearch}>
             <div className="pax-search-row">
@@ -548,6 +548,27 @@ const COMING_SOON_CONFIG = {
       { icon: Shield,     label: 'Reliable' },
     ],
     feature_name: 'trains',
+  },
+  ferries: {
+    icon: Ship,
+    accent: '#3b82f6',
+    ring: 'rgba(59,130,246,0.5)',
+    ringBg: 'rgba(59,130,246,0.12)',
+    glow: 'rgba(59,130,246,0.22)',
+    badgeBg: 'rgba(59,130,246,0.15)',
+    badgeBorder: 'rgba(59,130,246,0.4)',
+    badgeColor: '#60a5fa',
+    btnBg: 'linear-gradient(135deg,#2563eb,#3b82f6,#60a5fa)',
+    btnShadow: 'rgba(59,130,246,0.35)',
+    headline: '🚢 Ferry Booking',
+    sub: 'Discover scenic water routes and book ferry tickets.',
+    features: [
+      { icon: Ticket,     label: 'Easy Bookings' },
+      { icon: MapPin,     label: 'Scenic Routes' },
+      { icon: Clock,      label: 'Live Schedules' },
+      { icon: Shield,     label: 'Reliable' },
+    ],
+    feature_name: 'ferries',
   },
 };
 

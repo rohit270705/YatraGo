@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, Plane, TrainFront, Bell, CheckCircle2,
-  Ticket, Shield, Zap, LayoutGrid, MapPin, Clock, Wifi, Star
+  Ticket, Shield, Zap, LayoutGrid, MapPin, Clock, Wifi, Star, Ship
 } from 'lucide-react';
 import { useTransportModalStore, useToastStore, useAuthStore } from '../store';
 import { supabase } from '../supabaseClient';
@@ -42,6 +42,24 @@ const config = {
       { icon: LayoutGrid, label: 'Instant Seat Layouts' },
       { icon: Clock,      label: 'Live PNR Status' },
       { icon: Shield,     label: 'Secure & Reliable' },
+    ],
+  },
+  ferries: {
+    icon: Ship,
+    ringClass: 'transport-ring-blue',
+    badgeClass: 'transport-badge-blue',
+    btnClass: 'transport-btn-blue',
+    glowClass: 'transport-glow-blue',
+    accent: '#3b82f6',
+    accentLight: '#60a5fa',
+    label: 'Ferries',
+    headline: '🚢 Ferry Booking Coming Soon',
+    sub: 'Discover scenic water routes and book ferry tickets across popular destinations.',
+    features: [
+      { icon: Ticket,     label: 'Easy Bookings' },
+      { icon: MapPin,     label: 'Scenic Routes' },
+      { icon: Shield,     label: 'Secure Payments' },
+      { icon: Clock,      label: 'Live Schedules' },
     ],
   },
 };
@@ -206,6 +224,7 @@ export default function TransportModal() {
         /* Glow variants */
         .transport-glow-purple { box-shadow: 0 32px 64px -12px rgba(0,0,0,0.9), 0 0 60px rgba(168,85,247,0.18); }
         .transport-glow-teal   { box-shadow: 0 32px 64px -12px rgba(0,0,0,0.9), 0 0 60px rgba(20,184,166,0.18); }
+        .transport-glow-blue   { box-shadow: 0 32px 64px -12px rgba(0,0,0,0.9), 0 0 60px rgba(59,130,246,0.18); }
 
         /* Close button */
         .transport-close-btn {
@@ -242,6 +261,11 @@ export default function TransportModal() {
           border: 2.5px solid rgba(20,184,166,0.55);
           color: #2dd4bf;
         }
+        .transport-ring-blue {
+          background: radial-gradient(circle at 40% 40%, rgba(59,130,246,0.25), rgba(59,130,246,0.05));
+          border: 2.5px solid rgba(59,130,246,0.55);
+          color: #60a5fa;
+        }
         .transport-icon-inner {
           position: relative; z-index: 1;
           display: flex; align-items: center; justify-content: center;
@@ -256,6 +280,7 @@ export default function TransportModal() {
         }
         .transport-pulse-ring.transport-ring-purple { border: 2px solid rgba(168,85,247,0.4); }
         .transport-pulse-ring.transport-ring-teal   { border: 2px solid rgba(20,184,166,0.4); }
+        .transport-pulse-ring.transport-ring-blue   { border: 2px solid rgba(59,130,246,0.4); }
         @keyframes transport-pulse {
           0%   { transform: scale(0.88); opacity: 0.7; }
           100% { transform: scale(1.35); opacity: 0; }
@@ -281,6 +306,11 @@ export default function TransportModal() {
           border: 1px solid rgba(20,184,166,0.35);
           color: #2dd4bf;
         }
+        .transport-badge-blue {
+          background: rgba(59,130,246,0.12);
+          border: 1px solid rgba(59,130,246,0.35);
+          color: #60a5fa;
+        }
         .transport-badge-dot {
           width: 7px; height: 7px;
           border-radius: 50%;
@@ -288,6 +318,7 @@ export default function TransportModal() {
         }
         .transport-badge-purple .transport-badge-dot { background: #c084fc; }
         .transport-badge-teal   .transport-badge-dot { background: #2dd4bf; }
+        .transport-badge-blue   .transport-badge-dot { background: #60a5fa; }
         @keyframes transport-blink {
           0%, 100% { opacity: 1; }
           50%       { opacity: 0.35; }
@@ -352,6 +383,11 @@ export default function TransportModal() {
           border: 1px solid rgba(20,184,166,0.3);
           color: #2dd4bf;
         }
+        .transport-feature-icon.transport-ring-blue {
+          background: rgba(59,130,246,0.15);
+          border: 1px solid rgba(59,130,246,0.3);
+          color: #60a5fa;
+        }
         .transport-feature-label {
           font-size: 0.82rem;
           font-weight: 600;
@@ -386,6 +422,11 @@ export default function TransportModal() {
           background: linear-gradient(135deg, #0d9488, #14b8a6, #2dd4bf);
           color: #fff;
           box-shadow: 0 8px 24px rgba(20,184,166,0.35);
+        }
+        .transport-btn-blue {
+          background: linear-gradient(135deg, #2563eb, #3b82f6, #60a5fa);
+          color: #fff;
+          box-shadow: 0 8px 24px rgba(59,130,246,0.35);
         }
         /* Faded state while saving */
         .transport-notify-saving {

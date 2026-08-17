@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Search, Ticket, Wallet, Car, Package, Users, ShieldCheck,
   LogOut, Menu, X, MapPin, UserCircle, Settings, Bell, ChevronRight,
   Briefcase, TruckIcon, ClipboardList, FileCheck, CreditCard, BarChart3,
-  Home, Map, Bike, Palmtree, Navigation, User, Plane, TrainFront, Sun, Moon
+  Home, Map, Bike, Palmtree, Navigation, User, Plane, TrainFront, Sun, Moon, Ship
 } from 'lucide-react';
 import { useAuthStore, useToastStore, useNotificationStore, usePlatformStore, useTransportModalStore, useThemeStore } from './store';
 import { supabase } from './supabaseClient';
@@ -122,6 +122,7 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/packages', label: 'Holiday Packages', icon: Palmtree },
     { path: '#flights', label: 'Flights', icon: Plane, isModal: 'flights' },
     { path: '#trains', label: 'Trains', icon: TrainFront, isModal: 'trains' },
+    { path: '#ferries', label: 'Ferries', icon: Ship, isModal: 'ferries' },
     { path: '/host', label: 'My Homestay', icon: Home },
     { path: '/rentals', label: 'Rent Bike/Scooty', icon: Bike },
     { path: '/vehicles', label: 'Vehicles', icon: Car },
@@ -145,6 +146,7 @@ function Sidebar({ isOpen, onClose }) {
       links: [
         { path: '#flights', label: 'Flights', icon: Plane, isModal: 'flights' },
         { path: '#trains', label: 'Trains', icon: TrainFront, isModal: 'trains' },
+        { path: '#ferries', label: 'Ferries', icon: Ship, isModal: 'ferries' },
         { path: '/rentals', label: 'Rent Bike/Scooty', icon: Bike },
         { path: '/vehicles', label: 'Vehicles', icon: Car },
       ]
