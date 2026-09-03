@@ -1,5 +1,5 @@
 -- =====================================================
--- YatraGo: Trip Graph Schema Migration
+-- YatraGo: Trip Graph Schema Migration (v2 - type-safe)
 -- Apply this in Supabase SQL Editor
 -- =====================================================
 
@@ -30,9 +30,9 @@ CREATE TABLE IF NOT EXISTS public.trip_nodes (
   start_time          TIME,
   end_time            TIME,
   status              TEXT DEFAULT 'planned' CHECK (status IN ('planned','booked','in_progress','done')),
-  linked_booking_id   TEXT,           -- FK to bookings.id (soft, no hard FK to avoid circular)
-  linked_vehicle_id   TEXT,           -- FK to vehicles.id (soft)
-  linked_parcel_id    TEXT,           -- FK to parcels.id (soft)
+  linked_booking_id   TEXT,
+  linked_vehicle_id   TEXT,
+  linked_parcel_id    TEXT,
   estimated_cost      NUMERIC(10,2) DEFAULT 0,
   actual_cost         NUMERIC(10,2),
   notes               TEXT,
@@ -50,51 +50,63 @@ CREATE INDEX IF NOT EXISTS idx_trip_nodes_day      ON public.trip_nodes(trip_gra
 ALTER TABLE public.trip_graphs ENABLE ROW LEVEL SECURITY;
 
 -- Passenger: full CRUD on their own trips
+-- auth.uid() returns UUID; user_id is UUID — no cast needed
 CREATE POLICY "passenger_own_trips" ON public.trip_graphs
-  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+  FOR ALL
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
--- Agent: can read all trips (for client management)
--- Scope this more tightly when you add agent_client linking
+-- Agent: can read all trips
 CREATE POLICY "agent_read_trips" ON public.trip_graphs
   FOR SELECT USING (
     EXISTS (
-      SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'agent'
+      SELECT 1 FROM public.users
+      WHERE id::uuid = auth.uid()
+        AND role = 'agent'
     )
   );
 
 -- trip_nodes
 ALTER TABLE public.trip_nodes ENABLE ROW LEVEL SECURITY;
 
--- Users can CRUD nodes on their own trips
+-- Passengers: full CRUD on nodes of their own trips
 CREATE POLICY "own_trip_nodes" ON public.trip_nodes
-  FOR ALL USING (
+  FOR ALL
+  USING (
     EXISTS (
-      SELECT 1 FROM public.trip_graphs g WHERE g.id = trip_graph_id AND g.user_id = auth.uid()
+      SELECT 1 FROM public.trip_graphs g
+      WHERE g.id = trip_graph_id
+        AND g.user_id = auth.uid()
     )
-  ) WITH CHECK (
+  )
+  WITH CHECK (
     EXISTS (
-      SELECT 1 FROM public.trip_graphs g WHERE g.id = trip_graph_id AND g.user_id = auth.uid()
+      SELECT 1 FROM public.trip_graphs g
+      WHERE g.id = trip_graph_id
+        AND g.user_id = auth.uid()
     )
   );
 
--- Driver: can read nodes where linked_vehicle_id matches a vehicle they own
--- (vehicles table has owner_id, not driver_id)
+-- Driver/Owner: can read nodes where linked_vehicle_id matches one of their vehicles
+-- vehicles.id is UUID, linked_vehicle_id is TEXT — cast TEXT to UUID for comparison
 CREATE POLICY "driver_read_linked_nodes" ON public.trip_nodes
   FOR SELECT USING (
-    linked_vehicle_id IS NOT NULL AND EXISTS (
+    linked_vehicle_id IS NOT NULL
+    AND linked_vehicle_id ~ '^[0-9a-f-]{36}$'   -- only try cast if it looks like a UUID
+    AND EXISTS (
       SELECT 1 FROM public.vehicles v
-      JOIN public.users u ON u.id = v.owner_id
-      WHERE u.id = auth.uid()
-        AND u.role IN ('driver', 'owner')
-        AND v.id = linked_vehicle_id
+      WHERE v.id = linked_vehicle_id::uuid
+        AND v.owner_id = auth.uid()
     )
   );
 
--- Agent: can read all trip nodes (for client management)
+-- Agent: can read all trip nodes
 CREATE POLICY "agent_read_all_nodes" ON public.trip_nodes
   FOR SELECT USING (
     EXISTS (
-      SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'agent'
+      SELECT 1 FROM public.users
+      WHERE id::uuid = auth.uid()
+        AND role = 'agent'
     )
   );
 
@@ -111,4 +123,3 @@ DROP TRIGGER IF EXISTS trip_graphs_updated_at ON public.trip_graphs;
 CREATE TRIGGER trip_graphs_updated_at
   BEFORE UPDATE ON public.trip_graphs
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
-
