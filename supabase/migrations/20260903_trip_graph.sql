@@ -1,20 +1,13 @@
 -- =====================================================
--- YatraGo: Trip Graph Schema Migration (v5 - Bulletproof)
+-- YatraGo: Trip Graph Schema Migration (v6 - Clean & Safe)
 -- Run this script in Supabase SQL Editor
 -- =====================================================
 
--- 1. Drop existing policies to prevent conflicts
-DROP POLICY IF EXISTS "passenger_own_trips" ON public.trip_graphs;
-DROP POLICY IF EXISTS "agent_read_trips" ON public.trip_graphs;
-DROP POLICY IF EXISTS "own_trip_nodes" ON public.trip_nodes;
-DROP POLICY IF EXISTS "driver_read_linked_nodes" ON public.trip_nodes;
-DROP POLICY IF EXISTS "agent_read_all_nodes" ON public.trip_nodes;
-
--- 2. Drop existing tables to ensure clean schema types
+-- 1. Drop existing tables if they exist (CASCADE automatically removes all associated policies, triggers, and indexes)
 DROP TABLE IF EXISTS public.trip_nodes CASCADE;
 DROP TABLE IF EXISTS public.trip_graphs CASCADE;
 
--- 3. Create trip_graphs (user_id as TEXT for full compatibility with auth / guest)
+-- 2. Create trip_graphs table (user_id as TEXT for full compatibility with auth / guest)
 CREATE TABLE public.trip_graphs (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL,
@@ -29,7 +22,7 @@ CREATE TABLE public.trip_graphs (
   updated_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Create trip_nodes
+-- 3. Create trip_nodes table
 CREATE TABLE public.trip_nodes (
   id                  TEXT PRIMARY KEY,
   trip_graph_id       TEXT NOT NULL REFERENCES public.trip_graphs(id) ON DELETE CASCADE,
@@ -50,16 +43,16 @@ CREATE TABLE public.trip_nodes (
   created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. Indexes for performant lookups
+-- 4. Indexes for fast lookups
 CREATE INDEX idx_trip_graphs_user_id ON public.trip_graphs(user_id);
 CREATE INDEX idx_trip_nodes_trip_id  ON public.trip_nodes(trip_graph_id);
 CREATE INDEX idx_trip_nodes_day      ON public.trip_nodes(trip_graph_id, day_number, order_index);
 
--- 6. Enable Row Level Security (RLS)
+-- 5. Enable Row Level Security (RLS)
 ALTER TABLE public.trip_graphs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.trip_nodes ENABLE ROW LEVEL SECURITY;
 
--- 7. RLS Policies (all comparisons cast both sides to ::text to prevent uuid=text errors)
+-- 6. RLS Policies (all comparisons cast both sides to ::text to prevent type mismatch errors)
 
 -- Passenger: full CRUD on their own trips
 CREATE POLICY "passenger_own_trips" ON public.trip_graphs
@@ -116,7 +109,7 @@ CREATE POLICY "agent_read_all_nodes" ON public.trip_nodes
     )
   );
 
--- 8. Updated_at automated trigger
+-- 7. Updated_at automated trigger
 CREATE OR REPLACE FUNCTION public.set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
