@@ -1,18 +1,21 @@
 -- =====================================================
--- YatraGo: Trip Graph Schema Migration (v4 - universal text cast)
--- Apply this in Supabase SQL Editor
--- =====================================================
--- DISCOVERED TYPE MAP for this project:
---   public.users.id    → TEXT  (app stores as text, not UUID)
---   vehicles.owner_id  → TEXT
---   vehicles.id        → UUID  (Supabase auto primary key)
---   auth.uid()         → UUID  (always)
---   → Rule: always cast auth.uid()::text when comparing to public.* id columns
+-- YatraGo: Trip Graph Schema Migration (v5 - Bulletproof)
+-- Run this script in Supabase SQL Editor
 -- =====================================================
 
--- 1. trip_graphs
---    user_id stored as TEXT to match how the app works
-CREATE TABLE IF NOT EXISTS public.trip_graphs (
+-- 1. Drop existing policies to prevent conflicts
+DROP POLICY IF EXISTS "passenger_own_trips" ON public.trip_graphs;
+DROP POLICY IF EXISTS "agent_read_trips" ON public.trip_graphs;
+DROP POLICY IF EXISTS "own_trip_nodes" ON public.trip_nodes;
+DROP POLICY IF EXISTS "driver_read_linked_nodes" ON public.trip_nodes;
+DROP POLICY IF EXISTS "agent_read_all_nodes" ON public.trip_nodes;
+
+-- 2. Drop existing tables to ensure clean schema types
+DROP TABLE IF EXISTS public.trip_nodes CASCADE;
+DROP TABLE IF EXISTS public.trip_graphs CASCADE;
+
+-- 3. Create trip_graphs (user_id as TEXT for full compatibility with auth / guest)
+CREATE TABLE public.trip_graphs (
   id            TEXT PRIMARY KEY,
   user_id       TEXT NOT NULL,
   title         TEXT NOT NULL,
@@ -26,8 +29,8 @@ CREATE TABLE IF NOT EXISTS public.trip_graphs (
   updated_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. trip_nodes
-CREATE TABLE IF NOT EXISTS public.trip_nodes (
+-- 4. Create trip_nodes
+CREATE TABLE public.trip_nodes (
   id                  TEXT PRIMARY KEY,
   trip_graph_id       TEXT NOT NULL REFERENCES public.trip_graphs(id) ON DELETE CASCADE,
   day_number          INTEGER NOT NULL DEFAULT 1,
@@ -47,77 +50,73 @@ CREATE TABLE IF NOT EXISTS public.trip_nodes (
   created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. Indexes
-CREATE INDEX IF NOT EXISTS idx_trip_graphs_user_id ON public.trip_graphs(user_id);
-CREATE INDEX IF NOT EXISTS idx_trip_nodes_trip_id  ON public.trip_nodes(trip_graph_id);
-CREATE INDEX IF NOT EXISTS idx_trip_nodes_day      ON public.trip_nodes(trip_graph_id, day_number, order_index);
+-- 5. Indexes for performant lookups
+CREATE INDEX idx_trip_graphs_user_id ON public.trip_graphs(user_id);
+CREATE INDEX idx_trip_nodes_trip_id  ON public.trip_nodes(trip_graph_id);
+CREATE INDEX idx_trip_nodes_day      ON public.trip_nodes(trip_graph_id, day_number, order_index);
 
--- 4. RLS Policies
--- UNIVERSAL RULE: auth.uid() is UUID, all public.* id columns are TEXT
---                 → always use auth.uid()::text for comparisons
-
+-- 6. Enable Row Level Security (RLS)
 ALTER TABLE public.trip_graphs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.trip_nodes ENABLE ROW LEVEL SECURITY;
 
--- Passenger owns their own trips
+-- 7. RLS Policies (all comparisons cast both sides to ::text to prevent uuid=text errors)
+
+-- Passenger: full CRUD on their own trips
 CREATE POLICY "passenger_own_trips" ON public.trip_graphs
   FOR ALL
-  USING     (user_id = auth.uid()::text)
-  WITH CHECK (user_id = auth.uid()::text);
+  USING (user_id::text = auth.uid()::text)
+  WITH CHECK (user_id::text = auth.uid()::text);
 
--- Agent can read all trips
+-- Agent: can read all trips
 CREATE POLICY "agent_read_trips" ON public.trip_graphs
   FOR SELECT USING (
     EXISTS (
       SELECT 1 FROM public.users
-      WHERE id = auth.uid()::text
+      WHERE id::text = auth.uid()::text
         AND role = 'agent'
     )
   );
 
-ALTER TABLE public.trip_nodes ENABLE ROW LEVEL SECURITY;
-
--- Owner: full CRUD on nodes that belong to their trips
+-- Passenger / Owner: full CRUD on nodes for their own trips
 CREATE POLICY "own_trip_nodes" ON public.trip_nodes
   FOR ALL
   USING (
     EXISTS (
       SELECT 1 FROM public.trip_graphs g
-      WHERE g.id = trip_graph_id
-        AND g.user_id = auth.uid()::text
+      WHERE g.id = trip_nodes.trip_graph_id
+        AND g.user_id::text = auth.uid()::text
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.trip_graphs g
-      WHERE g.id = trip_graph_id
-        AND g.user_id = auth.uid()::text
+      WHERE g.id = trip_nodes.trip_graph_id
+        AND g.user_id::text = auth.uid()::text
     )
   );
 
--- Driver/Owner: read nodes linked to their vehicle
--- vehicles.owner_id = TEXT, vehicles.id = UUID, linked_vehicle_id = TEXT
+-- Driver/Owner: can read nodes linked to vehicles they own
 CREATE POLICY "driver_read_linked_nodes" ON public.trip_nodes
   FOR SELECT USING (
     linked_vehicle_id IS NOT NULL
-    AND linked_vehicle_id ~ '^[0-9a-fA-F-]{36}$'
     AND EXISTS (
       SELECT 1 FROM public.vehicles v
-      WHERE v.id       = linked_vehicle_id::uuid
-        AND v.owner_id = auth.uid()::text
+      WHERE v.id::text = trip_nodes.linked_vehicle_id::text
+        AND v.owner_id::text = auth.uid()::text
     )
   );
 
--- Agent: read all nodes
+-- Agent: can read all trip nodes
 CREATE POLICY "agent_read_all_nodes" ON public.trip_nodes
   FOR SELECT USING (
     EXISTS (
       SELECT 1 FROM public.users
-      WHERE id   = auth.uid()::text
+      WHERE id::text = auth.uid()::text
         AND role = 'agent'
     )
   );
 
--- 5. updated_at trigger
+-- 8. Updated_at automated trigger
 CREATE OR REPLACE FUNCTION public.set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
