@@ -77,13 +77,16 @@ CREATE POLICY "own_trip_nodes" ON public.trip_nodes
     )
   );
 
--- Driver: can read nodes where linked_vehicle_id matches a vehicle they own/drive
+-- Driver: can read nodes where linked_vehicle_id matches a vehicle they own
+-- (vehicles table has owner_id, not driver_id)
 CREATE POLICY "driver_read_linked_nodes" ON public.trip_nodes
   FOR SELECT USING (
     linked_vehicle_id IS NOT NULL AND EXISTS (
-      SELECT 1 FROM public.users u
-      JOIN public.vehicles v ON v.driver_id = u.id OR v.owner_id = u.id
-      WHERE u.id = auth.uid() AND u.role = 'driver' AND v.id = linked_vehicle_id
+      SELECT 1 FROM public.vehicles v
+      JOIN public.users u ON u.id = v.owner_id
+      WHERE u.id = auth.uid()
+        AND u.role IN ('driver', 'owner')
+        AND v.id = linked_vehicle_id
     )
   );
 
@@ -108,3 +111,4 @@ DROP TRIGGER IF EXISTS trip_graphs_updated_at ON public.trip_graphs;
 CREATE TRIGGER trip_graphs_updated_at
   BEFORE UPDATE ON public.trip_graphs
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
