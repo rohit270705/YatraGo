@@ -3445,3 +3445,150 @@ export const useThemeStore = create(
     }
   )
 );
+
+// ==========================================
+// 20. TRIP GRAPH STORE — Yaara Live Trip Graph
+// ==========================================
+export const useTripGraphStore = create((set, get) => ({
+  trips: [],          // list of all user trips
+  activeTrip: null,   // currently open trip (with nodes attached)
+  isLoading: false,
+
+  // Load all trips for current user
+  loadTrips: async () => {
+    set({ isLoading: true });
+    const user = useAuthStore.getState().user;
+    if (!user) { set({ isLoading: false }); return; }
+    try {
+      const { data } = await supabase
+        .from('trip_graphs')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      set({ trips: data || [], isLoading: false });
+    } catch {
+      set({ isLoading: false });
+    }
+  },
+
+  // Load a specific trip with its nodes
+  loadTrip: async (tripId) => {
+    set({ isLoading: true, activeTrip: null });
+    try {
+      const { data: trip } = await supabase
+        .from('trip_graphs')
+        .select('*')
+        .eq('id', tripId)
+        .single();
+      const { data: nodes } = await supabase
+        .from('trip_nodes')
+        .select('*')
+        .eq('trip_graph_id', tripId)
+        .order('day_number')
+        .order('order_index');
+      if (trip) {
+        set({ activeTrip: { ...trip, nodes: nodes || [] }, isLoading: false });
+      } else {
+        set({ isLoading: false });
+      }
+    } catch {
+      // Local fallback if Supabase tables don't exist yet
+      const existing = get().trips.find(t => t.id === tripId);
+      if (existing) set({ activeTrip: { ...existing, nodes: [] }, isLoading: false });
+      else set({ isLoading: false });
+    }
+  },
+
+  // Create a new trip
+  createTrip: async ({ title, budget, total_days, start_date }) => {
+    const user = useAuthStore.getState().user;
+    const newTrip = {
+      id: `trip-${Date.now()}`,
+      user_id: user?.id || 'guest',
+      title,
+      budget: Number(budget) || 0,
+      total_days: Number(total_days) || 3,
+      start_date: start_date || null,
+      status: 'planning',
+      created_at: new Date().toISOString(),
+      nodes: [],
+    };
+    try {
+      const { data, error } = await supabase.from('trip_graphs').insert([{
+        id: newTrip.id,
+        user_id: newTrip.user_id,
+        title: newTrip.title,
+        budget: newTrip.budget,
+        total_days: newTrip.total_days,
+        start_date: newTrip.start_date,
+        status: newTrip.status,
+      }]).select().single();
+      const trip = data || newTrip;
+      set(state => ({ trips: [{ ...trip, nodes: [] }, ...state.trips], activeTrip: { ...trip, nodes: [] } }));
+      return { success: true, trip };
+    } catch {
+      // Offline / table not created yet — store locally
+      set(state => ({ trips: [newTrip, ...state.trips], activeTrip: newTrip }));
+      return { success: true, trip: newTrip };
+    }
+  },
+
+  // Add a node to a trip
+  addNode: async (nodeData) => {
+    const newNode = {
+      id: `node-${Date.now()}`,
+      ...nodeData,
+      created_at: new Date().toISOString(),
+    };
+    try {
+      await supabase.from('trip_nodes').insert([{
+        id: newNode.id,
+        trip_graph_id: newNode.trip_graph_id,
+        day_number: newNode.day_number,
+        order_index: newNode.order_index,
+        node_type: newNode.node_type,
+        title: newNode.title,
+        location: newNode.location,
+        start_time: newNode.start_time,
+        estimated_cost: newNode.estimated_cost,
+        notes: newNode.notes,
+        status: newNode.status || 'planned',
+      }]);
+    } catch { /* offline fallback */ }
+
+    set(state => ({
+      activeTrip: state.activeTrip
+        ? { ...state.activeTrip, nodes: [...(state.activeTrip.nodes || []), newNode] }
+        : state.activeTrip,
+    }));
+    return { success: true, node: newNode };
+  },
+
+  // Update node status (planned → booked → in_progress → done)
+  updateNodeStatus: async (nodeId, status) => {
+    set(state => ({
+      activeTrip: state.activeTrip
+        ? {
+            ...state.activeTrip,
+            nodes: state.activeTrip.nodes.map(n => n.id === nodeId ? { ...n, status } : n),
+          }
+        : state.activeTrip,
+    }));
+    try {
+      await supabase.from('trip_nodes').update({ status }).eq('id', nodeId);
+    } catch { /* offline fallback */ }
+  },
+
+  // Delete a node
+  deleteNode: async (nodeId) => {
+    set(state => ({
+      activeTrip: state.activeTrip
+        ? { ...state.activeTrip, nodes: state.activeTrip.nodes.filter(n => n.id !== nodeId) }
+        : state.activeTrip,
+    }));
+    try { await supabase.from('trip_nodes').delete().eq('id', nodeId); } catch { }
+  },
+
+  clearActiveTrip: () => set({ activeTrip: null }),
+}));
+

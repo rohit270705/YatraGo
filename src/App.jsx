@@ -4,8 +4,10 @@ import {
   LayoutDashboard, Search, Ticket, Wallet, Car, Package, Users, ShieldCheck,
   LogOut, Menu, X, MapPin, UserCircle, Settings, Bell, ChevronRight,
   Briefcase, TruckIcon, ClipboardList, FileCheck, CreditCard, BarChart3,
-  Home, Map, Bike, Palmtree, Navigation, User, Plane, TrainFront, Sun, Moon, Ship
+  Home, Map, Bike, Palmtree, Navigation, User, Plane, TrainFront, Sun, Moon, Ship,
+  Route as RouteIcon
 } from 'lucide-react';
+
 import { useAuthStore, useToastStore, useNotificationStore, usePlatformStore, useTransportModalStore, useThemeStore } from './store';
 import { supabase } from './supabaseClient';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -42,6 +44,7 @@ const PackagesPage = lazy(() => import('./pages/PackagesPage'));
 const PackageDetailsPage = lazy(() => import('./pages/PackageDetailsPage'));
 const HostDashboardPage = lazy(() => import('./pages/HostDashboardPage'));
 const SupportTicketsPage = lazy(() => import('./pages/SupportTicketsPage'));
+const TripGraphPage = lazy(() => import('./pages/TripGraphPage'));
 import ChatWidget from './components/ChatWidget';
 
 // ===== FIX 4: mapDbUser moved outside — no longer re-created on every render =====
@@ -116,6 +119,7 @@ function Sidebar({ isOpen, onClose }) {
   const passengerLinks = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/profile', label: 'My Profile', icon: UserCircle },
+    { path: '/trip/new', label: 'Plan a Trip', icon: RouteIcon, badge: 'NEW' },
     { path: '/search', label: 'Search Trips', icon: Search },
     { path: '/bookings', label: 'My Bookings', icon: Ticket },
     { path: '/wallet', label: 'Wallet', icon: Wallet },
@@ -136,6 +140,7 @@ function Sidebar({ isOpen, onClose }) {
       title: 'TRAVEL',
       links: [
         { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { path: '/trip/new', label: 'Plan a Trip', icon: RouteIcon, badge: 'NEW' },
         { path: '/search', label: 'Search Trips', icon: Search },
         { path: '/bookings', label: 'My Bookings', icon: Ticket },
         { path: '/profile', label: 'My Profile', icon: UserCircle },
@@ -172,6 +177,7 @@ function Sidebar({ isOpen, onClose }) {
 
   const agentLinks = [
     { path: '/agent', label: 'Agent Dashboard', icon: LayoutDashboard },
+    { path: '/trip/new', label: 'Plan Client Trip', icon: RouteIcon, badge: 'NEW' },
     { path: '/search', label: 'Book for Customer', icon: Search },
     { path: '/packages', label: 'Holiday Packages', icon: Palmtree },
     { path: '#flights', label: 'Flights', icon: Plane, isModal: 'flights' },
@@ -274,6 +280,7 @@ function Sidebar({ isOpen, onClose }) {
                   >
                     <link.icon className="sidebar-link-icon" size={20} />
                     {link.label}
+                    {link.badge && <span className="sidebar-link-badge">{link.badge}</span>}
                   </button>
                 ))}
               </div>
@@ -302,6 +309,7 @@ function Sidebar({ isOpen, onClose }) {
                 >
                   <link.icon className="sidebar-link-icon" size={20} />
                   {link.label}
+                  {link.badge && <span className="sidebar-link-badge">{link.badge}</span>}
                 </button>
               ))}
 
@@ -553,6 +561,19 @@ export default function App() {
 
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/login" replace />} />
+
+        {/* Trip Graph Routes — Passenger + Agent */}
+        <Route path="/trip/new" element={
+          <ProtectedRoute allowedRoles={['passenger', 'agent']}>
+            <AppLayout><TripGraphPage /></AppLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/trip/:tripId" element={
+          <ProtectedRoute allowedRoles={['passenger', 'agent', 'driver']}>
+            <AppLayout><TripGraphPage /></AppLayout>
+          </ProtectedRoute>
+        } />
+
         <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Suspense>
