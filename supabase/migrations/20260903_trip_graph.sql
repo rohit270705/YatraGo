@@ -1,6 +1,15 @@
 -- =====================================================
--- YatraGo: Trip Graph Schema Migration (v2 - type-safe)
+-- YatraGo: Trip Graph Schema Migration (v3 - fully type-safe)
 -- Apply this in Supabase SQL Editor
+-- =====================================================
+-- TYPE NOTES:
+--   auth.uid()             → UUID
+--   auth.uid()::text       → TEXT (use when comparing to TEXT id columns)
+--   trip_graphs.user_id    → UUID  (references auth.users.id directly)
+--   public.users.id        → UUID  (Supabase auth primary key)
+--   vehicles.owner_id      → TEXT  (app stores user ids as text strings)
+--   linked_vehicle_id      → TEXT  (app stores vehicle ids as text strings)
+--   vehicles.id            → UUID  (Supabase auto-generated UUID)
 -- =====================================================
 
 -- 1. trip_graphs — one row per user trip plan
@@ -46,30 +55,29 @@ CREATE INDEX IF NOT EXISTS idx_trip_nodes_day      ON public.trip_nodes(trip_gra
 
 -- 4. RLS Policies
 
--- trip_graphs
+-- ── trip_graphs ──
 ALTER TABLE public.trip_graphs ENABLE ROW LEVEL SECURITY;
 
--- Passenger: full CRUD on their own trips
--- auth.uid() returns UUID; user_id is UUID — no cast needed
+-- user_id is UUID, auth.uid() is UUID — direct compare, no cast needed
 CREATE POLICY "passenger_own_trips" ON public.trip_graphs
   FOR ALL
-  USING (auth.uid() = user_id)
+  USING     (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
--- Agent: can read all trips
+-- public.users.id is UUID, auth.uid() is UUID — direct compare
 CREATE POLICY "agent_read_trips" ON public.trip_graphs
   FOR SELECT USING (
     EXISTS (
       SELECT 1 FROM public.users
-      WHERE id::uuid = auth.uid()
+      WHERE id = auth.uid()
         AND role = 'agent'
     )
   );
 
--- trip_nodes
+-- ── trip_nodes ──
 ALTER TABLE public.trip_nodes ENABLE ROW LEVEL SECURITY;
 
--- Passengers: full CRUD on nodes of their own trips
+-- g.user_id is UUID, auth.uid() is UUID — direct compare
 CREATE POLICY "own_trip_nodes" ON public.trip_nodes
   FOR ALL
   USING (
@@ -87,25 +95,25 @@ CREATE POLICY "own_trip_nodes" ON public.trip_nodes
     )
   );
 
--- Driver/Owner: can read nodes where linked_vehicle_id matches one of their vehicles
--- vehicles.id is UUID, linked_vehicle_id is TEXT — cast TEXT to UUID for comparison
+-- vehicles.owner_id is TEXT, auth.uid() is UUID → cast auth.uid() to TEXT
+-- linked_vehicle_id is TEXT, vehicles.id is UUID → cast linked_vehicle_id to UUID (guarded)
 CREATE POLICY "driver_read_linked_nodes" ON public.trip_nodes
   FOR SELECT USING (
     linked_vehicle_id IS NOT NULL
-    AND linked_vehicle_id ~ '^[0-9a-f-]{36}$'   -- only try cast if it looks like a UUID
+    AND linked_vehicle_id ~ '^[0-9a-fA-F-]{36}$'
     AND EXISTS (
       SELECT 1 FROM public.vehicles v
-      WHERE v.id = linked_vehicle_id::uuid
-        AND v.owner_id = auth.uid()
+      WHERE v.id        = linked_vehicle_id::uuid
+        AND v.owner_id  = auth.uid()::text
     )
   );
 
--- Agent: can read all trip nodes
+-- public.users.id is UUID, auth.uid() is UUID — direct compare
 CREATE POLICY "agent_read_all_nodes" ON public.trip_nodes
   FOR SELECT USING (
     EXISTS (
       SELECT 1 FROM public.users
-      WHERE id::uuid = auth.uid()
+      WHERE id = auth.uid()
         AND role = 'agent'
     )
   );
