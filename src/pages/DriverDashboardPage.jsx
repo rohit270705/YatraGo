@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
-  Car, Plus, MapPin, DollarSign, Clock, CheckCircle, Target, TrendingUp, AlertTriangle, Shield, Power, Banknote, XCircle, Check
+  Car, Plus, MapPin, DollarSign, Clock, CheckCircle, Target, TrendingUp, AlertTriangle, Shield, Power, Banknote, XCircle, Check, Package
 } from 'lucide-react';
-import { useAuthStore, useBookingStore, useToastStore, useDriverStore, useWalletStore } from '../store';
+import { useAuthStore, useBookingStore, useToastStore, useDriverStore, useWalletStore, useParcelStore } from '../store';
 import { supabase } from '../supabaseClient';
 import SkeletonLoader from '../components/SkeletonLoader';
 import DashboardHeader from '../components/DashboardHeader';
@@ -33,10 +33,17 @@ export default function DriverDashboardPage() {
   const todayEarnings = Math.round(totalEarnings * 0.2);
   const weekEarnings = Math.round(totalEarnings * 0.65);
 
+  const { relayOffers, fetchDriverRelayOffers, respondToRelayMatch } = useParcelStore();
+
   useEffect(() => {
     fetchRates();
-    if (user?.id) fetchLinks(user.id, 'driver');
+    if (user?.id) {
+      fetchLinks(user.id, 'driver');
+      fetchDriverRelayOffers();
+    }
   }, [user]);
+
+  const pendingRelayOffers = (relayOffers || []).filter(r => r.driver_response === 'pending');
 
   const fetchRates = async () => {
     if (!user?.id) return;
@@ -230,6 +237,17 @@ export default function DriverDashboardPage() {
           onClick={() => setActiveTab('rates')}
         >
           Job-List Rates
+        </button>
+        <button 
+          className={`tab ${activeTab === 'carry_requests' ? 'active' : ''}`}
+          onClick={() => setActiveTab('carry_requests')}
+        >
+          📦 Carry Requests
+          {pendingRelayOffers.length > 0 && (
+            <span className="badge badge-teal" style={{ marginLeft: 8 }}>
+              {pendingRelayOffers.length} NEW
+            </span>
+          )}
         </button>
         <button 
           className={`tab ${activeTab === 'employers' ? 'active' : ''}`}
@@ -604,6 +622,106 @@ export default function DriverDashboardPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── CARRY REQUESTS (YAARA PARCEL RELAY) ── */}
+      {activeTab === 'carry_requests' && (
+        <div className="card animate-slide-up">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div>
+              <h2 className="card-title" style={{ margin: 0 }}>
+                📦 Parcel Carry Requests (Yaara Relay)
+              </h2>
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: 4 }}>
+                Earn 100% incremental profit by carrying parcels in your spare boot/seat space along routes you are already driving.
+              </p>
+            </div>
+            <span className="badge badge-teal">Opt-in • Zero Penalty</span>
+          </div>
+
+          {relayOffers.length === 0 ? (
+            <div className="empty-state">
+              <Package size={48} color="var(--color-accent-teal)" />
+              <p>No active relay carry requests for your route right now.</p>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+                New parcel requests matching your schedule will automatically appear here.
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {relayOffers.map(offer => {
+                const parcel = offer.parcel || {};
+                const earning = Math.round((parcel.price_amount || 220) * 0.85);
+                const isPending = offer.driver_response === 'pending';
+
+                return (
+                  <div key={offer.id} className="carry-request-card">
+                    <div className="carry-request-header">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontWeight: 800, fontSize: '0.95rem' }}>{parcel.id || offer.parcel_delivery_id}</span>
+                        <span className="badge badge-teal" style={{ textTransform: 'uppercase' }}>
+                          {Math.round((offer.match_score || 0.95) * 100)}% Route Fit
+                        </span>
+                      </div>
+                      <div className="carry-earning-chip">
+                        <DollarSign size={14} /> +₹{earning} Earnings
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1rem', fontWeight: 700 }}>
+                      <MapPin size={16} color="var(--color-accent-amber)" />
+                      <span>{parcel.pickup_label || 'Dadar, Mumbai'}</span>
+                      <ArrowRight size={14} color="var(--color-text-tertiary)" />
+                      <span>{parcel.drop_label || 'Kothrud, Pune'}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 16, fontSize: '0.8rem', color: 'var(--color-text-secondary)', flexWrap: 'wrap' }}>
+                      <span>📦 Size: <strong style={{ color: 'var(--color-text)' }}>{parcel.parcel_size || 'Small Box'}</strong></span>
+                      <span>⚖️ Weight: <strong style={{ color: 'var(--color-text)' }}>{parcel.weight_kg || 2} kg</strong></span>
+                      <span>👤 Recipient: {parcel.recipient_name || 'Recipient'} ({parcel.recipient_phone || 'Verified'})</span>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid var(--border-subtle)', marginTop: 4 }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+                        {isPending ? '⏳ Awaiting your response' : `Status: ${offer.driver_response.toUpperCase()}`}
+                      </div>
+
+                      {isPending ? (
+                        <div style={{ display: 'flex', gap: 10 }}>
+                          <button
+                            className="btn btn-outline btn-sm"
+                            onClick={async () => {
+                              await respondToRelayMatch(offer.id, 'declined');
+                              addToast('Carry request declined with no penalty.', 'info');
+                            }}
+                          >
+                            Decline
+                          </button>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            style={{ background: 'var(--color-accent-teal)' }}
+                            onClick={async () => {
+                              const res = await respondToRelayMatch(offer.id, 'accepted');
+                              if (res.success) {
+                                addToast(`🎉 Carry offer accepted! +₹${earning} credited to your wallet.`, 'success');
+                              }
+                            }}
+                          >
+                            <Check size={14} /> Accept (+₹{earning})
+                          </button>
+                        </div>
+                      ) : (
+                        <span className={`badge badge-${offer.driver_response === 'accepted' ? 'success' : 'error'}`}>
+                          {offer.driver_response.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

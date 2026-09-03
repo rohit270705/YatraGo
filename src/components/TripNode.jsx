@@ -106,6 +106,36 @@ export default function TripNode({ node, isLast = false, onAction, readOnly = fa
             {node.notes}
           </div>
         )}
+
+        {/* Linked Parcel Relay Sub-Node */}
+        {node.linked_parcel_id && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/parcel');
+            }}
+            style={{
+              marginTop: 8,
+              padding: '6px 12px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'rgba(240, 162, 2, 0.12)',
+              border: '1px dashed var(--color-accent-amber)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              fontSize: '0.75rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>📦</span>
+              <span style={{ fontWeight: 700, color: 'var(--color-accent-amber)' }}>
+                Carrying Relay Parcel: {node.linked_parcel_id}
+              </span>
+            </div>
+            <span style={{ color: 'var(--color-text-tertiary)' }}>Track →</span>
+          </div>
+        )}
       </div>
 
       {/* Book / View button */}
