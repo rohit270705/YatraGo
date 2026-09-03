@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Ticket, TrendingUp, Users, Search, Percent,
   ArrowRight, DollarSign, Calendar, Clock, Paintbrush, X, Image,
   Type, Palette, Phone, Mail, MapPin, Globe, Save, Eye, EyeOff,
-  Upload, Sparkles, ChevronDown, Route, Palmtree
+  Upload, Sparkles, ChevronDown, Route, Palmtree, Package
 } from 'lucide-react';
 import { useAgentStore, useBookingStore, useToastStore, useAuthStore } from '../store';
 import DashboardHeader from '../components/DashboardHeader';
@@ -233,6 +233,9 @@ export default function AgentDashboardPage() {
         </button>
         <button className="btn btn-secondary" onClick={() => navigate('/packages')}>
           <Palmtree size={16} /> Package Builder
+        </button>
+        <button className="btn btn-secondary" onClick={() => navigate('/parcel')}>
+          <Package size={16} /> Send Parcel for Client
         </button>
         <button className="btn btn-ghost" onClick={openEditor}>
           <Paintbrush size={16} /> Edit Banner
