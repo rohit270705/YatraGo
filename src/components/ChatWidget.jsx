@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useChatStore, useAuthStore } from '../store';
-import { MessageSquare, X, Send, Bot, Ticket, ChevronDown } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, Ticket, ChevronDown, Route } from 'lucide-react';
 
 
 export default function ChatWidget() {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const {
     isChatOpen, toggleChat, closeChat,
@@ -70,10 +72,12 @@ export default function ChatWidget() {
   };
 
   const handleQuickReply = (chip) => {
-    // Strip emoji prefix for cleaner message
     const cleanText = chip.replace(/^[^\w\s]*\s*/, '').trim();
     if (cleanText.toLowerCase().includes('raise') && cleanText.toLowerCase().includes('ticket')) {
       raiseTicketFromChat();
+    } else if (cleanText.toLowerCase().includes('plan') && cleanText.toLowerCase().includes('trip')) {
+      navigate('/trip/new');
+      closeChat();
     } else {
       sendUserMessage(chip);
     }
@@ -124,7 +128,7 @@ export default function ChatWidget() {
                'Hi there! I am your warm local travel buddy for India. How can I help you today?'}
             </p>
             <div className="chat-quick-replies" style={{ justifyContent: 'center' }}>
-              {['🚗 Find cabs', '🎒 Book package', '💰 Check wallet', '🎫 Raise Ticket'].map((chip, ci) => (
+              {['✨ Plan a Trip', '🚗 Find cabs', '🎒 Book package', '💰 Check wallet', '🎫 Raise Ticket'].map((chip, ci) => (
                 <button
                   key={ci}
                   className="chat-quick-chip"

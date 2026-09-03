@@ -6,6 +6,7 @@ import { useAuthStore, useBookingStore, useToastStore, useDriverStore, useWallet
 import { supabase } from '../supabaseClient';
 import SkeletonLoader from '../components/SkeletonLoader';
 import DashboardHeader from '../components/DashboardHeader';
+import LiveStatusCard from '../components/LiveStatusCard';
 
 export default function DriverDashboardPage() {
   const { user } = useAuthStore();
@@ -193,6 +194,21 @@ export default function DriverDashboardPage() {
             <div className="stat-value">{upcomingTrips.length}</div>
             <div className="stat-label">Upcoming / Pending Trips</div>
           </div>
+        </div>
+      )}
+
+      {/* ── LIVE GO-NOW TRIP ALERT ── */}
+      {upcomingTrips.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <LiveStatusCard
+            statusType="go_now"
+            title={`Assigned Ride: ${upcomingTrips[0].pickup || upcomingTrips[0].route?.from || 'Pickup'} → ${upcomingTrips[0].destination || upcomingTrips[0].route?.to || 'Drop'}`}
+            description={`Passenger: ${upcomingTrips[0].passengerName || upcomingTrips[0].passengerDetails?.name || 'Passenger'} • Fare: ₹${upcomingTrips[0].totalAmount || 500}`}
+            time="Ready for departure"
+            actionLabel="View Trip"
+            onAction={() => setActiveTab('trips')}
+            showPulse={true}
+          />
         </div>
       )}
 

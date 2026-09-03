@@ -10,6 +10,8 @@ import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToas
 import { supabase } from '../supabaseClient';
 import SkeletonLoader from '../components/SkeletonLoader';
 import DashboardHeader from '../components/DashboardHeader';
+import UniversalSearchBar from '../components/UniversalSearchBar';
+import LiveStatusCard from '../components/LiveStatusCard';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -218,98 +220,50 @@ export default function DashboardPage() {
 
 
       <div className="pax-content">
-        {/* ── HERO SEARCH ── */}
-        <div className="pax-search-card">
-          <div className="pax-search-header">
-            <span className="pax-search-title">Search transit</span>
-            <span className="pax-search-sub">Bus · Train · Cab · Ferry</span>
-          </div>
-          <form onSubmit={handleQuickSearch}>
-            <div className="pax-search-row">
-              <div className="pax-search-field">
-                <label className="pax-field-label">From</label>
-                <div className="pax-field-input">
-                  <MapPin size={16} className="text-[var(--color-text-tertiary)] shrink-0" />
-                  <input
-                    className="pax-field-input-text"
-                    value={quickFrom}
-                    onChange={e => setQuickFrom(e.target.value)}
-                    placeholder="e.g. Mumbai"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="pax-swap-btn"
-                onClick={swapCities}
-                title="Swap cities"
-              >
-                <ArrowRightLeft size={16} />
-              </button>
-
-              <div className="pax-search-field">
-                <label className="pax-field-label">To</label>
-                <div className="pax-field-input">
-                  <Navigation size={16} className="text-[#3b82f6] shrink-0" />
-                  <input
-                    className="pax-field-input-text"
-                    value={quickTo}
-                    onChange={e => setQuickTo(e.target.value)}
-                    placeholder="e.g. Pune"
-                  />
-                </div>
-              </div>
-
-              <div className="pax-search-field">
-                <label className="pax-field-label">Date</label>
-                <div className="pax-field-input">
-                  <Calendar size={16} className="text-[var(--color-text-tertiary)] shrink-0" />
-                  <input
-                    type="date"
-                    className="pax-field-input-text font-medium cursor-pointer"
-                    style={{ colorScheme: 'dark' }}
-                    value={quickDate}
-                    onChange={e => setQuickDate(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <button type="submit" className="pax-search-btn">
-                <Search size={16} />
-                <span>Search</span>
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* ── LIVE TRIP BANNER (If Active Ride Exists) ── */}
+        {/* ── PROACTIVE LIVE STATUS (TripIt-Style) ── */}
         {currentTrip && (
-          <div
-            onClick={() => navigate('/tracking')}
-            className="mb-8 p-4 border border-[var(--color-accent-teal)] bg-gradient-to-r from-[var(--color-accent-teal)]/20 via-[var(--color-surface)] to-[var(--color-surface)] relative overflow-hidden shadow-lg cursor-pointer group rounded-2xl transition-all hover:border-[var(--color-accent-teal-light)] flex items-center justify-between gap-4"
-          >
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="relative flex items-center justify-center w-3 h-3 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-accent-teal)] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-[var(--color-accent-teal)]"></span>
-              </div>
-              <div className="min-w-0">
-                <div className="font-extrabold text-sm sm:text-base text-[var(--color-text)] flex items-center gap-2 truncate">
-                  <span>Your ride is 4 min away</span>
-                  <span className="badge badge-teal text-[10px] uppercase font-bold py-0.5 px-2">Live</span>
-                </div>
-                <div className="text-xs text-[var(--color-text-secondary)] truncate mt-0.5 font-medium">
-                  {currentTrip.vehicle_name || 'Toyota Innova SUV'} • <span className="font-mono text-[var(--color-accent-teal-light)] font-bold">{currentTrip.vehicle_number || 'MH 12 AB 3456'}</span> • {currentTrip.destination || 'On route'}
-                </div>
-              </div>
-            </div>
-            <div className="shrink-0 flex items-center gap-1 text-xs font-bold text-[var(--color-accent-teal)] group-hover:translate-x-1 transition-transform">
-              <span>Track</span>
-              <ChevronRight size={16} />
-            </div>
+          <div className="mb-6">
+            <LiveStatusCard
+              statusType={currentTrip.status === 'in_progress' ? 'driver_arriving' : 'booking_confirmed'}
+              title={currentTrip.status === 'in_progress' ? 'Your ride is 4 min away' : 'Booking Confirmed'}
+              description={`${currentTrip.vehicle_name || 'Vehicle'} • ${currentTrip.vehicle_number || ''} • Destination: ${currentTrip.destination || 'On route'}`}
+              time="Updated just now"
+              actionLabel="Live GPS Track"
+              onAction={() => navigate('/tracking')}
+              showPulse={true}
+            />
           </div>
         )}
+
+        {/* ── UNIVERSAL MULTI-TAB SEARCH BAR ── */}
+        <div className="mb-6">
+          <UniversalSearchBar />
+        </div>
+
+        {/* ── AIRBNB-STYLE CATEGORY RAIL ── */}
+        <div className="mb-8">
+          <div className="category-rail">
+            {[
+              { label: 'Cabs & Cars', icon: '🚗', path: '/vehicles' },
+              { label: 'Homestays', icon: '🏠', path: '/host' },
+              { label: 'Bus & Transit', icon: '🚌', path: '/search' },
+              { label: 'Plan a Trip', icon: '🗺️', path: '/trip/new' },
+              { label: 'Tour Packages', icon: '🌴', path: '/packages' },
+              { label: 'Bike Rentals', icon: '🛵', path: '/rentals' },
+              { label: 'Send Parcel', icon: '📦', path: '/parcel' },
+              { label: 'Live Tracking', icon: '📍', path: '/tracking' },
+            ].map((cat) => (
+              <button
+                key={cat.label}
+                className="category-chip"
+                onClick={() => navigate(cat.path)}
+              >
+                <span className="category-chip-icon">{cat.icon}</span>
+                <span className="category-chip-label">{cat.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* ── WALLET + STATS ── */}
         <div className="pax-two-col">
