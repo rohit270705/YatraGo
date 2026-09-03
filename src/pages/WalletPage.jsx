@@ -85,9 +85,12 @@ export default function WalletPage() {
     setIsWithdrawing(false);
   };
 
+  const txnsList = Array.isArray(transactions) ? transactions : [];
+  const safeBalance = Number(balance) || 0;
+
   const filteredTxns = filterType === 'all'
-    ? transactions
-    : transactions.filter(t => t.type === filterType);
+    ? txnsList
+    : txnsList.filter(t => t && t.type === filterType);
 
   const getTxnIcon = (type) => {
     switch (type) {
@@ -109,7 +112,7 @@ export default function WalletPage() {
       case 'AGENT_COMMISSION': return 'Agent Commission';
       case 'WITHDRAWAL_REQUEST': return 'Withdrawal Request';
       case 'WITHDRAWAL': return 'Withdrawal Processed';
-      default: return type;
+      default: return type || 'Transaction';
     }
   };
 
@@ -123,7 +126,7 @@ export default function WalletPage() {
       {/* Wallet Balance Card */}
       <div className="wallet-card" style={{ marginBottom: 'var(--space-xl)' }}>
         <div className="wallet-balance-label">Available Balance</div>
-        <div className="wallet-balance-amount">₹{balance.toLocaleString()}</div>
+        <div className="wallet-balance-amount">₹{safeBalance.toLocaleString('en-IN')}</div>
         <div className="wallet-actions">
           <button className="wallet-action-btn" onClick={() => setShowAddMoney(true)}>
             <Plus size={16} /> Add Money
@@ -146,20 +149,20 @@ export default function WalletPage() {
           <div className="stat-card-icon green"><ArrowDownLeft size={20} /></div>
           <div className="stat-card-label">Total Added</div>
           <div className="stat-card-value" style={{ fontSize: '1.5rem' }}>
-            ₹{transactions.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0).toLocaleString()}
+            ₹{txnsList.filter(t => Number(t?.amount) > 0).reduce((s, t) => s + Number(t?.amount || 0), 0).toLocaleString('en-IN')}
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-card-icon red"><ArrowUpRight size={20} /></div>
           <div className="stat-card-label">Total Spent</div>
           <div className="stat-card-value" style={{ fontSize: '1.5rem' }}>
-            ₹{Math.abs(transactions.filter(t => t.amount < 0).reduce((s, t) => s + t.amount, 0)).toLocaleString()}
+            ₹{Math.abs(txnsList.filter(t => Number(t?.amount) < 0).reduce((s, t) => s + Number(t?.amount || 0), 0)).toLocaleString('en-IN')}
           </div>
         </div>
         <div className="stat-card">
           <div className="stat-card-icon purple"><Clock size={20} /></div>
           <div className="stat-card-label">Transactions</div>
-          <div className="stat-card-value" style={{ fontSize: '1.5rem' }}>{transactions.length}</div>
+          <div className="stat-card-value" style={{ fontSize: '1.5rem' }}>{txnsList.length}</div>
         </div>
       </div>
 
@@ -187,39 +190,43 @@ export default function WalletPage() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {filteredTxns.map(txn => (
-            <div key={txn.id} className="glass-card" style={{ padding: '14px 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: 'var(--radius-md)',
-                  background: 'var(--color-surface)', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                }}>
-                  {getTxnIcon(txn.type)}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{getTxnLabel(txn.type)}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
-                    {txn.description}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
+          {filteredTxns.map(txn => {
+            const amt = Number(txn?.amount || 0);
+            const balAfter = Number(txn?.balance_after ?? txn?.balanceAfter ?? safeBalance);
+            return (
+              <div key={txn.id || Math.random()} className="glass-card" style={{ padding: '14px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <div style={{
-                    fontWeight: 700, fontSize: '1rem',
-                    color: txn.amount > 0 ? 'var(--color-accent-green)' : 'var(--color-accent-red)',
+                    width: 40, height: 40, borderRadius: 'var(--radius-md)',
+                    background: 'var(--color-surface)', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                   }}>
-                    {txn.amount > 0 ? '+' : ''}₹{Math.abs(txn.amount).toLocaleString()}
+                    {getTxnIcon(txn.type)}
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>
-                    Bal: ₹{(txn.balance_after !== undefined ? txn.balance_after : (txn.balanceAfter || 0)).toLocaleString()}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{getTxnLabel(txn.type)}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+                      {txn.description}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{
+                      fontWeight: 700, fontSize: '1rem',
+                      color: amt > 0 ? 'var(--color-accent-green)' : 'var(--color-accent-red)',
+                    }}>
+                      {amt > 0 ? '+' : ''}₹{Math.abs(amt).toLocaleString('en-IN')}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>
+                      Bal: ₹{balAfter.toLocaleString('en-IN')}
+                    </div>
                   </div>
                 </div>
+                <div style={{ marginTop: 6, fontSize: '0.7rem', color: 'var(--color-text-tertiary)', textAlign: 'right' }}>
+                  {new Date(txn.created_at || txn.timestamp || Date.now()).toLocaleString()}
+                </div>
               </div>
-              <div style={{ marginTop: 6, fontSize: '0.7rem', color: 'var(--color-text-tertiary)', textAlign: 'right' }}>
-                {new Date(txn.created_at || txn.timestamp || Date.now()).toLocaleString()}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

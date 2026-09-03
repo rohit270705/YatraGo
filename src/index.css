@@ -4386,4 +4386,43 @@ input, button, textarea, select {
   border-radius: 999px;
 }
 
+/* =======================================================
+   BUG FIX PASS: RESPONSIVE OVERLAP & MOBILE ALIGNMENTS
+   ======================================================= */
+@media (max-width: 640px) {
+  /* Search Trips .trip-card vertical stacking on small mobile screens */
+  .trip-card {
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: var(--space-md) !important;
+  }
+  .trip-info {
+    width: 100% !important;
+    min-width: unset !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Floating chat button repositioning on mobile to avoid overlapping bottom bars */
+  .chat-floating-btn {
+    bottom: 72px !important;
+    right: 16px !important;
+    width: 48px !important;
+    height: 48px !important;
+  }
+  .chat-widget-container {
+    width: calc(100vw - 24px) !important;
+    right: 12px !important;
+    bottom: 72px !important;
+    height: 480px !important;
+    max-height: 80vh !important;
+  }
+}
+
+
 

@@ -1,10 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Monitor, Smartphone, Laptop, Trash2, AlertTriangle, Shield, CheckCircle } from 'lucide-react';
 import { useAuthStore, useToastStore } from '../store';
 
 export default function DeviceSessionsPage() {
-  const { activeSessions, removeSession } = useAuthStore();
+  const { activeSessions, removeSession, fetchActiveSessions } = useAuthStore();
   const { addToast } = useToastStore();
+
+  useEffect(() => {
+    if (fetchActiveSessions) {
+      fetchActiveSessions();
+    }
+  }, [fetchActiveSessions]);
 
   const getDeviceIcon = (platform) => {
     if (platform?.includes('Windows')) return <Monitor size={24} />;
@@ -12,8 +18,8 @@ export default function DeviceSessionsPage() {
     return <Laptop size={24} />;
   };
 
-  const handleRemoveSession = (deviceId) => {
-    removeSession(deviceId);
+  const handleRemoveSession = async (deviceId) => {
+    await removeSession(deviceId);
     addToast('Device session terminated', 'success');
   };
 
@@ -113,7 +119,7 @@ export default function DeviceSessionsPage() {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{session.deviceName}</span>
-                    {i === 0 && <span className="badge badge-teal" style={{ fontSize: '0.6rem' }}>This Device</span>}
+                    {session.isCurrent && <span className="badge badge-teal" style={{ fontSize: '0.6rem' }}>This Device (Current)</span>}
                   </div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginTop: 2 }}>
                     Platform: {session.platform} • ID: {session.deviceId}
@@ -122,7 +128,7 @@ export default function DeviceSessionsPage() {
                     Login: {new Date(session.loginAt).toLocaleString()} • Last active: {new Date(session.lastActive).toLocaleString()}
                   </div>
                 </div>
-                {i > 0 && (
+                {!session.isCurrent && (
                   <button className="btn btn-danger btn-sm" onClick={() => handleRemoveSession(session.deviceId)}>
                     <Trash2 size={14} /> Remove
                   </button>

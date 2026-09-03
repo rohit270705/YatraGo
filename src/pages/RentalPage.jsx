@@ -282,7 +282,7 @@ export default function RentalPage() {
           ) : (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(290px, 100%), 1fr))',
               gap: 16,
             }} className="stagger-children">
               {filteredVehicles.map(vehicle => (

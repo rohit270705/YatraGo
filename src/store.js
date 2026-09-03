@@ -609,18 +609,52 @@ export const useAuthStore = create(
       // Restore avatar from sessionStorage if available (set during last session)
       const userWithAvatar = restoreAvatarToUser(user);
 
+      let currentSessionId = localStorage.getItem('yatrago_session_id');
+      if (!currentSessionId) {
+        currentSessionId = 'sess_' + uuidv4().replace(/-/g, '').slice(0, 16);
+        localStorage.setItem('yatrago_session_id', currentSessionId);
+      }
+
+      const platformName = navigator.userAgent.includes('Windows') ? 'Windows'
+        : navigator.userAgent.includes('Android') ? 'Android'
+        : navigator.userAgent.includes('iPhone') ? 'iOS'
+        : navigator.userAgent.includes('Macintosh') ? 'macOS' : 'Web';
+
+      const browserName = navigator.userAgent.includes('Chrome') ? 'Chrome'
+        : navigator.userAgent.includes('Firefox') ? 'Firefox'
+        : navigator.userAgent.includes('Safari') ? 'Safari'
+        : navigator.userAgent.includes('Edge') ? 'Edge' : 'Browser';
+
       const newSession = {
-        deviceId: uuidv4().slice(0, 8),
-        deviceName: navigator.userAgent.includes('Windows') ? 'Windows PC' : 'Android Device',
-        platform: navigator.userAgent.includes('Windows') ? 'Windows' : 'Android',
+        deviceId: currentSessionId,
+        deviceName: `${platformName} (${browserName})`,
+        platform: platformName,
+        browser: browserName,
         loginAt: new Date().toISOString(),
         lastActive: new Date().toISOString(),
+        isCurrent: true,
       };
+
+      // Upsert session to Supabase user_device_sessions
+      try {
+        await supabase.from('user_device_sessions').upsert({
+          id: currentSessionId,
+          user_id: user.id,
+          device_name: newSession.deviceName,
+          platform: platformName,
+          browser: browserName,
+          login_at: newSession.loginAt,
+          last_active: newSession.lastActive,
+          revoked_at: null,
+        });
+      } catch (sessErr) {
+        console.warn('Session sync to Supabase skipped:', sessErr);
+      }
 
       set({
         user: userWithAvatar,
         isAuthenticated: true,
-        activeSessions: [...activeSessions, newSession],
+        activeSessions: [...activeSessions.filter(s => s.deviceId !== currentSessionId), newSession],
         isLoading: false
       });
 
@@ -829,9 +863,50 @@ export const useAuthStore = create(
     set({ user: null, isAuthenticated: false, activeSessions: [], error: null });
   },
 
-  removeSession: (deviceId) => set(state => ({
-    activeSessions: state.activeSessions.filter(s => s.deviceId !== deviceId)
-  })),
+  fetchActiveSessions: async () => {
+    const user = get().user;
+    if (!user?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('user_device_sessions')
+        .select('*')
+        .eq('user_id', user.id)
+        .is('revoked_at', null)
+        .order('last_active', { ascending: false });
+
+      if (data && !error && data.length > 0) {
+        const currentId = localStorage.getItem('yatrago_session_id');
+        const mapped = data.map(d => ({
+          deviceId: d.id,
+          deviceName: d.device_name,
+          platform: d.platform,
+          browser: d.browser,
+          loginAt: d.login_at,
+          lastActive: d.last_active,
+          isCurrent: d.id === currentId,
+        }));
+        set({ activeSessions: mapped });
+        return mapped;
+      }
+    } catch (e) {
+      console.warn('Failed to fetch remote sessions, using local:', e);
+    }
+  },
+
+  removeSession: async (deviceId) => {
+    const currentSessions = get().activeSessions;
+    set({
+      activeSessions: currentSessions.filter(s => s.deviceId !== deviceId)
+    });
+    try {
+      await supabase
+        .from('user_device_sessions')
+        .update({ revoked_at: new Date().toISOString() })
+        .eq('id', deviceId);
+    } catch (e) {
+      console.warn('Failed to revoke session on Supabase:', e);
+    }
+  },
 
       clearError: () => set({ error: null }),
     }),
@@ -991,8 +1066,8 @@ export const useWalletStore = create(
             console.warn('Supabase transactions fallback to local:', e);
           }
 
-          const currentBalance = wallet ? wallet.balance : (get().balance || 5000);
-          const currentTxns = txns.length > 0 ? txns : (get().transactions.length > 0 ? get().transactions : [{
+          const currentBalance = Number(wallet ? wallet.balance : (get().balance ?? 5000)) || 0;
+          const currentTxns = (txns && txns.length > 0) ? txns : (Array.isArray(get().transactions) && get().transactions.length > 0 ? get().transactions : [{
             id: 'welcome-' + Date.now(),
             user_id: userId,
             type: 'WALLET_TOPUP',
