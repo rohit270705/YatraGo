@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Ticket, Calendar, MapPin, Clock, Car, XCircle, CheckCircle, AlertTriangle,
   ArrowRight, Filter, Edit3, X, Star, MessageSquare, Save, Ban, ThumbsUp,
-  Pencil, Info
+  Pencil, Info, Plane, TrainFront, Ship
 } from 'lucide-react';
 import { useBookingStore, useToastStore, useChatStore } from '../store';
 import SkeletonLoader from '../components/SkeletonLoader';
@@ -79,12 +79,13 @@ export default function MyBookingsPage() {
     }
     setModifyError(null);
     setModifyModal(booking);
+    const p1 = Array.isArray(booking.passengerDetails) ? booking.passengerDetails[0] : (booking.passengerDetails || {});
     setModifyForm({
-      name: booking.passengerDetails.name || '',
-      age: booking.passengerDetails.age || '',
-      bloodGroup: booking.passengerDetails.bloodGroup || '',
-      aadhar: booking.passengerDetails.aadhar || '',
-      pan: booking.passengerDetails.pan || '',
+      name: p1?.name || '',
+      age: p1?.age || '',
+      bloodGroup: p1?.bloodGroup || '',
+      aadhar: p1?.aadhar || p1?.idNumber || '',
+      pan: p1?.pan || '',
       luggageKg: booking.luggageKg || 0,
     });
   };
@@ -137,6 +138,15 @@ export default function MyBookingsPage() {
     setReviewTags(prev =>
       prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
     );
+  };
+
+  // Transit icon helper
+  const getTransitIcon = (booking) => {
+    const bt = booking.booking_type;
+    if (bt === 'flight') return <Plane size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: 4 }} />;
+    if (bt === 'train')  return <TrainFront size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: 4 }} />;
+    if (bt === 'ferry')  return <Ship size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: 4 }} />;
+    return <Car size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: 4 }} />;
   };
 
   const getStatusBadge = (status) => {
@@ -236,14 +246,18 @@ export default function MyBookingsPage() {
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <MapPin size={16} color="var(--color-accent-teal-light)" />
-                    <span style={{ fontWeight: 600 }}>{booking.route.from}</span>
+                    <span style={{ fontWeight: 600 }}>
+                      {booking.route?.from || booking.transit_meta?.from || booking.routeDetails?.split('→')[0]?.trim() || 'Origin'}
+                    </span>
                     <ArrowRight size={14} color="var(--color-text-tertiary)" />
-                    <span style={{ fontWeight: 600 }}>{booking.route.to}</span>
+                    <span style={{ fontWeight: 600 }}>
+                      {booking.route?.to || booking.transit_meta?.to || booking.routeDetails?.split('→')[1]?.trim() || 'Destination'}
+                    </span>
                   </div>
-                  <div style={{ display: 'flex', gap: 16, fontSize: '0.875rem', color: 'var(--color-text-tertiary)' }}>
-                    <span><Calendar size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: 4 }} />{booking.route.date}</span>
-                    <span><Clock size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: 4 }} />{booking.route.departureTime}</span>
-                    <span><Car size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: 4 }} />{booking.vehicle?.type}</span>
+                  <div style={{ display: 'flex', gap: 16, fontSize: '0.875rem', color: 'var(--color-text-tertiary)', flexWrap: 'wrap' }}>
+                    <span><Calendar size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: 4 }} />{booking.route?.date || booking.transit_meta?.depart || 'See schedule'}</span>
+                    <span><Clock size={14} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: 4 }} />{booking.route?.departureTime || booking.transit_meta?.depart || 'Flexible'}</span>
+                    <span>{getTransitIcon(booking)}{booking.vehicle?.type || booking.transit_meta?.vehicleType || 'Transit'}</span>
                   </div>
                 </div>
 
@@ -271,10 +285,30 @@ export default function MyBookingsPage() {
                 borderRadius: 'var(--radius-sm)', fontSize: '0.875rem',
                 display: 'flex', gap: 16, flexWrap: 'wrap'
               }}>
-                <span>Passenger: <strong>{booking.passengerDetails.name}</strong></span>
-                {booking.passengerDetails.age && <span>Age: <strong>{booking.passengerDetails.age}</strong></span>}
-                {booking.passengerDetails.bloodGroup && <span>Blood: <strong>{booking.passengerDetails.bloodGroup}</strong></span>}
+                <span>Passenger: <strong>
+                  {Array.isArray(booking.passengerDetails)
+                    ? booking.passengerDetails.map(p => p.name).filter(Boolean).join(', ') || 'N/A'
+                    : booking.passengerDetails?.name || 'N/A'}
+                </strong></span>
+                {(Array.isArray(booking.passengerDetails) ? booking.passengerDetails[0]?.age : booking.passengerDetails?.age) && (
+                  <span>Age: <strong>{Array.isArray(booking.passengerDetails) ? booking.passengerDetails[0]?.age : booking.passengerDetails?.age}</strong></span>
+                )}
+                {!Array.isArray(booking.passengerDetails) && booking.passengerDetails?.bloodGroup && (
+                  <span>Blood: <strong>{booking.passengerDetails.bloodGroup}</strong></span>
+                )}
                 <span>Luggage: <strong>{booking.luggageKg}kg</strong></span>
+                {/* Transit-specific extras */}
+                {booking.transit_meta?.pnr && (
+                  <span style={{ color: 'var(--color-accent-teal-light)', fontWeight: 700 }}>
+                    🎫 PNR: <strong style={{ fontFamily: 'monospace', letterSpacing: '0.06em' }}>{booking.transit_meta.pnr}</strong>
+                  </span>
+                )}
+                {booking.transit_meta?.coachSeat && (
+                  <span>Coach/Seat: <strong>{booking.transit_meta.coachSeat}</strong></span>
+                )}
+                {booking.transit_meta?.cabinType && (
+                  <span>Cabin: <strong style={{ color: '#60a5fa' }}>{booking.transit_meta.cabinType}</strong></span>
+                )}
               </div>
 
               {/* Review display (completed bookings with review) */}
@@ -333,14 +367,18 @@ export default function MyBookingsPage() {
 
                 {booking.status === 'confirmed' && (
                   <>
-                    <button className="btn btn-secondary btn-sm" onClick={() => startPeerChat(booking.id, booking.vehicle?.ownerId || 'driver', booking.vehicle?.ownerName || 'Driver')}>
-                      <MessageSquare size={14} /> Chat with Driver
-                    </button>
+                    {!['flight', 'train', 'ferry'].includes(booking.booking_type) && (
+                      <>
+                        <button className="btn btn-secondary btn-sm" onClick={() => startPeerChat(booking.id, booking.vehicle?.ownerId || 'driver', booking.vehicle?.ownerName || 'Driver')}>
+                          <MessageSquare size={14} /> Chat with Driver
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => navigate('/tracking')}>
+                          Track Vehicle
+                        </button>
+                      </>
+                    )}
                     <button className="btn btn-secondary btn-sm" onClick={() => openModify(booking)}>
                       <Edit3 size={14} /> Modify Details
-                    </button>
-                    <button className="btn btn-secondary btn-sm" onClick={() => navigate('/tracking')}>
-                      Track Vehicle
                     </button>
                     <button className="btn btn-primary btn-sm" style={{ background: 'var(--color-accent-green)', borderColor: 'var(--color-accent-green)' }}
                       onClick={() => handleCompleteJourney(booking.id)}>

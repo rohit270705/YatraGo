@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   MapPin, Calendar, Clock, Car, User, Heart, CreditCard, Luggage,
-  CheckCircle, ArrowRight, AlertCircle, Wallet, Shield
+  CheckCircle, ArrowRight, AlertCircle, Wallet, Shield, Ticket
 } from 'lucide-react';
 import { useBookingStore, useVehicleStore, useWalletStore, useAuthStore, useToastStore, useAgentStore, usePlatformStore } from '../store';
 import { supabase } from '../supabaseClient';
@@ -155,18 +155,48 @@ export default function BookingPage() {
     setIsBooking(true);
     let result;
     if (isTransit) {
-      // Flights / Trains / Ferries use a synthetic routeId; booking flow is the same
       const listing = location.state?.transitListing;
+      const mode = listing?.mode || 'flight';
+
+      // Generate mock PNR and coach/seat for trains
+      const mockPnr   = mode === 'train'
+        ? String(Math.floor(1000000000 + Math.random() * 9000000000))
+        : null;
+      const mockCoach = mode === 'train'
+        ? `${['S','B','A'][Math.floor(Math.random()*3)]}${Math.floor(1+Math.random()*8)}, Seat ${Math.floor(1+Math.random()*72)}`
+        : null;
+      const cabinType = (mode === 'ferry' && listing?.listingType?.toLowerCase().includes('luxury'))
+        ? 'Deluxe Cabin'
+        : (mode === 'ferry' ? 'Standard Bunk' : null);
+
+      const transitMeta = {
+        from: listing?.from,
+        to: listing?.to,
+        price: listing?.price || 0,
+        operator: listing?.operator,
+        opCode: listing?.opCode,
+        travelClass: listing?.travelClass || listing?.listingType,
+        duration: listing?.duration,
+        depart: listing?.depart,
+        arrive: listing?.arrive,
+        listingType: listing?.listingType,
+        vehicleType: `${{ flight: '✈️ Flight', train: '🚂 Train', ferry: '🚢 Ferry' }[mode] || 'Transit'} — ${listing?.travelClass || listing?.listingType || ''}`,
+        status: listing?.status || 'Confirmed',
+        // Train-specific
+        pnr: mockPnr,
+        coachSeat: mockCoach,
+        // Ferry-specific
+        cabinType,
+      };
+
       result = await createBooking(
         listing?.id || 'transit-booking',
         passengers, totalLuggageKg, isAgent,
-        currentAgent?.id, customerPaymentMode, promoDiscount, promoCode
+        currentAgent?.id, customerPaymentMode, promoDiscount, promoCode,
+        mode, transitMeta
       );
     } else if (isCab) {
-      // For cabs, we can just save it as a booking but pass the cab driver ID
       result = await createBooking(routeId, passengers, totalLuggageKg, isAgent, currentAgent?.id, customerPaymentMode, promoDiscount, promoCode);
-      // NOTE: In a real app we would want a specific table or modified bookings table for cab bookings.
-      // For now we'll just use the regular booking API.
     } else {
       result = await createBooking(routeId, passengers, totalLuggageKg, isAgent, currentAgent?.id, customerPaymentMode, promoDiscount, promoCode);
     }
@@ -187,8 +217,14 @@ export default function BookingPage() {
     }
   };
 
+
   // Step 4: Confirmation
   if (step === 4 && confirmedBooking) {
+    const tm = confirmedBooking.transit_meta || null;
+    const bType = confirmedBooking.booking_type || (isTransit ? location.state?.mode : 'route');
+    const modeEmoji = { flight: '✈️', train: '🚂', ferry: '🚢' }[bType] || '🚌';
+    const { balance: walletBalance } = useWalletStore.getState();
+
     return (
       <div className="animate-scale-in" style={{ maxWidth: 600, margin: '0 auto', textAlign: 'center' }}>
         <div style={{
@@ -198,10 +234,26 @@ export default function BookingPage() {
         }}>
           <CheckCircle size={48} color="var(--color-accent-green)" />
         </div>
-        <h2 style={{ marginBottom: 8 }}>Booking Confirmed! 🎉</h2>
+        <h2 style={{ marginBottom: 8 }}>{modeEmoji} Booking Confirmed! 🎉</h2>
         <p style={{ color: 'var(--color-text-tertiary)', marginBottom: 32 }}>
-          Your ticket has been booked successfully.
+          {tm ? `Your ${bType} ticket is booked. Check your email for the e-ticket.` : 'Your ticket has been booked successfully.'}
         </p>
+
+        {/* PNR / ticket banner for trains */}
+        {tm?.pnr && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(20,184,166,0.15), rgba(14,116,144,0.1))',
+            border: '1px solid rgba(20,184,166,0.35)',
+            borderRadius: 'var(--radius-lg)', padding: '16px 24px',
+            marginBottom: 20, textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--color-accent-teal-light)', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4 }}>PNR NUMBER</div>
+            <div style={{ fontSize: '1.8rem', fontWeight: 900, letterSpacing: '0.18em', color: '#fff', fontFamily: 'monospace' }}>{tm.pnr}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+              Coach &amp; Seat: <strong style={{ color: '#fff' }}>{tm.coachSeat}</strong>
+            </div>
+          </div>
+        )}
 
         <div className="booking-summary">
           <div className="booking-summary-header">
@@ -220,21 +272,51 @@ export default function BookingPage() {
               <span className="label">Route</span>
               <span className="value">{route.from} → {route.to}</span>
             </div>
-            <div className="booking-summary-row">
-              <span className="label">Date</span>
-              <span className="value">{route.date}</span>
-            </div>
-            <div className="booking-summary-row">
-              <span className="label">Time</span>
-              <span className="value">{route.departureTime} → {route.arrivalTime}</span>
-            </div>
-            <div className="booking-summary-row">
-              <span className="label">Vehicle</span>
-              <span className="value">{vehicle.type} • {vehicle.registrationNumber}</span>
-            </div>
+            {tm && (
+              <>
+                <div className="booking-summary-row">
+                  <span className="label">Operator</span>
+                  <span className="value">{tm.operator}{tm.opCode ? ` (${tm.opCode})` : ''}</span>
+                </div>
+                <div className="booking-summary-row">
+                  <span className="label">{bType === 'ferry' ? 'Type' : 'Class'}</span>
+                  <span className="value">{tm.travelClass}</span>
+                </div>
+                {tm.depart && (
+                  <div className="booking-summary-row">
+                    <span className="label">Departure</span>
+                    <span className="value">{tm.depart}{tm.arrive ? ` → ${tm.arrive}` : ''} ({tm.duration})</span>
+                  </div>
+                )}
+                {tm.coachSeat && (
+                  <div className="booking-summary-row">
+                    <span className="label">Coach / Seat</span>
+                    <span className="value" style={{ fontWeight: 700, color: 'var(--color-accent-teal-light)' }}>{tm.coachSeat}</span>
+                  </div>
+                )}
+                {tm.cabinType && (
+                  <div className="booking-summary-row">
+                    <span className="label">Cabin</span>
+                    <span className="value" style={{ fontWeight: 700, color: '#60a5fa' }}>{tm.cabinType}</span>
+                  </div>
+                )}
+                {tm.status && bType === 'train' && (
+                  <div className="booking-summary-row">
+                    <span className="label">Status</span>
+                    <span className="value" style={{ fontWeight: 700, color: tm.status === 'Available' ? 'var(--color-accent-green)' : tm.status === 'RAC' ? 'var(--color-accent-amber)' : '#ef4444' }}>
+                      {tm.status}
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
             <div className="booking-summary-row">
               <span className="label">Passengers</span>
-              <span className="value">{confirmedBooking.passengerDetails.length} Person(s)</span>
+              <span className="value">
+                {Array.isArray(confirmedBooking.passengerDetails)
+                  ? `${confirmedBooking.passengerDetails.length} Person(s) — ${confirmedBooking.passengerDetails.map(p => p.name).filter(Boolean).join(', ')}`
+                  : confirmedBooking.passengerDetails?.name || '1 Passenger'}
+              </span>
             </div>
             <div className="booking-summary-row">
               <span className="label">Luggage</span>
@@ -250,17 +332,29 @@ export default function BookingPage() {
               <span>Total Paid</span>
               <span className="value">₹{confirmedBooking.totalAmount}</span>
             </div>
+            {isTransit && (
+              <div className="booking-summary-row" style={{ marginTop: 4 }}>
+                <span className="label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Wallet size={13} /> Wallet Balance</span>
+                <span className="value" style={{ color: 'var(--color-accent-teal-light)' }}>₹{walletBalance?.toLocaleString('en-IN')}</span>
+              </div>
+            )}
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 12, marginTop: 24, justifyContent: 'center' }}>
-          <button className="btn btn-secondary" onClick={() => navigate('/bookings')}>
-            View My Bookings
+        <div style={{ display: 'flex', gap: 12, marginTop: 24, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" onClick={() => navigate('/bookings')}>
+            <Ticket size={16} /> View in My Bookings
           </button>
-          <button className="btn btn-primary" onClick={() => navigate('/search')}>
-            Book Another Trip
+          <button className="btn btn-secondary" onClick={() => navigate(
+            bType === 'train' ? '/trains' : bType === 'flight' ? '/flights' : bType === 'ferry' ? '/ferries' : '/search'
+          )}>
+            Book Another {bType === 'train' ? 'Train' : bType === 'flight' ? 'Flight' : bType === 'ferry' ? 'Ferry' : 'Trip'}
           </button>
         </div>
+
+        <p style={{ marginTop: 16, fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+          ⚠️ This is a demo booking — no real ticket is issued.
+        </p>
       </div>
     );
   }

@@ -531,6 +531,16 @@ export default function App() {
             <AppLayout><BookingPage /></AppLayout>
           </ProtectedRoute>
         } />
+        <Route path="/booking" element={
+          <ProtectedRoute allowedRoles={['passenger', 'agent']}>
+            <AppLayout><BookingPage /></AppLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/booking/:routeId" element={
+          <ProtectedRoute allowedRoles={['passenger', 'agent']}>
+            <AppLayout><BookingPage /></AppLayout>
+          </ProtectedRoute>
+        } />
         <Route path="/tracking" element={
           <ProtectedRoute allowedRoles={['passenger']}>
             <AppLayout><LiveTrackingPage /></AppLayout>

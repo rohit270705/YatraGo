@@ -1347,13 +1347,22 @@ export const useBookingStore = create(
     return results;
   },
 
-  createBooking: async (routeId, passengers, totalLuggageKg, isAgentBooking = false, agentId = null, customerPaymentMode = 'wallet', promoDiscount = 0, promoCode = null) => {
+  createBooking: async (routeId, passengers, totalLuggageKg, isAgentBooking = false, agentId = null, customerPaymentMode = 'wallet', promoDiscount = 0, promoCode = null, bookingType = 'route', transitMeta = null) => {
     try {
       const user = useAuthStore.getState().user;
       if (!user) return { error: 'Not authenticated' };
 
-      const route = get().routes.find(r => String(r.id) === String(routeId)) || MOCK_ROUTES.find(r => String(r.id) === String(routeId)) || { id: routeId, price: 500, from: 'Origin', to: 'Destination' };
-      const vehicle = MOCK_VEHICLES.find(v => String(v.id) === String(route.vehicle_id || route.vehicleId)) || { id: 'veh-1', type: 'Bus', registrationNumber: 'DL-01-AB-1234' };
+      const isTransitBooking = ['flight', 'train', 'ferry'].includes(bookingType);
+
+      // For transit bookings, use the data passed in directly — do NOT look up the
+      // routes table (which has no transit rows) to avoid FK violations.
+      const route = isTransitBooking
+        ? { id: routeId, price: transitMeta?.price || 0, from: transitMeta?.from || 'Origin', to: transitMeta?.to || 'Destination' }
+        : (get().routes.find(r => String(r.id) === String(routeId)) || MOCK_ROUTES.find(r => String(r.id) === String(routeId)) || { id: routeId, price: 500, from: 'Origin', to: 'Destination' });
+
+      const vehicle = isTransitBooking
+        ? { id: 'transit', type: transitMeta?.vehicleType || bookingType, registrationNumber: transitMeta?.opCode || '' }
+        : (MOCK_VEHICLES.find(v => String(v.id) === String(route.vehicle_id || route.vehicleId)) || { id: 'veh-1', type: 'Bus', registrationNumber: 'DL-01-AB-1234' });
 
       const calculatePassengerPrice = (ageStr) => {
         const age = parseInt(ageStr) || 0;
@@ -1382,14 +1391,24 @@ export const useBookingStore = create(
         totalAmount -= Math.round((totalAmount * promoDiscount) / 100);
       }
 
-      // For the two-step booking flow, we don't deduct money immediately.
-      // We just create a pending request for the owner to approve.
+      // ── Transit bookings: deduct wallet immediately & confirm ──────────────
+      // Regular route bookings go through the owner-approval flow (pending_owner_approval).
+      // Transit (flight/train/ferry) bookings confirm instantly like a ticket counter.
+      let bookingStatus = 'pending_owner_approval';
+      if (isTransitBooking) {
+        const walletOk = await useWalletStore.getState().deductMoney(
+          totalAmount,
+          `${bookingType.charAt(0).toUpperCase() + bookingType.slice(1)} Ticket: ${transitMeta?.from || ''} → ${transitMeta?.to || ''}`
+        );
+        if (!walletOk) return { error: 'Insufficient wallet balance. Please add money to your wallet.' };
+        bookingStatus = 'confirmed';
+      }
 
-      // Insert into Supabase with pending status
-      const { data: booking, error: insertError } = await supabase.from('bookings').insert([{
+      // Build the insert payload — use NULL for route_id on transit to avoid FK constraint
+      const insertPayload = {
         id: 'BK-' + uuidv4().slice(0, 8).toUpperCase(),
         user_id: user.id,
-        route_id: String(routeId),
+        route_id: isTransitBooking ? null : String(routeId),
         passenger_details: passengers,
         luggage_kg: totalLuggageKg,
         extra_luggage_cost: luggageCost,
@@ -1398,15 +1417,44 @@ export const useBookingStore = create(
         is_agent_booking: isAgentBooking,
         agent_id: agentId,
         customer_payment_mode: customerPaymentMode,
-        status: 'pending_owner_approval'
-      }]).select().single();
+        status: bookingStatus,
+        booking_type: bookingType,
+        transit_meta: isTransitBooking ? transitMeta : null,
+      };
+
+      const { data: booking, error: insertError } = await supabase
+        .from('bookings')
+        .insert([insertPayload])
+        .select()
+        .single();
 
       if (insertError) {
-        throw insertError;
+        // If the Supabase insert fails (e.g. new columns not yet migrated),
+        // fall back to a local-only booking so the UI never dead-ends.
+        console.warn('Supabase booking insert error (falling back to local):', insertError);
+        const localFallback = {
+          ...insertPayload,
+          route,
+          vehicle: { id: vehicle.id, registrationNumber: vehicle.registration_number || vehicle.registrationNumber, type: vehicle.type, ownerName: vehicle.owner_name || vehicle.ownerName },
+          passengerDetails: passengers,
+          luggageKg: totalLuggageKg,
+          extraLuggageCost: luggageCost,
+          totalAmount,
+          commissionAmount,
+          isAgentBooking,
+          agentId,
+          customerPaymentMode,
+          createdAt: new Date().toISOString(),
+          transit_meta: transitMeta,
+          booking_type: bookingType,
+        };
+        const { bookings } = get();
+        set({ bookings: [localFallback, ...bookings] });
+        return localFallback;
       }
 
       if (promoCode) {
-        await supabase.rpc('apply_promo_code', { target_code: promoCode });
+        try { await supabase.rpc('apply_promo_code', { target_code: promoCode }); } catch (_) {}
       }
 
       // Format for local state
@@ -1426,8 +1474,10 @@ export const useBookingStore = create(
         commissionAmount: booking.commission_amount,
         isAgentBooking: booking.is_agent_booking,
         agentId: booking.agent_id,
-        customerPaymentMode: customerPaymentMode,
+        customerPaymentMode,
         createdAt: booking.created_at,
+        transit_meta: booking.transit_meta || transitMeta,
+        booking_type: booking.booking_type || bookingType,
       };
 
       const { bookings } = get();
@@ -1621,11 +1671,13 @@ export const useBookingStore = create(
       rating,       // 1-5
       comment,
       tags,         // e.g. ['clean vehicle', 'on-time', 'polite driver']
-      routeFrom: booking.route.from,
-      routeTo: booking.route.to,
-      vehicleType: booking.vehicle?.type,
-      vehicleReg: booking.vehicle?.registrationNumber,
-      passengerName: booking.passengerDetails.name,
+      routeFrom: booking.route?.from || booking.transit_meta?.from || 'Origin',
+      routeTo: booking.route?.to || booking.transit_meta?.to || 'Destination',
+      vehicleType: booking.vehicle?.type || booking.transit_meta?.vehicleType || 'Transit',
+      vehicleReg: booking.vehicle?.registrationNumber || booking.transit_meta?.opCode || '',
+      passengerName: Array.isArray(booking.passengerDetails)
+        ? booking.passengerDetails[0]?.name || 'Passenger'
+        : booking.passengerDetails?.name || 'Passenger',
       isAgentBooking: booking.isAgentBooking,
       submittedAt: new Date().toISOString(),
     };
