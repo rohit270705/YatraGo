@@ -4,9 +4,9 @@ import {
   Search, MapPin, Calendar, ArrowRightLeft, Wallet, Award,
   Clock, ArrowRight, Ticket, Star, Navigation, Gift, Repeat,
   ClipboardList, Route, Plus, Package, TrendingUp, Car, ChevronRight,
-  Plane, TrainFront, Shield, LayoutGrid, Wifi, Zap, Ship
+  Plane, TrainFront, LayoutGrid, Ship
 } from 'lucide-react';
-import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToastStore, useTransportModalStore } from '../store';
+import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToastStore } from '../store';
 import { supabase } from '../supabaseClient';
 import SkeletonLoader from '../components/SkeletonLoader';
 import DashboardHeader from '../components/DashboardHeader';
@@ -400,8 +400,6 @@ export default function DashboardPage() {
           )}
         </Section>
 
-        {/* ── COMING SOON: FLIGHTS & TRAINS ── */}
-        <ComingSoonSection openModal={useTransportModalStore.getState().openModal} />
 
         {/* ── POPULAR ROUTES ── */}
         <Section
@@ -459,162 +457,3 @@ function Section({ icon, title, action, children }) {
   );
 }
 
-/* ── Coming Soon section (Flights + Trains inline cards) ── */
-const COMING_SOON_CONFIG = {
-  flights: {
-    icon: Plane,
-    accent: '#a855f7',
-    ring: 'rgba(168,85,247,0.5)',
-    ringBg: 'rgba(168,85,247,0.12)',
-    glow: 'rgba(168,85,247,0.22)',
-    badgeBg: 'rgba(168,85,247,0.15)',
-    badgeBorder: 'rgba(168,85,247,0.4)',
-    badgeColor: '#c084fc',
-    btnBg: 'linear-gradient(135deg,#9333ea,#a855f7,#c084fc)',
-    btnShadow: 'rgba(168,85,247,0.35)',
-    headline: '✈️ Flight Booking',
-    sub: 'Domestic flights across India — integrating top airlines.',
-    features: [
-      { icon: Ticket,     label: 'Easy Bookings' },
-      { icon: Star,       label: 'Best Fares' },
-      { icon: Shield,     label: 'Secure Payments' },
-      { icon: Wifi,       label: 'Live Status' },
-    ],
-    feature_name: 'flights',
-  },
-  trains: {
-    icon: TrainFront,
-    accent: '#14b8a6',
-    ring: 'rgba(20,184,166,0.5)',
-    ringBg: 'rgba(20,184,166,0.12)',
-    glow: 'rgba(20,184,166,0.22)',
-    badgeBg: 'rgba(20,184,166,0.15)',
-    badgeBorder: 'rgba(20,184,166,0.4)',
-    badgeColor: '#2dd4bf',
-    btnBg: 'linear-gradient(135deg,#0d9488,#14b8a6,#2dd4bf)',
-    btnShadow: 'rgba(20,184,166,0.35)',
-    headline: '🚂 Train Booking',
-    sub: 'IRCTC integration — seats, PNR status & more.',
-    features: [
-      { icon: Ticket,     label: 'Easy Bookings' },
-      { icon: LayoutGrid, label: 'Seat Layouts' },
-      { icon: Clock,      label: 'Live PNR' },
-      { icon: Shield,     label: 'Reliable' },
-    ],
-    feature_name: 'trains',
-  },
-  ferries: {
-    icon: Ship,
-    accent: '#3b82f6',
-    ring: 'rgba(59,130,246,0.5)',
-    ringBg: 'rgba(59,130,246,0.12)',
-    glow: 'rgba(59,130,246,0.22)',
-    badgeBg: 'rgba(59,130,246,0.15)',
-    badgeBorder: 'rgba(59,130,246,0.4)',
-    badgeColor: '#60a5fa',
-    btnBg: 'linear-gradient(135deg,#2563eb,#3b82f6,#60a5fa)',
-    btnShadow: 'rgba(59,130,246,0.35)',
-    headline: '🚢 Ferry Booking',
-    sub: 'Discover scenic water routes and book ferry tickets.',
-    features: [
-      { icon: Ticket,     label: 'Easy Bookings' },
-      { icon: MapPin,     label: 'Scenic Routes' },
-      { icon: Clock,      label: 'Live Schedules' },
-      { icon: Shield,     label: 'Reliable' },
-    ],
-    feature_name: 'ferries',
-  },
-};
-
-function ComingSoonSection({ openModal }) {
-  return (
-    <div className="pax-section">
-      <div className="pax-section-header">
-        <div className="pax-section-title">
-          <Zap size={15} className="text-[var(--color-text-tertiary)]" />
-          <span>Coming Soon</span>
-        </div>
-      </div>
-      <div className="pax-section-body" style={{ background: 'transparent', border: 'none', overflow: 'visible' }}>
-        <div className="pax-coming-soon-grid">
-          {Object.entries(COMING_SOON_CONFIG).map(([type, cfg]) => {
-            const IconCmp = cfg.icon;
-            return (
-              <div
-                key={type}
-                onClick={() => openModal(type)}
-                style={{
-                  background: 'linear-gradient(145deg,#0d1b3e 0%,#070f22 70%,#0a0f1e 100%)',
-                  border: `1px solid ${cfg.ring}`,
-                  borderRadius: '20px',
-                  padding: '22px 18px 18px',
-                  cursor: 'pointer',
-                  boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 30px ${cfg.glow}`,
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  display: 'flex', flexDirection: 'column', gap: '14px',
-                  position: 'relative', overflow: 'hidden',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 14px 40px rgba(0,0,0,0.6), 0 0 40px ${cfg.glow}`; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = `0 8px 32px rgba(0,0,0,0.5), 0 0 30px ${cfg.glow}`; }}
-              >
-                {/* Icon + ring */}
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <div style={{
-                    width: '62px', height: '62px', borderRadius: '50%',
-                    background: cfg.ringBg,
-                    border: `2px solid ${cfg.ring}`,
-                    color: cfg.accent,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: `0 0 18px ${cfg.glow}`,
-                  }}>
-                    <IconCmp size={28} strokeWidth={1.8} />
-                  </div>
-                </div>
-
-                {/* Badge */}
-                <div style={{ textAlign: 'center' }}>
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '5px',
-                    padding: '4px 12px', borderRadius: '999px',
-                    fontSize: '9.5px', fontWeight: 800, letterSpacing: '0.12em',
-                    background: cfg.badgeBg, border: `1px solid ${cfg.badgeBorder}`,
-                    color: cfg.badgeColor,
-                  }}>
-                    <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: cfg.badgeColor, display: 'inline-block' }} />
-                    COMING SOON
-                  </span>
-                </div>
-
-                {/* Headline */}
-                <div style={{ textAlign: 'center', fontWeight: 800, fontSize: '1.02rem', color: '#fff', lineHeight: 1.25 }}>
-                  {cfg.headline}
-                </div>
-
-                {/* Sub */}
-                <div style={{ textAlign: 'center', fontSize: '0.78rem', color: 'rgba(255,255,255,0.65)', lineHeight: 1.5, padding: '0 4px' }}>
-                  {cfg.sub}
-                </div>
-
-                {/* Feature icons row */}
-                <div className="pax-coming-soon-features">
-                  {cfg.features.map(({ icon: Ic, label }) => (
-                    <div key={label} style={{
-                      display: 'flex', alignItems: 'center', gap: '7px',
-                      padding: '8px 10px', borderRadius: '10px',
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.07)',
-                    }}>
-                      <Ic size={14} color={cfg.accent} strokeWidth={1.8} style={{ flexShrink: 0 }} />
-                      <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.85)', lineHeight: 1.25, whiteSpace: 'nowrap' }}>{label}</span>
-                    </div>
-                  ))}
-                </div>
-
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}

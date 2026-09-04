@@ -45,6 +45,9 @@ const PackageDetailsPage = lazy(() => import('./pages/PackageDetailsPage'));
 const HostDashboardPage = lazy(() => import('./pages/HostDashboardPage'));
 const SupportTicketsPage = lazy(() => import('./pages/SupportTicketsPage'));
 const TripGraphPage = lazy(() => import('./pages/TripGraphPage'));
+const FlightsPage = lazy(() => import('./pages/FlightsPage'));
+const TrainsPage = lazy(() => import('./pages/TrainsPage'));
+const FerriesPage = lazy(() => import('./pages/FerriesPage'));
 import ChatWidget from './components/ChatWidget';
 
 // ===== FIX 4: mapDbUser moved outside — no longer re-created on every render =====
@@ -124,9 +127,9 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/bookings', label: 'My Bookings', icon: Ticket },
     { path: '/wallet', label: 'Wallet', icon: Wallet },
     { path: '/packages', label: 'Holiday Packages', icon: Palmtree },
-    { path: '#flights', label: 'Flights', icon: Plane, isModal: 'flights', badge: 'SOON' },
-    { path: '#trains', label: 'Trains', icon: TrainFront, isModal: 'trains', badge: 'SOON' },
-    { path: '#ferries', label: 'Ferries', icon: Ship, isModal: 'ferries', badge: 'SOON' },
+    { path: '/flights', label: 'Flights', icon: Plane },
+    { path: '/trains', label: 'Trains', icon: TrainFront },
+    { path: '/ferries', label: 'Ferries/Cruise Ships', icon: Ship },
     { path: '/host', label: 'My Homestay', icon: Home },
     { path: '/rentals', label: 'Rent Bike/Scooty', icon: Bike },
     { path: '/vehicles', label: 'Vehicles', icon: Car },
@@ -149,9 +152,9 @@ function Sidebar({ isOpen, onClose }) {
     {
       title: 'TRANSIT & MORE',
       links: [
-        { path: '#flights', label: 'Flights', icon: Plane, isModal: 'flights', badge: 'SOON' },
-        { path: '#trains', label: 'Trains', icon: TrainFront, isModal: 'trains', badge: 'SOON' },
-        { path: '#ferries', label: 'Ferries', icon: Ship, isModal: 'ferries', badge: 'SOON' },
+        { path: '/flights', label: 'Flights', icon: Plane },
+        { path: '/trains', label: 'Trains', icon: TrainFront },
+        { path: '/ferries', label: 'Ferries/Cruise Ships', icon: Ship },
         { path: '/rentals', label: 'Rent Bike/Scooty', icon: Bike },
         { path: '/vehicles', label: 'Vehicles', icon: Car },
       ]
@@ -180,9 +183,9 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/trip/new', label: 'Plan Client Trip', icon: RouteIcon, badge: 'NEW' },
     { path: '/search', label: 'Book for Customer', icon: Search },
     { path: '/packages', label: 'Holiday Packages', icon: Palmtree },
-    { path: '#flights', label: 'Flights', icon: Plane, isModal: 'flights', badge: 'SOON' },
-    { path: '#trains', label: 'Trains', icon: TrainFront, isModal: 'trains', badge: 'SOON' },
-    { path: '#ferries', label: 'Ferries', icon: Ship, isModal: 'ferries', badge: 'SOON' },
+    { path: '/flights', label: 'Flights', icon: Plane },
+    { path: '/trains', label: 'Trains', icon: TrainFront },
+    { path: '/ferries', label: 'Ferries/Cruise Ships', icon: Ship },
     { path: '/host', label: 'Homestay Booking', icon: Home },
     { path: '/rentals', label: 'Rent Bike/Scooty', icon: Bike },
     { path: '/vehicles', label: 'Vehicles', icon: Car },
@@ -541,6 +544,23 @@ export default function App() {
         <Route path="/rentals" element={
           <ProtectedRoute allowedRoles={['passenger']}>
             <AppLayout><RentalPage /></AppLayout>
+          </ProtectedRoute>
+        } />
+
+        {/* Flights / Trains / Ferries — Passenger + Agent */}
+        <Route path="/flights" element={
+          <ProtectedRoute allowedRoles={['passenger', 'agent']}>
+            <AppLayout><FlightsPage /></AppLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/trains" element={
+          <ProtectedRoute allowedRoles={['passenger', 'agent']}>
+            <AppLayout><TrainsPage /></AppLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/ferries" element={
+          <ProtectedRoute allowedRoles={['passenger', 'agent']}>
+            <AppLayout><FerriesPage /></AppLayout>
           </ProtectedRoute>
         } />
 

@@ -25,10 +25,30 @@ export default function BookingPage() {
   }, [routes.length, fetchAllRoutes, location.state]);
 
   const isCab = location.state?.isCab;
+  const isTransit = !!(location.state?.transitListing);
   let route = null;
   let vehicle = null;
 
-  if (isCab) {
+  if (isTransit) {
+    // Flights / Trains / Ferries dummy listing → build synthetic route + vehicle
+    const listing = location.state.transitListing;
+    const modeLabel = { flight: '✈️ Flight', train: '🚂 Train', ferry: '🚢 Ferry' }[listing.mode] || 'Transit';
+    route = {
+      id: listing.id || routeId || 'transit-1',
+      from: listing.from,
+      to: listing.to,
+      date: new Date().toISOString().split('T')[0],
+      departureTime: listing.depart || 'See schedule',
+      arrivalTime: listing.arrive || listing.duration || 'See schedule',
+      price: listing.price || 0,
+      luggageAvailable: 20,
+      stops: [],
+    };
+    vehicle = {
+      type: `${modeLabel} — ${listing.travelClass || listing.listingType || ''}`,
+      registrationNumber: listing.opCode || listing.operator || '',
+    };
+  } else if (isCab) {
     const cab = location.state?.route || {};
     route = {
       id: cab.id || routeId || 'cab-1',
@@ -38,7 +58,8 @@ export default function BookingPage() {
       departureTime: 'Flexible',
       arrivalTime: 'Flexible',
       price: cab.rate || 500,
-      luggageAvailable: cab.luggage_available || 50
+      luggageAvailable: cab.luggage_available || 50,
+      stops: [],
     };
     vehicle = {
       type: 'Cab',
@@ -95,7 +116,12 @@ export default function BookingPage() {
         <div className="empty-state-icon"><AlertCircle size={36} /></div>
         <h3>Trip Not Found</h3>
         <p>This trip may no longer be available.</p>
-        <button className="btn btn-primary" onClick={() => navigate('/search')}>Search Trips</button>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button className="btn btn-secondary" onClick={() => navigate('/flights')}>✈️ Flights</button>
+          <button className="btn btn-secondary" onClick={() => navigate('/trains')}>🚂 Trains</button>
+          <button className="btn btn-secondary" onClick={() => navigate('/ferries')}>🚢 Ferries</button>
+          <button className="btn btn-primary" onClick={() => navigate('/search')}>Search Trips</button>
+        </div>
       </div>
     );
   }
@@ -128,7 +154,15 @@ export default function BookingPage() {
   const handleBook = async () => {
     setIsBooking(true);
     let result;
-    if (isCab) {
+    if (isTransit) {
+      // Flights / Trains / Ferries use a synthetic routeId; booking flow is the same
+      const listing = location.state?.transitListing;
+      result = await createBooking(
+        listing?.id || 'transit-booking',
+        passengers, totalLuggageKg, isAgent,
+        currentAgent?.id, customerPaymentMode, promoDiscount, promoCode
+      );
+    } else if (isCab) {
       // For cabs, we can just save it as a booking but pass the cab driver ID
       result = await createBooking(routeId, passengers, totalLuggageKg, isAgent, currentAgent?.id, customerPaymentMode, promoDiscount, promoCode);
       // NOTE: In a real app we would want a specific table or modified bookings table for cab bookings.
