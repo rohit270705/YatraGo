@@ -29,6 +29,7 @@ const SearchPage = lazy(() => import('./pages/SearchPage'));
 const BookingPage = lazy(() => import('./pages/BookingPage'));
 const MyBookingsPage = lazy(() => import('./pages/MyBookingsPage'));
 const WalletPage = lazy(() => import('./pages/WalletPage'));
+const SpendingAnalyticsPage = lazy(() => import('./pages/SpendingAnalyticsPage'));
 const VehiclesPage = lazy(() => import('./pages/VehiclesPage'));
 const VehicleDetailPage = lazy(() => import('./pages/VehicleDetailPage'));
 const LiveTrackingPage = lazy(() => import('./pages/LiveTrackingPage'));
@@ -180,6 +181,7 @@ function Sidebar({ isOpen, onClose }) {
       title: 'ACCOUNT',
       links: [
         { path: '/wallet', label: 'Wallet', icon: Wallet },
+        { path: '/spending', label: 'Spending Analytics', icon: TrendingUp },
         { path: '/support', label: 'Support Help Desk', icon: ClipboardList },
         { path: '/sessions', label: 'Active Devices', icon: Settings },
       ]
@@ -200,6 +202,7 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/bookings', label: 'All Bookings', icon: Ticket },
     { path: '/daily-report', label: 'Daily Report', icon: ClipboardList },
     { path: '/wallet', label: 'Wallet', icon: Wallet },
+    { path: '/spending', label: 'Spending Analytics', icon: TrendingUp },
     { path: '/profile', label: 'My Profile', icon: UserCircle },
     { path: '/support', label: 'Support', icon: ClipboardList },
   ];
@@ -236,7 +239,7 @@ function Sidebar({ isOpen, onClose }) {
     : passengerLinks;
 
   // For guests: lock-icon personal links open modal instead of navigating
-  const GUEST_LOCKED_PATHS = ['/wallet', '/bookings', '/profile', '/sessions', '/support'];
+  const GUEST_LOCKED_PATHS = ['/wallet', '/spending', '/bookings', '/profile', '/sessions', '/support'];
 
   const handleNav = (path) => {
     if (!user && GUEST_LOCKED_PATHS.includes(path)) {
@@ -543,6 +546,7 @@ export default function App() {
         <Route path="/sessions" element={<GuestFriendlyRoute label="Devices"><AppLayout><DeviceSessionsPage /></AppLayout></GuestFriendlyRoute>} />
         <Route path="/bookings" element={<GuestFriendlyRoute label="Bookings"><AppLayout><MyBookingsPage /></AppLayout></GuestFriendlyRoute>} />
         <Route path="/wallet"   element={<GuestFriendlyRoute label="Wallet"><AppLayout><WalletPage /></AppLayout></GuestFriendlyRoute>} />
+        <Route path="/spending" element={<GuestFriendlyRoute label="Spending Analytics"><AppLayout><SpendingAnalyticsPage /></AppLayout></GuestFriendlyRoute>} />
         <Route path="/support"  element={<GuestFriendlyRoute label="Support"><AppLayout><SupportTicketsPage /></AppLayout></GuestFriendlyRoute>} />
 
         {/* ── Staff/role-gated pages — keep ProtectedRoute ── */}
