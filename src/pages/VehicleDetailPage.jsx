@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Car, Shield, Calendar, MapPin, Users, ArrowRight, CheckCircle, AlertTriangle, Clock, Navigation, Sparkles, DollarSign, Send } from 'lucide-react';
 import { useVehicleStore, useVehicleOfferStore, useToastStore, useAuthStore } from '../store';
+import { useAuthGate } from '../hooks/useAuthGate';
 
 export default function VehicleDetailPage() {
   const { vehicleId } = useParams();
@@ -10,6 +11,7 @@ export default function VehicleDetailPage() {
   const { createOffer } = useVehicleOfferStore();
   const { addToast } = useToastStore();
   const { user } = useAuthStore();
+  const gate = useAuthGate();
   
   const vehicle = getVehicle(vehicleId);
 
@@ -50,13 +52,7 @@ export default function VehicleDetailPage() {
     );
   }
 
-  const handleOfferSubmit = async (e) => {
-    e.preventDefault();
-    if (!user) {
-      addToast('Please sign in to send a price offer to the vehicle owner.', 'warning');
-      navigate('/login');
-      return;
-    }
+  const handleOfferSubmit = async () => {
     if (!routeFrom || !routeTo || !travelDate) {
       addToast('Please enter origin, destination, and travel date.', 'warning');
       return;
@@ -170,7 +166,7 @@ export default function VehicleDetailPage() {
             </div>
           </div>
         ) : (
-          <form onSubmit={handleOfferSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <form onSubmit={e => { e.preventDefault(); gate(handleOfferSubmit, { type: 'vehicle_offer', payload: { listing: vehicle } }); }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Route & Date Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>

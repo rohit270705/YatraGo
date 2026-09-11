@@ -5,6 +5,7 @@ import {
   RotateCcw, XCircle, ChevronDown
 } from 'lucide-react';
 import { useRentalStore, useWalletStore, useToastStore, useAuthStore, useChatStore, useDriverStore } from '../store';
+import { useAuthGate } from '../hooks/useAuthGate';
 
 const CATEGORY_TABS = [
   { id: 'all', label: 'All', icon: '🚀' },
@@ -16,8 +17,9 @@ export default function RentalPage() {
   const { rentalVehicles, activeRentals, rentalHistory, bookRental, returnRental, cancelRental } = useRentalStore();
   const { balance } = useWalletStore();
   const { addToast } = useToastStore();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const { availableDrivers, fetchAvailableDrivers } = useDriverStore();
+  const gate = useAuthGate();
 
   const userActiveRentals = activeRentals.filter(r => r.userId === user?.id);
   const userRentalHistory = rentalHistory.filter(r => r.userId === user?.id);
@@ -749,7 +751,7 @@ export default function RentalPage() {
             </div>
 
             {/* Wallet Balance Check */}
-            {balance < totalPayable && (
+            {isAuthenticated && balance < totalPayable && (
               <div style={{
                 padding: '10px 14px', background: 'rgba(231, 76, 60, 0.1)',
                 borderRadius: 'var(--radius-md)', fontSize: '0.8rem', color: 'var(--color-accent-red)',
@@ -771,8 +773,8 @@ export default function RentalPage() {
 
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={() => setBookingModal(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleBook}
-                disabled={isBooking || balance < totalPayable}>
+              <button className="btn btn-primary" onClick={() => gate(handleBook, { type: 'rental', payload: { listing: bookingModal } })}
+                disabled={isBooking || (isAuthenticated && balance < totalPayable)}>
                 {isBooking
                   ? <span className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
                   : `Pay ₹${totalPayable} & Rent`

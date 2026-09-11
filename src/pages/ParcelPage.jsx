@@ -7,14 +7,16 @@ import {
   Building2, Zap, Calendar, Award, RefreshCw, X
 } from 'lucide-react';
 import { useParcelStore, useWalletStore, useToastStore, useAuthStore } from '../store';
+import { useAuthGate } from '../hooks/useAuthGate';
 import DashboardHeader from '../components/DashboardHeader';
 import LiveStatusCard from '../components/LiveStatusCard';
 
 export default function ParcelPage() {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const { balance } = useWalletStore();
   const addToast = useToastStore(s => s.addToast);
+  const gate = useAuthGate();
   const {
     parcels, fetchParcels, getDeliveryTiers,
     createParcelDelivery, trackShipment, activeTracking,
@@ -488,8 +490,8 @@ export default function ParcelPage() {
                 <button
                   className="btn btn-primary btn-lg"
                   style={{ flex: 1, justifyContent: 'center' }}
-                  onClick={handleCreateBooking}
-                  disabled={isBooking}
+                  onClick={() => gate(handleCreateBooking, { type: 'parcel' })}
+                  disabled={isBooking || (isAuthenticated && balance < finalPrice)}
                 >
                   {isBooking ? 'Processing Booking...' : `Confirm & Pay ₹${finalPrice}`}
                 </button>

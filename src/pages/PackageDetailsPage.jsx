@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Calendar, Clock, Star, Info, Check, X, Car, Home, IndianRupee, Building2 } from 'lucide-react';
 import { usePackageStore, useAuthStore, useToastStore, useAccommodationStore } from '../store';
+import { useAuthGate } from '../hooks/useAuthGate';
 import VehicleSelector from '../components/VehicleSelector';
 import FoodDiscovery from '../components/FoodDiscovery';
 import ReviewSection from '../components/ReviewSection';
@@ -12,6 +13,7 @@ export default function PackageDetailsPage() {
   const { packages, fetchPackages } = usePackageStore();
   const { user } = useAuthStore();
   const { addToast } = useToastStore();
+  const gate = useAuthGate();
   
   const [pkg, setPkg] = useState(null);
   const [activeTab, setActiveTab] = useState('itinerary');
@@ -38,11 +40,6 @@ export default function PackageDetailsPage() {
   }
 
   const handleBook = () => {
-    if (!user) {
-      addToast('Please login to book this package', 'info');
-      navigate('/login');
-      return;
-    }
     // Final checkout logic connecting package, vehicle, accommodation
     addToast('Booking checkout initiated!', 'success');
   };
@@ -243,7 +240,7 @@ export default function PackageDetailsPage() {
               <div>• <strong>All other cases:</strong> 100% refund, no questions asked</div>
             </div>
 
-            <button className="btn btn-primary" style={{ width: '100%', padding: '16px 0', fontSize: '1.1rem' }} onClick={handleBook}>
+            <button className="btn btn-primary" style={{ width: '100%', padding: '16px 0', fontSize: '1.1rem' }} onClick={() => gate(handleBook, { type: 'package', payload: { listing: pkg } })}>
               Continue to Book
             </button>
           </div>

@@ -3961,3 +3961,20 @@ export const useTripGraphStore = create((set, get) => ({
   clearActiveTrip: () => set({ activeTrip: null }),
 }));
 
+// ===== Guest Pending-Action Store =====
+// Holds the action context that a guest triggered before logging in.
+// After successful auth, the modal reads resumeFn and calls it automatically.
+export const useGuestStore = create((set) => ({
+  pendingAction: null, // { type, payload, resumeFn }
+  setPendingAction: (action) => set({ pendingAction: action }),
+  clearPendingAction: () => set({ pendingAction: null }),
+}));
+
+// ===== Guest Login Modal Store =====
+// Single open/close toggle — one modal mounted once in AppLayout.
+export const useGuestLoginModalStore = create((set) => ({
+  isOpen: false,
+  defaultTab: 'signin', // 'signin' | 'signup'
+  openModal: (tab = 'signin') => set({ isOpen: true, defaultTab: tab }),
+  closeModal: () => set({ isOpen: false }),
+}));

@@ -6,6 +6,7 @@ import {
   ChevronDown, ChevronUp, FileText, Info, Accessibility, BadgePercent
 } from 'lucide-react';
 import { useBookingStore, useVehicleStore, useWalletStore, useAuthStore, useToastStore, useAgentStore, usePlatformStore } from '../store';
+import { useAuthGate } from '../hooks/useAuthGate';
 import { supabase } from '../supabaseClient';
 import {
   calcGst, isValidGstin, gstinStateCode, gstSplitType,
@@ -256,9 +257,10 @@ export default function BookingPage() {
   const { routes, fetchAllRoutes, createBooking } = useBookingStore();
   const { vehicles }    = useVehicleStore();
   const { balance }     = useWalletStore();
-  const { user }        = useAuthStore();
   const { addToast }    = useToastStore();
-  const { currentAgent, addAgentBooking } = useAgentStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const { currentAgent, addBooking: addAgentBooking } = useAgentStore();
+  const gate            = useAuthGate();
 
   useEffect(() => {
     if (!location.state?.isCab && routes.length === 0 && fetchAllRoutes) {
@@ -1112,16 +1114,18 @@ export default function BookingPage() {
                 <Wallet size={24} color="var(--color-accent-teal-light)" />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600 }}>Pay via Wallet</div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--color-text-tertiary)' }}>Balance: ₹{balance.toLocaleString()}</div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--color-text-tertiary)' }}>
+                    {isAuthenticated ? `Balance: ₹${balance.toLocaleString()}` : 'Sign in to use wallet balance'}
+                  </div>
                 </div>
-                {balance >= totalAmount ? (
+                {isAuthenticated && (balance >= totalAmount ? (
                   <span className="badge badge-success">Sufficient</span>
                 ) : (
                   <span className="badge badge-danger">Low Balance</span>
-                )}
+                ))}
               </div>
 
-              {balance < totalAmount && (
+              {isAuthenticated && balance < totalAmount && (
                 <div style={{ marginTop: 12, padding: '12px 16px', background: 'rgba(231,76,60,0.1)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', color: 'var(--color-accent-red)', border: '1px solid rgba(231,76,60,0.2)' }}>
                   <AlertCircle size={14} style={{ display: 'inline', marginRight: 6, verticalAlign: 'text-bottom' }} />
                   Insufficient balance. Please add ₹{(totalAmount - balance).toLocaleString()} to your wallet.
@@ -1131,8 +1135,9 @@ export default function BookingPage() {
 
               <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
                 <button className="btn btn-secondary btn-lg" onClick={() => setStep(2)}>← Back</button>
-                <button className="btn btn-primary btn-lg btn-full" onClick={handleBook}
-                  disabled={isBooking || balance < totalAmount || (showGstInvoice && customerGstin && !isValidGstin(customerGstin))}>
+                <button className="btn btn-primary btn-lg btn-full"
+                  onClick={() => gate(handleBook, { type: 'booking', payload: { listing: route } })}
+                  disabled={isBooking || (isAuthenticated && balance < totalAmount) || (showGstInvoice && customerGstin && !isValidGstin(customerGstin))}>
                   {isBooking ? <span className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }} /> : <>Pay ₹{totalAmount.toLocaleString('en-IN')} &amp; Confirm</>}
                 </button>
               </div>

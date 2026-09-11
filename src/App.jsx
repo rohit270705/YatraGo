@@ -5,10 +5,10 @@ import {
   LogOut, Menu, X, MapPin, UserCircle, Settings, Bell, ChevronRight,
   Briefcase, TruckIcon, ClipboardList, FileCheck, CreditCard, BarChart3,
   Home, Map, Bike, Palmtree, Navigation, User, Plane, TrainFront, Sun, Moon, Ship,
-  Route as RouteIcon
+  Route as RouteIcon, Lock, LogIn
 } from 'lucide-react';
 
-import { useAuthStore, useToastStore, useNotificationStore, usePlatformStore, useTransportModalStore, useThemeStore } from './store';
+import { useAuthStore, useToastStore, useNotificationStore, usePlatformStore, useTransportModalStore, useThemeStore, useGuestLoginModalStore } from './store';
 import { supabase } from './supabaseClient';
 import ErrorBoundary from './components/ErrorBoundary';
 import SkeletonLoader from './components/SkeletonLoader';
@@ -17,6 +17,8 @@ import LogoutConfirmModal from './components/LogoutConfirmModal';
 import TransportModal from './components/TransportModal';
 import BottomNav from './components/BottomNav';
 import NotificationBell from './components/NotificationBell';
+import GuestLoginModal from './components/GuestLoginModal';
+import GuestSignInPrompt from './components/GuestSignInPrompt';
 
 // ===== Lazy Loaded Pages (Priority 7 Code Splitting) =====
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -85,29 +87,35 @@ function ToastContainer() {
   );
 }
 
-// ===== FIX 1: ProtectedRoute with role-based access control =====
+// ===== ProtectedRoute — role-based access control (for staff/admin routes only) =====
 function ProtectedRoute({ children, allowedRoles }) {
   const { user, isAuthenticated } = useAuthStore();
-  const location = useLocation();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Role-based guard — redirect unauthorized users to their own dashboard
   if (allowedRoles && user?.role && !allowedRoles.includes(user.role)) {
     const roleHome = {
-      admin: '/admin',
-      agent: '/agent',
-      owner: '/owner',
-      driver: '/driver',
-      passenger: '/dashboard',
+      admin: '/admin', agent: '/agent', owner: '/owner',
+      driver: '/driver', passenger: '/dashboard',
     };
     return <Navigate to={roleHome[user.role] || '/dashboard'} replace />;
   }
 
+  return children;
+}
 
-
+// ===== GuestFriendlyRoute — personal-only pages: friendly prompt instead of redirect =====
+function GuestFriendlyRoute({ children, label }) {
+  const { isAuthenticated } = useAuthStore();
+  if (!isAuthenticated) {
+    return (
+      <AppLayout>
+        <GuestSignInPrompt label={label} />
+      </AppLayout>
+    );
+  }
   return children;
 }
 
@@ -227,7 +235,15 @@ function Sidebar({ isOpen, onClose }) {
     : role === 'driver' ? driverLinks
     : passengerLinks;
 
+  // For guests: lock-icon personal links open modal instead of navigating
+  const GUEST_LOCKED_PATHS = ['/wallet', '/bookings', '/profile', '/sessions', '/support'];
+
   const handleNav = (path) => {
+    if (!user && GUEST_LOCKED_PATHS.includes(path)) {
+      useGuestLoginModalStore.getState().openModal('signin');
+      onClose();
+      return;
+    }
     navigate(path);
     onClose();
   };
@@ -268,24 +284,29 @@ function Sidebar({ isOpen, onClose }) {
                 >
                   {group.title}
                 </div>
-                {group.links.map((link) => (
-                  <button
-                    key={link.path || link.label}
-                    className={`sidebar-link ${location.pathname === link.path ? 'active' : ''}`}
-                    onClick={() => {
-                      if (link.isModal) {
-                        useTransportModalStore.getState().openModal(link.isModal);
-                        onClose();
-                      } else {
-                        handleNav(link.path);
-                      }
-                    }}
-                  >
-                    <link.icon className="sidebar-link-icon" size={20} />
-                    {link.label}
-                    {link.badge && <span className="sidebar-link-badge">{link.badge}</span>}
-                  </button>
-                ))}
+                {group.links.map((link) => {
+                  const isLocked = !user && GUEST_LOCKED_PATHS.includes(link.path);
+                  return (
+                    <button
+                      key={link.path || link.label}
+                      className={`sidebar-link ${location.pathname === link.path ? 'active' : ''}`}
+                      onClick={() => {
+                        if (link.isModal) {
+                          useTransportModalStore.getState().openModal(link.isModal);
+                          onClose();
+                        } else {
+                          handleNav(link.path);
+                        }
+                      }}
+                      title={isLocked ? 'Sign in to access' : ''}
+                    >
+                      <link.icon className="sidebar-link-icon" size={20} />
+                      {link.label}
+                      {link.badge && <span className="sidebar-link-badge">{link.badge}</span>}
+                      {isLocked && <Lock size={12} style={{ marginLeft: 'auto', opacity: 0.5 }} />}
+                    </button>
+                  );
+                })}
               </div>
             ))
           ) : (
@@ -329,24 +350,40 @@ function Sidebar({ isOpen, onClose }) {
         </nav>
 
         <div className="sidebar-user">
-          <div
-            className="sidebar-avatar"
-            style={{
-              backgroundImage: user?.avatarUrl ? `url(${user.avatarUrl})` : 'none',
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              color: user?.avatarUrl ? 'transparent' : 'white',
-            }}
-          >
-            {!user?.avatarUrl && (user?.name?.[0]?.toUpperCase() || 'U')}
-          </div>
-          <div className="sidebar-user-info">
-            <div className="sidebar-user-name">{user?.name || 'User'}</div>
-            <div className="sidebar-user-role">{role.charAt(0).toUpperCase() + role.slice(1)}</div>
-          </div>
-          <button className="btn btn-ghost btn-icon" onClick={handleLogout} title="Logout">
-            <LogOut size={18} />
-          </button>
+          {user ? (
+            <>
+              <div
+                className="sidebar-avatar"
+                style={{
+                  backgroundImage: user.avatarUrl ? `url(${user.avatarUrl})` : 'none',
+                  backgroundSize: 'cover', backgroundPosition: 'center',
+                  color: user.avatarUrl ? 'transparent' : 'white',
+                }}
+              >
+                {!user.avatarUrl && (user.name?.[0]?.toUpperCase() || 'U')}
+              </div>
+              <div className="sidebar-user-info">
+                <div className="sidebar-user-name">{user.name || 'User'}</div>
+                <div className="sidebar-user-role">{role.charAt(0).toUpperCase() + role.slice(1)}</div>
+              </div>
+              <button className="btn btn-ghost btn-icon" onClick={handleLogout} title="Logout">
+                <LogOut size={18} />
+              </button>
+            </>
+          ) : (
+            /* Guest — Sign In button in sidebar bottom block */
+            <button
+              id="sidebar-guest-signin"
+              className="btn btn-primary btn-full"
+              style={{ flex: 1, gap: 8, justifyContent: 'center' }}
+              onClick={() => {
+                useGuestLoginModalStore.getState().openModal('signin');
+                onClose();
+              }}
+            >
+              <LogIn size={16} /> Sign In
+            </button>
+          )}
         </div>
       </aside>
     </>
@@ -413,6 +450,7 @@ function AppLayout({ children }) {
 
       <LogoutConfirmModal />
       <TransportModal />
+      <GuestLoginModal />
       <ErrorBoundary title="Yaara chat unavailable" message="Yaara encountered an issue. Tap to reload.">
         <ChatWidget />
       </ErrorBoundary>
@@ -500,79 +538,35 @@ export default function App() {
         <Route path="/register" element={<ErrorBoundary><RegisterPage /></ErrorBoundary>} />
         <Route path="/verify" element={<ErrorBoundary><VerificationPage /></ErrorBoundary>} />
 
-        {/* Shared Authenticated Routes (all roles) */}
-        <Route path="/profile" element={<ProtectedRoute><AppLayout><ProfilePage /></AppLayout></ProtectedRoute>} />
-        <Route path="/sessions" element={<ProtectedRoute><AppLayout><DeviceSessionsPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/bookings" element={<ProtectedRoute><AppLayout><MyBookingsPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/wallet" element={<ProtectedRoute><AppLayout><WalletPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/vehicles" element={<ProtectedRoute><AppLayout><VehiclesPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/vehicle/:vehicleId" element={<ProtectedRoute><AppLayout><VehicleDetailPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/daily-report" element={<ProtectedRoute><AppLayout><DailyReportPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/packages" element={<ProtectedRoute><AppLayout><PackagesPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/package/:packageId" element={<ProtectedRoute><AppLayout><PackageDetailsPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/host" element={<ProtectedRoute><AppLayout><HostDashboardPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/support" element={<ProtectedRoute><AppLayout><SupportTicketsPage /></AppLayout></ProtectedRoute>} />
-        <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AppLayout><AdminDashboardPage /></AppLayout></ProtectedRoute>} />
+        {/* ── Personal-only pages: friendly prompt for guests, no silent redirect ── */}
+        <Route path="/profile"  element={<GuestFriendlyRoute label="Profile"><AppLayout><ProfilePage /></AppLayout></GuestFriendlyRoute>} />
+        <Route path="/sessions" element={<GuestFriendlyRoute label="Devices"><AppLayout><DeviceSessionsPage /></AppLayout></GuestFriendlyRoute>} />
+        <Route path="/bookings" element={<GuestFriendlyRoute label="Bookings"><AppLayout><MyBookingsPage /></AppLayout></GuestFriendlyRoute>} />
+        <Route path="/wallet"   element={<GuestFriendlyRoute label="Wallet"><AppLayout><WalletPage /></AppLayout></GuestFriendlyRoute>} />
+        <Route path="/support"  element={<GuestFriendlyRoute label="Support"><AppLayout><SupportTicketsPage /></AppLayout></GuestFriendlyRoute>} />
+
+        {/* ── Staff/role-gated pages — keep ProtectedRoute ── */}
+        <Route path="/admin"  element={<ProtectedRoute allowedRoles={['admin']}><AppLayout><AdminDashboardPage /></AppLayout></ProtectedRoute>} />
         <Route path="/driver" element={<ProtectedRoute allowedRoles={['driver']}><AppLayout><DriverDashboardPage /></AppLayout></ProtectedRoute>} />
+        <Route path="/daily-report" element={<ProtectedRoute><AppLayout><DailyReportPage /></AppLayout></ProtectedRoute>} />
 
-        {/* Passenger-only Routes */}
-        <Route path="/dashboard" element={
-          <ProtectedRoute allowedRoles={['passenger']}>
-            <AppLayout><DashboardPage /></AppLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/search" element={
-          <ProtectedRoute allowedRoles={['passenger', 'agent']}>
-            <AppLayout><SearchPage /></AppLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/book/:routeId" element={
-          <ProtectedRoute allowedRoles={['passenger', 'agent']}>
-            <AppLayout><BookingPage /></AppLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/booking" element={
-          <ProtectedRoute allowedRoles={['passenger', 'agent']}>
-            <AppLayout><BookingPage /></AppLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/booking/:routeId" element={
-          <ProtectedRoute allowedRoles={['passenger', 'agent']}>
-            <AppLayout><BookingPage /></AppLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/tracking" element={
-          <ProtectedRoute allowedRoles={['passenger']}>
-            <AppLayout><LiveTrackingPage /></AppLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/parcel" element={
-          <ProtectedRoute allowedRoles={['passenger']}>
-            <AppLayout><ParcelPage /></AppLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/rentals" element={
-          <ProtectedRoute allowedRoles={['passenger']}>
-            <AppLayout><RentalPage /></AppLayout>
-          </ProtectedRoute>
-        } />
-
-        {/* Flights / Trains / Ferries — Passenger + Agent */}
-        <Route path="/flights" element={
-          <ProtectedRoute allowedRoles={['passenger', 'agent']}>
-            <AppLayout><FlightsPage /></AppLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/trains" element={
-          <ProtectedRoute allowedRoles={['passenger', 'agent']}>
-            <AppLayout><TrainsPage /></AppLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/ferries" element={
-          <ProtectedRoute allowedRoles={['passenger', 'agent']}>
-            <AppLayout><FerriesPage /></AppLayout>
-          </ProtectedRoute>
-        } />
+        {/* ── PUBLIC listing + browsing routes — no auth needed ── */}
+        <Route path="/dashboard"        element={<AppLayout><DashboardPage /></AppLayout>} />
+        <Route path="/search"           element={<AppLayout><SearchPage /></AppLayout>} />
+        <Route path="/book/:routeId"    element={<AppLayout><BookingPage /></AppLayout>} />
+        <Route path="/booking"          element={<AppLayout><BookingPage /></AppLayout>} />
+        <Route path="/booking/:routeId" element={<AppLayout><BookingPage /></AppLayout>} />
+        <Route path="/flights"          element={<AppLayout><FlightsPage /></AppLayout>} />
+        <Route path="/trains"           element={<AppLayout><TrainsPage /></AppLayout>} />
+        <Route path="/ferries"          element={<AppLayout><FerriesPage /></AppLayout>} />
+        <Route path="/packages"         element={<AppLayout><PackagesPage /></AppLayout>} />
+        <Route path="/package/:packageId" element={<AppLayout><PackageDetailsPage /></AppLayout>} />
+        <Route path="/vehicles"         element={<AppLayout><VehiclesPage /></AppLayout>} />
+        <Route path="/vehicle/:vehicleId" element={<AppLayout><VehicleDetailPage /></AppLayout>} />
+        <Route path="/rentals"          element={<AppLayout><RentalPage /></AppLayout>} />
+        <Route path="/host"             element={<AppLayout><HostDashboardPage /></AppLayout>} />
+        <Route path="/parcel"           element={<AppLayout><ParcelPage /></AppLayout>} />
+        <Route path="/tracking"         element={<AppLayout><LiveTrackingPage /></AppLayout>} />
 
         {/* Agent-only Routes */}
         <Route path="/agent" element={
@@ -589,22 +583,13 @@ export default function App() {
         } />
 
 
-        {/* Default redirect */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* Trip Graph Routes — public browse; save action gated inside TripGraphPage */}
+        <Route path="/trip/new"      element={<AppLayout><TripGraphPage /></AppLayout>} />
+        <Route path="/trip/:tripId"  element={<AppLayout><TripGraphPage /></AppLayout>} />
 
-        {/* Trip Graph Routes — Passenger + Agent */}
-        <Route path="/trip/new" element={
-          <ProtectedRoute allowedRoles={['passenger', 'agent']}>
-            <AppLayout><TripGraphPage /></AppLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/trip/:tripId" element={
-          <ProtectedRoute allowedRoles={['passenger', 'agent', 'driver']}>
-            <AppLayout><TripGraphPage /></AppLayout>
-          </ProtectedRoute>
-        } />
-
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* Default: guests land on dashboard, not login page */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Suspense>
     </HashRouter>

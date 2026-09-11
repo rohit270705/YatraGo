@@ -1,11 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store';
+import { useAuthStore, useGuestLoginModalStore } from '../store';
 import NotificationBell from './NotificationBell';
+import { LogIn, UserPlus } from 'lucide-react';
 
 export default function DashboardHeader({ subtitle = "Your personal transit & travel companion" }) {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const { openModal } = useGuestLoginModalStore();
 
   const greeting = () => {
     const hour = new Date().getHours();
@@ -41,8 +43,10 @@ export default function DashboardHeader({ subtitle = "Your personal transit & tr
           color: 'var(--color-text-primary)',
           flexWrap: 'wrap'
         }}>
-          <span>{greeting()}, {displayGreetingName}</span>
-          <span>👋</span>
+          {isAuthenticated
+            ? <><span>{greeting()}, {displayGreetingName}</span><span>👋</span></>
+            : <><span>Welcome to YatraGo</span><span>🌏</span></>
+          }
         </h1>
         <p style={{
           margin: '4px 0 0',
@@ -54,7 +58,7 @@ export default function DashboardHeader({ subtitle = "Your personal transit & tr
         </p>
       </div>
 
-      {/* Right — Bell + Profile pinned to absolute top right on desktop */}
+      {/* Right — authenticated: Bell + Avatar | guest: Sign In + Sign Up */}
       <div className="dashboard-header-right" style={{
         position: 'absolute',
         right: '32px',
@@ -62,22 +66,46 @@ export default function DashboardHeader({ subtitle = "Your personal transit & tr
         transform: 'translateY(-50%)',
         display: 'flex',
         alignItems: 'center',
-        gap: '12px'
+        gap: '10px'
       }}>
-        <NotificationBell
-          buttonClassName="rounded-full bg-[var(--color-surface)] border border-[var(--glass-border)] flex items-center justify-center text-[var(--color-text)] hover:border-[var(--color-accent-teal)] transition-all relative shadow-sm cursor-pointer shrink-0"
-          buttonStyle={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          iconSize={18}
-        />
-        <div
-          onClick={() => navigate('/profile')}
-          className="rounded-full bg-gradient-to-tr from-[var(--color-accent-teal)] to-blue-500 flex items-center justify-center text-white font-bold text-base shadow-md cursor-pointer border border-[var(--glass-border)] hover:scale-105 transition-transform shrink-0"
-          style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          title={user?.name || 'Profile'}
-        >
-          {firstName.charAt(0).toUpperCase()}
-        </div>
+        {isAuthenticated ? (
+          <>
+            <NotificationBell
+              buttonClassName="rounded-full bg-[var(--color-surface)] border border-[var(--glass-border)] flex items-center justify-center text-[var(--color-text)] hover:border-[var(--color-accent-teal)] transition-all relative shadow-sm cursor-pointer shrink-0"
+              buttonStyle={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              iconSize={18}
+            />
+            <div
+              onClick={() => navigate('/profile')}
+              className="rounded-full bg-gradient-to-tr from-[var(--color-accent-teal)] to-blue-500 flex items-center justify-center text-white font-bold text-base shadow-md cursor-pointer border border-[var(--glass-border)] hover:scale-105 transition-transform shrink-0"
+              style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title={user?.name || 'Profile'}
+            >
+              {firstName.charAt(0).toUpperCase()}
+            </div>
+          </>
+        ) : (
+          <>
+            <button
+              id="header-guest-signin"
+              className="btn btn-ghost btn-sm"
+              style={{ gap: 6, fontWeight: 700, fontSize: '0.82rem' }}
+              onClick={() => openModal('signin')}
+            >
+              <LogIn size={15} /> Sign In
+            </button>
+            <button
+              id="header-guest-signup"
+              className="btn btn-primary btn-sm"
+              style={{ gap: 6, fontWeight: 700, fontSize: '0.82rem' }}
+              onClick={() => openModal('signup')}
+            >
+              <UserPlus size={15} /> Sign Up
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
 }
+
