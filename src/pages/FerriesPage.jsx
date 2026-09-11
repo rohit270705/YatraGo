@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ship, MapPin, ArrowRight, Clock, Search, SlidersHorizontal, X, Anchor } from 'lucide-react';
+import { Ship, MapPin, ArrowRight, Clock, Search, SlidersHorizontal, X, Anchor, ChevronDown, ChevronUp } from 'lucide-react';
 
 // ── Dummy ferry/cruise data (is_demo_data: true) ──────────────────────────────
 const FERRY_SEED = [
@@ -10,10 +10,10 @@ const FERRY_SEED = [
   { id: 'fe-04', from: 'Kochi',           to: 'Alleppey (Backwaters)',operator: 'Kerala Tourism Ferry',      depart: '09:30', duration: '3h 00m',  listingType: 'River Cruise',            price: 400,   seatsLeft: 50,          status: 'Available', mode: 'ferry' },
   { id: 'fe-05', from: 'Mumbai',          to: 'Elephanta Caves',    operator: 'MTDC Launch',                 depart: '09:00', duration: '1h 00m',  listingType: 'Local Ferry',             price: 220,   seatsLeft: 80,          status: 'Available', mode: 'ferry' },
   { id: 'fe-06', from: 'Goa (Panaji)',    to: 'Goa River',          operator: 'Goa River Nightlife Cruise',  depart: '19:30', duration: '1h 30m',  listingType: 'River Cruise',            price: 550,   seatsLeft: 60,          status: 'Available', mode: 'ferry' },
-  { id: 'fe-07', from: 'Chennai',         to: 'Colombo (Sri Lanka)',operator: 'Cordelia Cruises',            depart: '16:00', duration: '2 Nights',listingType: 'Luxury Cruise',           price: 14999, seatsLeft: 12,          status: 'Available', mode: 'ferry' },
+  { id: 'fe-07', from: 'Chennai',         to: 'Colombo (Sri Lanka)',operator: 'Cordelia Cruises',            depart: '16:00', duration: '2 Nights',listingType: 'Luxury Cruise',           price: 14999, seatsLeft: 12,          status: 'Available', mode: 'ferry', cabinOptions: ['Standard Cabin', 'Deluxe Cabin', 'Suite'] },
   { id: 'fe-08', from: 'Mumbai',          to: 'Diu',                operator: 'Ro-Pax Ferry Service',        depart: '06:00', duration: '12h 00m', listingType: 'Inter-Island',            price: 1800,  seatsLeft: 30,          status: 'Available', mode: 'ferry' },
   { id: 'fe-09', from: 'Kolkata',         to: 'Port Blair',         operator: 'M.V. Swaraj Dweep',          depart: '18:00', duration: '66h 00m', listingType: 'Inter-Island',            price: 3100,  seatsLeft: 55,          status: 'Available', mode: 'ferry' },
-  { id: 'fe-10', from: 'Vasco (Goa)',     to: 'Mumbai',             operator: 'Cordelia Cruises (Goa route)',depart: '20:00', duration: '1 Night', listingType: 'Luxury Cruise',           price: 9500,  seatsLeft: 18,          status: 'Available', mode: 'ferry' },
+  { id: 'fe-10', from: 'Vasco (Goa)',     to: 'Mumbai',             operator: 'Cordelia Cruises (Goa route)',depart: '20:00', duration: '1 Night', listingType: 'Luxury Cruise',           price: 9500,  seatsLeft: 18,          status: 'Available', mode: 'ferry', cabinOptions: ['Standard Cabin', 'Deluxe Cabin'] },
   { id: 'fe-11', from: 'Rameswaram',      to: 'Sri Lanka (seasonal)',operator: 'Indo-Lanka Ferry',          depart: '08:00', duration: '4h 30m',  listingType: 'Inter-Island',            price: 3500,  seatsLeft: 25,          status: 'Seasonal',  mode: 'ferry' },
   { id: 'fe-12', from: 'Kochi',           to: 'Munroe Island',      operator: 'Backwater Ferry Co-op',       depart: '10:00', duration: '2h 30m',  listingType: 'River Cruise',            price: 300,   seatsLeft: 40,          status: 'Available', mode: 'ferry' },
 ];
@@ -47,6 +47,8 @@ export default function FerriesPage() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [sortBy, setSortBy] = useState('price');
   const [hasSearched, setHasSearched] = useState(false);
+  // Cabin selection for Luxury Cruise entries: { [ferryId]: selectedCabin }
+  const [selectedCabins, setSelectedCabins] = useState({});
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -168,10 +170,19 @@ export default function FerriesPage() {
           // Is this a multi-day journey?
           const isMultiDay = fe.duration.toLowerCase().includes('night') || parseInt(fe.duration) > 24;
 
+          const isLuxury    = fe.listingType === 'Luxury Cruise';
+          const hasCabins   = isLuxury && fe.cabinOptions?.length > 0;
+          const chosenCabin = selectedCabins[fe.id] || (hasCabins ? fe.cabinOptions[0] : null);
+
+          const handleBook = () => navigate('/booking', {
+            state: {
+              transitListing: { ...fe, selectedCabin: chosenCabin },
+              mode: 'ferry',
+            },
+          });
+
           return (
-            <div key={fe.id} className="trip-card" style={{ cursor: 'pointer' }} onClick={() =>
-              navigate('/booking', { state: { transitListing: fe, mode: 'ferry' } })
-            }>
+            <div key={fe.id} className="trip-card">
               {/* Route line */}
               <div className="trip-route">
                 <div className="trip-route-line">
@@ -221,10 +232,33 @@ export default function FerriesPage() {
                 <span style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)', marginTop: 2 }}>
                   {seatsLabel(fe.seatsLeft)}
                 </span>
-                <button className="btn btn-primary btn-sm" style={{ marginTop: 8 }}>
-                  Book Now →
+                <button className="btn btn-primary btn-sm" style={{ marginTop: 8 }} onClick={handleBook}>
+                  {hasCabins ? 'Book →' : 'Book Now →'}
                 </button>
               </div>
+
+              {/* Cabin picker — Luxury Cruise only */}
+              {hasCabins && (
+                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid var(--color-border)', paddingTop: 12, paddingBottom: 4 }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-tertiary)', letterSpacing: '0.06em', marginBottom: 8 }}>SELECT CABIN TYPE</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {fe.cabinOptions.map(cabin => {
+                      const active = chosenCabin === cabin;
+                      return (
+                        <button key={cabin} onClick={() => setSelectedCabins(prev => ({ ...prev, [fe.id]: cabin }))}
+                          className="btn" style={{
+                            padding: '7px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.8rem', fontWeight: 600,
+                            background: active ? 'rgba(59,130,246,0.18)' : 'var(--color-surface-elevated)',
+                            border: active ? '2px solid #3b82f6' : '1.5px solid var(--color-border)',
+                            color: active ? '#60a5fa' : 'var(--color-text-secondary)',
+                          }}>
+                          🛏️ {cabin}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
