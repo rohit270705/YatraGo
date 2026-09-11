@@ -114,9 +114,9 @@ export default function VehicleDetailPage() {
           <div style={{
             width: 80, height: 80, borderRadius: 'var(--radius-lg)',
             background: 'rgba(27, 153, 139, 0.12)', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
+            alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
           }}>
-            <Car size={36} color="var(--color-accent-teal-light)" />
+            {(vehicle.imageUrl || vehicle.image_url) ? <img src={vehicle.imageUrl || vehicle.image_url} alt={vehicle.type} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Car size={36} color="var(--color-accent-teal-light)" />}
           </div>
           <div style={{ flex: 1 }}>
             <h2 style={{ fontWeight: 800, fontSize: '1.5rem', marginBottom: 4 }}>{vehicle.registrationNumber}</h2>

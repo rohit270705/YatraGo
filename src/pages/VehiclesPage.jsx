@@ -68,8 +68,9 @@ export default function VehiclesPage() {
                 width: 64, height: 64, borderRadius: 'var(--radius-md)',
                 background: 'rgba(27, 153, 139, 0.12)', display: 'flex',
                 alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                overflow: 'hidden'
               }}>
-                <Car size={28} color="var(--color-accent-teal-light)" />
+                {(vehicle.imageUrl || vehicle.image_url) ? <img src={vehicle.imageUrl || vehicle.image_url} alt={vehicle.type} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Car size={28} color="var(--color-accent-teal-light)" />}
               </div>
 
               {/* Details */}
