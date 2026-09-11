@@ -5,7 +5,7 @@ import {
   LogOut, Menu, X, MapPin, UserCircle, Settings, Bell, ChevronRight,
   Briefcase, TruckIcon, ClipboardList, FileCheck, CreditCard, BarChart3,
   Home, Map, Bike, Palmtree, Navigation, User, Plane, TrainFront, Sun, Moon, Ship,
-  Route as RouteIcon, Lock, LogIn
+  Route as RouteIcon, Lock, LogIn, TrendingUp
 } from 'lucide-react';
 
 import { useAuthStore, useToastStore, useNotificationStore, usePlatformStore, useTransportModalStore, useThemeStore, useGuestLoginModalStore } from './store';
