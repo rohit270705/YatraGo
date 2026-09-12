@@ -192,11 +192,16 @@ export default function DashboardPage() {
     ...fallbackPopularRoutes.filter(r => !seenRouteKeys.has(`${r.from}->${r.to}`))
   ];
 
+  // Guest-safe stats: use explicit user guard so 0-booking guests never see stale fallbacks
+  const tripCount  = user ? userBookings.length : 0;
+  const distanceKm = user ? (tripCount * 125) : 0;
+  const rewardsRs  = user ? (tripCount * 80)  : 0;
+
   const stats = [
-    { icon: Ticket, label: 'Total trips', value: userBookings.length || 0, color: 'teal' },
-    { icon: Star, label: 'Avg. rating', value: '4.8', color: 'amber' },
-    { icon: Navigation, label: 'Distance covered', value: `${(userBookings.length * 125) || 1240} km`, color: 'blue' },
-    { icon: Gift, label: 'Rewards earned', value: `₹${(userBookings.length * 80) || 320}`, color: 'purple' },
+    { icon: Ticket,    label: 'Total trips',       value: tripCount,              color: 'teal'   },
+    { icon: Star,      label: 'Avg. rating',        value: user ? '4.8' : '—',    color: 'amber'  },
+    { icon: Navigation,label: 'Distance covered',   value: `${distanceKm} km`,    color: 'blue'   },
+    { icon: Gift,      label: 'Rewards earned',     value: `₹${rewardsRs}`,       color: 'purple' },
   ];
 
   if (isLoading && userBookings.length === 0) {

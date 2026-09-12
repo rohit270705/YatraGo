@@ -5,7 +5,7 @@ import {
   CheckCircle, ArrowRight, AlertCircle, Wallet, Shield, Ticket,
   ChevronDown, ChevronUp, FileText, Info, Accessibility, BadgePercent
 } from 'lucide-react';
-import { useBookingStore, useVehicleStore, useWalletStore, useAuthStore, useToastStore, useAgentStore, usePlatformStore } from '../store';
+import { useBookingStore, useVehicleStore, useWalletStore, useAuthStore, useToastStore, useAgentStore, useGuestStore, usePlatformStore } from '../store';
 import { useAuthGate } from '../hooks/useAuthGate';
 import { supabase } from '../supabaseClient';
 import {
@@ -261,6 +261,26 @@ export default function BookingPage() {
   const { user, isAuthenticated } = useAuthStore();
   const { currentAgent, addBooking: addAgentBooking } = useAgentStore();
   const gate            = useAuthGate();
+  const { pendingAction, clearPendingAction } = useGuestStore();
+
+  // ── Smart Resume: restore form state after guest logs in ─────────────────
+  // When a guest filled in passenger details, hit Pay, got the login modal,
+  // and successfully signed up/in — we re-populate the form so they don't lose work.
+  useEffect(() => {
+    if (
+      isAuthenticated &&
+      pendingAction?.type === 'booking' &&
+      pendingAction?.payload?.passengers?.length
+    ) {
+      const saved = pendingAction.payload;
+      if (saved.passengers) setPassengers(saved.passengers);
+      if (saved.quota)      setQuota(saved.quota);
+      // Don't clear pendingAction here — GuestLoginModal.resumeAndClose() will
+      // call handleBook() via resumeFn, which needs pendingAction to still exist
+      // for its own context. clearPendingAction() is called inside resumeAndClose.
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!location.state?.isCab && routes.length === 0 && fetchAllRoutes) {
@@ -1136,7 +1156,19 @@ export default function BookingPage() {
               <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
                 <button className="btn btn-secondary btn-lg" onClick={() => setStep(2)}>← Back</button>
                 <button className="btn btn-primary btn-lg btn-full"
-                  onClick={() => gate(handleBook, { type: 'booking', payload: { listing: route } })}
+                  onClick={() => gate(handleBook, {
+                    type: 'booking',
+                    payload: {
+                      listing: route,
+                      // ── Full form state serialized for Smart Resume ──────
+                      // If the guest logs in from another device or the component
+                      // remounts, these values are used to restore the form.
+                      passengers,
+                      quota,
+                      step,
+                      mode,
+                    },
+                  })}
                   disabled={isBooking || (isAuthenticated && balance < totalAmount) || (showGstInvoice && customerGstin && !isValidGstin(customerGstin))}>
                   {isBooking ? <span className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }} /> : <>Pay ₹{totalAmount.toLocaleString('en-IN')} &amp; Confirm</>}
                 </button>

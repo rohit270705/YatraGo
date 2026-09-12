@@ -26,7 +26,7 @@ export default function ChatWidget() {
     }
   }, [aiMessages, isTyping, isChatOpen]);
 
-  // Initialize chat session when opened
+  // Initialize chat session when opened (authenticated) or just allow typing (guest)
   useEffect(() => {
     if (isChatOpen && user && !sessionId) {
       initAiChat();
@@ -127,8 +127,20 @@ export default function ChatWidget() {
                activeLang === 'hinglish' ? 'Namaste! Main aapka local travel buddy hoon. Aaj kaise help karoon?' :
                'Hi there! I am your warm local travel buddy for India. How can I help you today?'}
             </p>
+            {!user && (
+              <div style={{
+                fontSize: '0.72rem', color: 'var(--color-text-tertiary)',
+                background: 'rgba(27,153,139,0.08)', borderRadius: 8,
+                padding: '6px 10px', marginBottom: 12, lineHeight: 1.5,
+              }}>
+                💡 You can ask me anything! Sign in to make bookings or access your account.
+              </div>
+            )}
             <div className="chat-quick-replies" style={{ justifyContent: 'center' }}>
-              {['✨ Plan a Trip', '🚗 Find cabs', '🎒 Book package', '💰 Check wallet', '🎫 Raise Ticket'].map((chip, ci) => (
+              {(user
+                ? ['✨ Plan a Trip', '🚗 Find cabs', '🎒 Book package', '💰 Check wallet', '🎫 Raise Ticket']
+                : ['✨ Plan a Trip', '🚗 Find cabs', '🏨 Find hotels', '🗺️ Goa 3-day plan', '🔐 Sign in for booking']
+              ).map((chip, ci) => (
                 <button
                   key={ci}
                   className="chat-quick-chip"

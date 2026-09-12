@@ -867,6 +867,15 @@ export const useAuthStore = create(
   logout: async () => {
     await supabase.auth.signOut();
     set({ user: null, isAuthenticated: false, activeSessions: [], error: null });
+    // ── Reset all user-data stores so a subsequent guest session never leaks numbers ──
+    // Wallet: zeroed immediately + localStorage key removed
+    useWalletStore.getState().resetWallet();
+    // Bookings: clear the persisted bookings list
+    useBookingStore.getState().clearBookings?.();
+    // Notifications: clear in-memory list
+    useNotificationStore.getState().clearNotifications?.();
+    // Chat: clear AI chat session
+    useChatStore.getState().clearSession?.();
   },
 
   fetchActiveSessions: async () => {
@@ -1032,6 +1041,13 @@ export const useWalletStore = create(
       transactions: [],
       withdrawals: [],
       isLoading: false,
+
+      // ── Guest-safe reset: clears all wallet state + localStorage on logout ──
+      resetWallet: () => {
+        set({ balance: 0, transactions: [], withdrawals: [], isLoading: false });
+        // Also wipe the persisted localStorage key so it doesn't survive page reload
+        try { localStorage.removeItem('wallet-storage'); } catch { }
+      },
 
       initializeWallet: async (userId) => {
         try {
@@ -1335,6 +1351,12 @@ export const useBookingStore = create(
       bookings: [],
       searchResults: [],
       reviews: [],
+
+      // Guest-safe reset on logout — clears personal booking data
+      clearBookings: () => {
+        set({ bookings: [], searchResults: [], reviews: [] });
+        try { localStorage.removeItem('booking-storage'); } catch { }
+      },
 
       searchRoutes: (from, to, date) => {
     const vehicles = useVehicleStore.getState().vehicles || [];
@@ -2858,6 +2880,9 @@ export const useNotificationStore = create((set, get) => ({
   notifications: [],
   isLoading: false,
 
+  // Guest-safe reset on logout
+  clearNotifications: () => set({ notifications: [], isLoading: false }),
+
   fetchNotifications: async () => {
     try {
       const user = useAuthStore.getState().user;
@@ -2970,9 +2995,49 @@ export const useChatStore = create((set, get) => ({
   sendUserMessage: async (text) => {
     const { aiMessages, sessionId, userContext, detectedLanguage, manualLanguage, messageCount } = get();
     const user = useAuthStore.getState().user;
-    if (!text.trim() || !user) return;
+    if (!text.trim()) return;
 
     const { detectLanguage, sendAiMessage, saveChatMessage } = await import('./services/aiChatService');
+
+    // ── Guest stateful-action gate ──────────────────────────────────────────
+    // Conversational / informational messages are allowed without login.
+    // Only intent keywords that would touch real user data require auth.
+    const STATEFUL_KEYWORDS = [
+      'book', 'booking', 'pay', 'payment', 'confirm', 'reserve',
+      'my wallet', 'add money', 'my trip', 'save trip', 'add to trip',
+      'my bookings', 'cancel booking', 'my profile',
+    ];
+    const lowerText = text.toLowerCase();
+    const isStateful = STATEFUL_KEYWORDS.some(kw => lowerText.includes(kw));
+
+    if (!user && isStateful) {
+      // Show the user's message + a friendly auth-gate reply
+      const userMsg = {
+        id: `user-${Date.now()}`,
+        sender: 'user',
+        content: text,
+        createdAt: new Date().toISOString(),
+      };
+      const gateMsg = {
+        id: `ai-gate-${Date.now()}`,
+        sender: 'ai',
+        content: `I'd love to help with that! You'll need to sign in to ${
+          lowerText.includes('book') || lowerText.includes('reserve') || lowerText.includes('confirm') ? 'make a booking' :
+          lowerText.includes('wallet') || lowerText.includes('pay') ? 'access your wallet' :
+          lowerText.includes('trip') ? 'save your trip' :
+          'do that'
+        } — it's free and takes just a moment. 😊`,
+        createdAt: new Date().toISOString(),
+        aiProvider: null,
+        quickReplies: ['🔐 Sign In', '🚀 Create Account'],
+      };
+      set(state => ({ aiMessages: [...state.aiMessages, userMsg, gateMsg] }));
+      // Open the login modal
+      setTimeout(() => {
+        useGuestLoginModalStore.getState().openModal('signin');
+      }, 600);
+      return;
+    }
 
     // Detect language from user message (unless manually overridden)
     const lang = manualLanguage || detectLanguage(text);
@@ -2995,14 +3060,19 @@ export const useChatStore = create((set, get) => ({
       messageCount: newCount
     });
 
-    // Save user message to DB
-    saveChatMessage(sessionId, 'user', text);
+    // Save user message to DB (skip for guests — no session)
+    if (user && sessionId) saveChatMessage(sessionId, 'user', text);
+
+    // ── Guest context: use a lightweight anonymous context ─────────────────
+    const effectiveContext = user
+      ? (userContext || { userName: user.name, userRole: user.role, contextText: '' })
+      : { userName: 'Guest', userRole: 'guest', contextText: 'User is browsing without an account. Answer general travel questions only. Do not access any personal data.' };
 
     // Call AI router
     const activeLang = manualLanguage || lang;
     const result = await sendAiMessage(
       text,
-      userContext || { userName: user.name, userRole: user.role, contextText: '' },
+      effectiveContext,
       [...aiMessages, userMsg],
       activeLang,
       newCount
@@ -3025,14 +3095,16 @@ export const useChatStore = create((set, get) => ({
       isTyping: false
     }));
 
-    // Save AI response to DB
-    saveChatMessage(sessionId, 'ai', result.reply, {
-      aiProvider: result.aiProvider,
-      responseTimeMs: result.responseTimeMs,
-      fallbackUsed: result.fallbackUsed,
-      fallbackReason: result.fallbackReason,
-      quickReplies: result.quickReplies
-    });
+    // Save AI response to DB (skip for guests)
+    if (user && sessionId) {
+      saveChatMessage(sessionId, 'ai', result.reply, {
+        aiProvider: result.aiProvider,
+        responseTimeMs: result.responseTimeMs,
+        fallbackUsed: result.fallbackUsed,
+        fallbackReason: result.fallbackReason,
+        quickReplies: result.quickReplies
+      });
+    }
   },
 
   setLanguage: (lang) => {
