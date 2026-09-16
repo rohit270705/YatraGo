@@ -115,7 +115,7 @@ const MOCK_VEHICLES = [
     id: 'v6',
     registrationNumber: 'TN-07-BU-2345',
     type: 'Mini Bus 26-40',
-    imageUrl: 'https://images.unsplash.com/photo-1572970591244-a951c2069bf6?auto=format&fit=crop&w=400&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=400&q=80',
     baseRate: 38,
     seatingCapacity: 32,
     luggageCapacity: 160,

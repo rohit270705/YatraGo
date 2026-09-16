@@ -114,7 +114,7 @@ function PublishRideModal({ isOpen, onClose }) {
 }
 
 export default function SharingCabsPage() {
-  const { sharedRides, isLoading, bookSeats } = useSharedRideStore();
+  const { rides, isLoading, bookSeat } = useSharedRideStore();
   const { addToast } = useToastStore();
   const gate = useAuthGate();
 
@@ -127,7 +127,7 @@ export default function SharingCabsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const displayedRides = useMemo(() => {
-    let base = sharedRides;
+    let base = rides;
     if (hasSearched) {
       if (fromSearch.trim()) base = base.filter(r => r.from.toLowerCase().includes(fromSearch.trim().toLowerCase()));
       if (toSearch.trim()) base = base.filter(r => r.to.toLowerCase().includes(toSearch.trim().toLowerCase()));
@@ -135,7 +135,7 @@ export default function SharingCabsPage() {
       base = base.filter(r => r.availableSeats >= seatsNeeded);
     }
     return base.filter(r => r.availableSeats > 0); // Only show rides with available seats
-  }, [sharedRides, hasSearched, fromSearch, toSearch, dateSearch, seatsNeeded]);
+  }, [rides, hasSearched, fromSearch, toSearch, dateSearch, seatsNeeded]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -144,7 +144,7 @@ export default function SharingCabsPage() {
 
   const handleBook = (rideId) => {
     gate(() => {
-      bookSeats(rideId, seatsNeeded);
+      bookSeat(rideId, seatsNeeded);
       addToast(`Successfully booked ${seatsNeeded} seat(s)!`, 'success');
     });
   };
@@ -153,7 +153,7 @@ export default function SharingCabsPage() {
     <div className="animate-fade-in">
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <h1>Shared Cabs & Carpooling</h1>
+          <h1>Sharing Cab & Auto</h1>
           <p>Travel together, save money, and help vehicle owners earn.</p>
         </div>
         <button className="btn btn-primary" onClick={() => gate(() => setIsModalOpen(true))}>
