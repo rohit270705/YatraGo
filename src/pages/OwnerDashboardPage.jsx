@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useVehicleStore, useBookingStore, useToastStore, useAuthStore, useWalletStore, useDriverStore, useVehicleOfferStore } from '../store';
 import DashboardHeader from '../components/DashboardHeader';
+import EarningsChart from '../components/EarningsChart';
 
 export default function OwnerDashboardPage() {
   const { user } = useAuthStore();
@@ -321,6 +322,26 @@ export default function OwnerDashboardPage() {
           <div className="stat-card-label">Doc Alerts</div>
           <div className="stat-card-value">{docAlerts.length}</div>
         </div>
+      </div>
+
+      {/* Earnings Chart */}
+      <div className="glass-card" style={{ marginTop: 24, marginBottom: 8 }}>
+        <EarningsChart seed={user?.id?.charCodeAt(0) || 7} label="Fleet Revenue (₹)" color="#8b5cf6" />
+      </div>
+
+      {/* Fleet quick stats row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
+        {[
+          { label: 'Active Vehicles', value: activeVehicles.length, color: '#1b998b' },
+          { label: 'Pending Approval', value: pendingVehicles.length, color: '#ffc800' },
+          { label: 'Bookings This Month', value: myBookings.length, color: '#8b5cf6' },
+          { label: 'Fleet Utilization', value: activeVehicles.length > 0 ? `${Math.min(100, Math.round((myBookings.length / (activeVehicles.length * 20)) * 100))}%` : '—', color: '#22c55e' },
+        ].map(m => (
+          <div key={m.label} style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', padding: '12px 16px', border: '1px solid var(--color-border)', textAlign: 'center' }}>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: m.color }}>{m.value}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)', marginTop: 4 }}>{m.label}</div>
+          </div>
+        ))}
       </div>
 
       {/* Document Expiry Alerts */}

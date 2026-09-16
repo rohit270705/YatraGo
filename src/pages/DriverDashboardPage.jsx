@@ -7,6 +7,7 @@ import { supabase } from '../supabaseClient';
 import SkeletonLoader from '../components/SkeletonLoader';
 import DashboardHeader from '../components/DashboardHeader';
 import LiveStatusCard from '../components/LiveStatusCard';
+import EarningsChart from '../components/EarningsChart';
 
 export default function DriverDashboardPage() {
   const { user } = useAuthStore();
@@ -31,7 +32,10 @@ export default function DriverDashboardPage() {
   const upcomingTrips = myTrips.filter(b => b.status === 'confirmed' || b.status === 'in_progress' || b.status === 'pending_driver');
   const totalEarnings = completedTrips.reduce((sum, b) => sum + (b.driver_fee || b.totalAmount * 0.8 || 500), 0);
   const todayEarnings = Math.round(totalEarnings * 0.2);
-  const weekEarnings = Math.round(totalEarnings * 0.65);
+  const weekEarnings  = Math.round(totalEarnings * 0.65);
+  const rating        = 4.7; // Could be fetched from DB
+  const acceptRate    = myTrips.length > 0 ? Math.round((completedTrips.length / myTrips.length) * 100) : 98;
+  const onTimeRate    = 94; // Mock stat
 
   const { relayOffers, fetchDriverRelayOffers, respondToRelayMatch } = useParcelStore();
 
@@ -248,6 +252,12 @@ export default function DriverDashboardPage() {
               {pendingRelayOffers.length} NEW
             </span>
           )}
+        </button>
+        <button
+          className={`tab ${activeTab === 'analytics' ? 'active' : ''}`}
+          onClick={() => setActiveTab('analytics')}
+        >
+          📊 Analytics
         </button>
         <button 
           className={`tab ${activeTab === 'employers' ? 'active' : ''}`}
@@ -563,6 +573,69 @@ export default function DriverDashboardPage() {
                             Remove
                           </button>
                         </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {/* ── Analytics Tab ── */}
+      {activeTab === 'analytics' && (
+        <div>
+          {/* Earnings Chart */}
+          <div className="glass-card" style={{ marginBottom: 20 }}>
+            <EarningsChart seed={user?.id?.charCodeAt(0) || 3} label="Earnings (₹)" color="#1b998b" />
+          </div>
+
+          {/* Performance metrics */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 20 }}>
+            {[
+              { label: 'Driver Rating', value: `⭐ ${rating}`, sub: 'out of 5.0', color: '#ffc800' },
+              { label: 'Acceptance Rate', value: `${acceptRate}%`, sub: 'of offered trips', color: '#1b998b' },
+              { label: 'On-Time Rate', value: `${onTimeRate}%`, sub: 'arrived on schedule', color: '#22c55e' },
+              { label: 'Completed Trips', value: completedTrips.length, sub: 'all time', color: '#8b5cf6' },
+              { label: 'Today Earned', value: `₹${todayEarnings.toLocaleString()}`, sub: 'today', color: '#f97316' },
+              { label: 'This Week', value: `₹${weekEarnings.toLocaleString()}`, sub: 'this week', color: '#06b6d4' },
+            ].map(m => (
+              <div key={m.label} className="glass-card" style={{ textAlign: 'center', padding: 16 }}>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: m.color, lineHeight: 1 }}>{m.value}</div>
+                <div style={{ fontWeight: 600, fontSize: '0.8rem', marginTop: 6 }}>{m.label}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', marginTop: 2 }}>{m.sub}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Trip history table */}
+          <div className="glass-card">
+            <div style={{ fontWeight: 700, marginBottom: 16 }}>Recent Trip History</div>
+            {completedTrips.length === 0 ? (
+              <div className="empty-state" style={{ padding: 32 }}>
+                <TrendingUp size={36} />
+                <p>No completed trips yet. Your history will appear here.</p>
+              </div>
+            ) : (
+              <div className="table-responsive">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Route</th>
+                      <th>Date</th>
+                      <th>Passengers</th>
+                      <th>Earned</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {completedTrips.slice(0, 10).map(b => (
+                      <tr key={b.id}>
+                        <td>{b.route?.from || b.from || '—'} → {b.route?.to || b.to || '—'}</td>
+                        <td>{b.bookingDate || b.created_at?.slice(0,10) || '—'}</td>
+                        <td>{b.passengerCount || b.passengers?.length || 1}</td>
+                        <td style={{ color: '#1b998b', fontWeight: 700 }}>₹{(b.driver_fee || Math.round((b.totalAmount || 500) * 0.8)).toLocaleString()}</td>
+                        <td><span className="badge badge-teal">Completed</span></td>
                       </tr>
                     ))}
                   </tbody>
