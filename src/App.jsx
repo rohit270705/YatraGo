@@ -5,7 +5,7 @@ import {
   LogOut, Menu, X, MapPin, UserCircle, Settings, Bell, ChevronRight,
   Briefcase, TruckIcon, ClipboardList, FileCheck, CreditCard, BarChart3,
   Home, Map, Bike, Palmtree, Navigation, User, Plane, TrainFront, Sun, Moon, Ship,
-  Route as RouteIcon, Lock, LogIn, TrendingUp
+  Route as RouteIcon, Lock, LogIn, TrendingUp, CarFront
 } from 'lucide-react';
 
 import { useAuthStore, useToastStore, useNotificationStore, usePlatformStore, useTransportModalStore, useThemeStore, useGuestLoginModalStore } from './store';
@@ -30,6 +30,7 @@ const BookingPage = lazy(() => import('./pages/BookingPage'));
 const MyBookingsPage = lazy(() => import('./pages/MyBookingsPage'));
 const WalletPage = lazy(() => import('./pages/WalletPage'));
 const SpendingAnalyticsPage = lazy(() => import('./pages/SpendingAnalyticsPage'));
+const SharingCabsPage = lazy(() => import('./pages/SharingCabsPage'));
 const VehiclesPage = lazy(() => import('./pages/VehiclesPage'));
 const VehicleDetailPage = lazy(() => import('./pages/VehicleDetailPage'));
 const LiveTrackingPage = lazy(() => import('./pages/LiveTrackingPage'));
@@ -141,6 +142,7 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/ferries', label: 'Ferries/Cruise Ships', icon: Ship },
     { path: '/host', label: 'My Homestay', icon: Home },
     { path: '/rentals', label: 'Rent Bike/Scooty', icon: Bike },
+    { path: '/sharing-cabs', label: 'Shared Cabs', icon: CarFront },
     { path: '/vehicles', label: 'Vehicles', icon: Car },
     { path: '/parcel', label: 'Send Parcel', icon: Package },
     { path: '/tracking', label: 'Live Tracking', icon: Map },
@@ -165,6 +167,7 @@ function Sidebar({ isOpen, onClose }) {
         { path: '/trains', label: 'Trains', icon: TrainFront },
         { path: '/ferries', label: 'Ferries/Cruise Ships', icon: Ship },
         { path: '/rentals', label: 'Rent Bike/Scooty', icon: Bike },
+        { path: '/sharing-cabs', label: 'Shared Cabs', icon: CarFront },
         { path: '/vehicles', label: 'Vehicles', icon: Car },
       ]
     },
@@ -198,6 +201,7 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/ferries', label: 'Ferries/Cruise Ships', icon: Ship },
     { path: '/host', label: 'Homestay Booking', icon: Home },
     { path: '/rentals', label: 'Rent Bike/Scooty', icon: Bike },
+    { path: '/sharing-cabs', label: 'Shared Cabs', icon: CarFront },
     { path: '/vehicles', label: 'Vehicles', icon: Car },
     { path: '/bookings', label: 'All Bookings', icon: Ticket },
     { path: '/daily-report', label: 'Daily Report', icon: ClipboardList },
@@ -563,6 +567,7 @@ export default function App() {
         <Route path="/flights"          element={<AppLayout><FlightsPage /></AppLayout>} />
         <Route path="/trains"           element={<AppLayout><TrainsPage /></AppLayout>} />
         <Route path="/ferries"          element={<AppLayout><FerriesPage /></AppLayout>} />
+        <Route path="/sharing-cabs"     element={<AppLayout><SharingCabsPage /></AppLayout>} />
         <Route path="/packages"         element={<AppLayout><PackagesPage /></AppLayout>} />
         <Route path="/package/:packageId" element={<AppLayout><PackageDetailsPage /></AppLayout>} />
         <Route path="/vehicles"         element={<AppLayout><VehiclesPage /></AppLayout>} />
