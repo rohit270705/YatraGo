@@ -143,6 +143,31 @@ export default function AdminDashboardPage() {
     return list;
   }, [users, userFilter, userSearch]);
 
+  // Analytics Data Calculation (Last 7 Days)
+  const analyticsData = useMemo(() => {
+    const data = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dayStr = d.toLocaleDateString('en-US', { weekday: 'short' });
+      
+      const dayBookings = (bookings || []).filter(b => {
+        const bd = new Date(b.created_at || b.date);
+        return bd.getDate() === d.getDate() && bd.getMonth() === d.getMonth() && bd.getFullYear() === d.getFullYear();
+      });
+
+      data.push({
+        day: dayStr,
+        vol: dayBookings.length,
+        revenue: dayBookings.reduce((sum, b) => sum + (b.totalAmount || b.total_amount || 0), 0)
+      });
+    }
+    return data;
+  }, [bookings]);
+
   // Filtered Vehicles (combined)
   const combinedVehicles = useMemo(() => {
     const travel = vehicles.map(v => ({
@@ -386,35 +411,45 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Analytics Chart */}
-          <div className="glass-card" style={{ marginBottom: 24, height: 350 }}>
-            <h3 style={{ fontWeight: 700, marginBottom: 16 }}>
-              <TrendingUp size={20} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
-              Booking Volume (Last 7 Days)
-            </h3>
-            <ResponsiveContainer width="100%" height="80%">
-              <BarChart data={[
-                { day: 'Mon', vol: 45 },
-                { day: 'Tue', vol: 52 },
-                { day: 'Wed', vol: 38 },
-                { day: 'Thu', vol: 65 },
-                { day: 'Fri', vol: 89 },
-                { day: 'Sat', vol: 110 },
-                { day: 'Sun', vol: 95 },
-              ]}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} />
-                <YAxis axisLine={false} tickLine={false} />
-                <RechartsTooltip cursor={{ fill: 'rgba(52, 152, 219, 0.1)' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                <Bar dataKey="vol" fill="#3498db" radius={[4, 4, 0, 0]}>
-                  {
-                    [45, 52, 38, 65, 89, 110, 95].map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry > 80 ? '#2ecc71' : '#3498db'} />
-                    ))
-                  }
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          {/* Analytics Charts */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24, marginBottom: 24 }}>
+            {/* Booking Volume */}
+            <div className="glass-card" style={{ height: 350 }}>
+              <h3 style={{ fontWeight: 700, marginBottom: 16 }}>
+                <TrendingUp size={20} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
+                Booking Volume (Last 7 Days)
+              </h3>
+              <ResponsiveContainer width="100%" height="80%">
+                <BarChart data={analyticsData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} />
+                  <YAxis axisLine={false} tickLine={false} />
+                  <RechartsTooltip cursor={{ fill: 'rgba(52, 152, 219, 0.1)' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                  <Bar dataKey="vol" fill="#3498db" radius={[4, 4, 0, 0]}>
+                    {analyticsData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.vol > 0 ? '#3498db' : '#243044'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Platform Revenue */}
+            <div className="glass-card" style={{ height: 350 }}>
+              <h3 style={{ fontWeight: 700, marginBottom: 16 }}>
+                <DollarSign size={20} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
+                Platform Revenue (Last 7 Days)
+              </h3>
+              <ResponsiveContainer width="100%" height="80%">
+                <LineChart data={analyticsData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
+                  <XAxis dataKey="day" axisLine={false} tickLine={false} />
+                  <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `₹${val}`} />
+                  <RechartsTooltip formatter={(value) => [`₹${value}`, 'Revenue']} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                  <Line type="monotone" dataKey="revenue" stroke="#2ecc71" strokeWidth={3} dot={{ r: 4, fill: '#2ecc71', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
           {/* User Breakdown */}
