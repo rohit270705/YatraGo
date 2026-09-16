@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plane, MapPin, Calendar, ArrowRight, Clock, Search, SlidersHorizontal, X } from 'lucide-react';
-
+import { Plane, MapPin, Calendar, ArrowRight, Clock, Search, SlidersHorizontal, X, BellRing } from 'lucide-react';
+import { useAuthGate } from '../hooks/useAuthGate';
+import { supabase } from '../supabaseClient';
+import { useToastStore, useAuthStore } from '../store';
 // ── Dummy flight data (is_demo_data: true) ────────────────────────────────────
 const FLIGHT_SEED = [
   { id: 'fl-01', from: 'Mumbai',    to: 'Delhi',     operator: 'IndiGo',       opCode: '6E-204',   depart: '06:15', arrive: '08:25', duration: '2h 10m', travelClass: 'Economy',          price: 4850,  seatsLeft: 23, mode: 'flight' },
@@ -41,6 +43,30 @@ export default function FlightsPage() {
   const [classFilter, setClassFilter] = useState('all');
   const [sortBy, setSortBy] = useState('price');
   const [hasSearched, setHasSearched] = useState(false);
+  const [isNotifying, setIsNotifying] = useState(false);
+  
+  const authGate = useAuthGate();
+  const { user } = useAuthStore();
+  const { addToast } = useToastStore();
+
+  const handleNotifyMe = () => {
+    authGate.requireAuth(async () => {
+      if (!user) return;
+      setIsNotifying(true);
+      try {
+        const { error } = await supabase.from('feature_notify_requests').insert({
+          user_id: user.id,
+          feature_name: 'flight_booking'
+        });
+        if (error && error.code !== '23505') throw error; // ignore duplicate
+        addToast("You're on the list! We'll notify you when flight bookings go live.", 'success');
+      } catch (err) {
+        addToast('Something went wrong. Please try again.', 'error');
+      } finally {
+        setIsNotifying(false);
+      }
+    });
+  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -72,9 +98,26 @@ export default function FlightsPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
-        <h1>✈️ Flights</h1>
-        <p>Domestic flights across India — book your seat instantly</p>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <h1>✈️ Flights</h1>
+          <p>Domestic flights across India — book your seat instantly</p>
+        </div>
+        <button 
+          className="btn" 
+          onClick={handleNotifyMe}
+          disabled={isNotifying}
+          style={{ 
+            background: 'var(--color-surface)', 
+            border: '1.5px solid var(--color-accent-teal)', 
+            color: 'var(--color-accent-teal)',
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 16px', borderRadius: 'var(--radius-full)'
+          }}
+        >
+          <BellRing size={16} />
+          {isNotifying ? 'Saving...' : 'Notify me when live'}
+        </button>
       </div>
 
       {/* Search bar */}

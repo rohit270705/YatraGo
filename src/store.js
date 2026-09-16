@@ -54,7 +54,7 @@ const MOCK_VEHICLES = [
   {
     id: 'v3',
     registrationNumber: 'KA-01-EF-9012',
-    type: 'Mini Bus',
+    type: 'Mini Bus 20-25',
     imageUrl: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=400&q=80',
     baseRate: 25,
     seatingCapacity: 14,
@@ -72,7 +72,7 @@ const MOCK_VEHICLES = [
   {
     id: 'v4',
     registrationNumber: 'GJ-05-GH-3456',
-    type: 'Tempo Traveller',
+    type: 'Mini Bus 26-40',
     imageUrl: 'https://images.unsplash.com/photo-1610647752706-3bb12232b3ab?auto=format&fit=crop&w=400&q=80',
     baseRate: 22,
     seatingCapacity: 12,
@@ -90,7 +90,7 @@ const MOCK_VEHICLES = [
   {
     id: 'v5',
     registrationNumber: 'DL-01-BU-7890',
-    type: 'Bus',
+    type: 'Mini Bus 26-40',
     imageUrl: 'https://images.unsplash.com/photo-1464219789935-c2d9d9aba644?auto=format&fit=crop&w=400&q=80',
     baseRate: 40,
     seatingCapacity: 40,
@@ -114,7 +114,7 @@ const MOCK_VEHICLES = [
   {
     id: 'v6',
     registrationNumber: 'TN-07-BU-2345',
-    type: 'Bus',
+    type: 'Mini Bus 26-40',
     imageUrl: 'https://images.unsplash.com/photo-1572970591244-a951c2069bf6?auto=format&fit=crop&w=400&q=80',
     baseRate: 38,
     seatingCapacity: 32,
@@ -190,27 +190,27 @@ const MOCK_ROUTES = [
 
 const MOCK_SHARED_RIDES = [
   {
-    id: 'sr1', driverName: 'Rahul Verma', vehicleType: 'Auto', vehicleName: 'Bajaj RE',
+    id: 'sr1', driverName: 'Rahul Verma', vehicleType: 'Auto 3-Wheeler', vehicleName: 'Bajaj RE',
     from: 'Mumbai', to: 'Pune', date: '2026-06-15', departureTime: '08:00', arrivalTime: '12:00',
     totalSeats: 3, availableSeats: 2, pricePerSeat: 300, driverRating: 4.8, driverImage: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100'
   },
   {
-    id: 'sr2', driverName: 'Sneha Patil', vehicleType: 'Private Car', vehicleName: 'Maruti Swift',
+    id: 'sr2', driverName: 'Sneha Patil', vehicleType: 'Hatchback', vehicleName: 'Maruti Swift',
     from: 'Pune', to: 'Mumbai', date: '2026-06-15', departureTime: '09:30', arrivalTime: '13:00',
     totalSeats: 4, availableSeats: 3, pricePerSeat: 450, driverRating: 4.9, driverImage: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100'
   },
   {
-    id: 'sr3', driverName: 'Karan Singh', vehicleType: 'E-Taxi', vehicleName: 'Tata Nexon EV',
+    id: 'sr3', driverName: 'Karan Singh', vehicleType: 'E-Rickshaw', vehicleName: 'Tata Nexon EV',
     from: 'Delhi', to: 'Jaipur', date: '2026-06-16', departureTime: '06:00', arrivalTime: '11:00',
     totalSeats: 4, availableSeats: 1, pricePerSeat: 600, driverRating: 4.7, driverImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100'
   },
   {
-    id: 'sr4', driverName: 'Mohammad Ali', vehicleType: 'Taxi', vehicleName: 'Toyota Innova',
+    id: 'sr4', driverName: 'Mohammad Ali', vehicleType: 'Sedan', vehicleName: 'Toyota Innova',
     from: 'Bangalore', to: 'Chennai', date: '2026-06-16', departureTime: '22:00', arrivalTime: '04:00',
     totalSeats: 6, availableSeats: 4, pricePerSeat: 800, driverRating: 4.6, driverImage: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100'
   },
   {
-    id: 'sr5', driverName: 'Priya Desai', vehicleType: 'Private Car', vehicleName: 'Hyundai Creta',
+    id: 'sr5', driverName: 'Priya Desai', vehicleType: 'SUV', vehicleName: 'Hyundai Creta',
     from: 'Mumbai', to: 'Goa', date: '2026-06-17', departureTime: '05:00', arrivalTime: '15:00',
     totalSeats: 4, availableSeats: 2, pricePerSeat: 1200, driverRating: 5.0, driverImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100'
   }
@@ -1922,6 +1922,7 @@ const mapVehicleFromDB = (v) => ({
 
 export const useVehicleStore = create((set, get) => ({
   vehicles: MOCK_VEHICLES,
+  fareRates: [],
   isLoading: false,
 
   fetchVehicles: async () => {
@@ -1938,6 +1939,22 @@ export const useVehicleStore = create((set, get) => ({
     } catch (err) {
       console.error('Error fetching vehicles:', err);
       set({ isLoading: false });
+    }
+  },
+
+  fetchFareRates: async () => {
+    try {
+      const { data, error } = await supabase.from('fare_rates').select('*').eq('is_active', true);
+      if (error) {
+        // Fallback to mock rates if table doesn't exist yet (e.g. unmigrated dev env)
+        console.warn('Could not fetch fare_rates from DB, using mock fallback', error.message);
+        return;
+      }
+      if (data && data.length > 0) {
+        set({ fareRates: data });
+      }
+    } catch (err) {
+      console.error('Error fetching fare_rates:', err);
     }
   },
 

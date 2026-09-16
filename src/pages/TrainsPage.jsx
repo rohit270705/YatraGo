@@ -2,8 +2,11 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   TrainFront, MapPin, ArrowRight, Clock, Search, SlidersHorizontal,
-  X, ChevronDown, ChevronUp, Users
+  X, ChevronDown, ChevronUp, Users, BellRing
 } from 'lucide-react';
+import { useAuthGate } from '../hooks/useAuthGate';
+import { supabase } from '../supabaseClient';
+import { useToastStore, useAuthStore } from '../store';
 
 // ── Class metadata ─────────────────────────────────────────────────────────────
 export const TRAIN_CLASS_META = {
@@ -182,6 +185,30 @@ export default function TrainsPage() {
   const [classFilter, setClassFilter] = useState('all');
   const [sortBy,      setSortBy]      = useState('price');
   const [hasSearched, setHasSearched] = useState(false);
+  const [isNotifying, setIsNotifying] = useState(false);
+
+  const authGate = useAuthGate();
+  const { user } = useAuthStore();
+  const { addToast } = useToastStore();
+
+  const handleNotifyMe = () => {
+    authGate.requireAuth(async () => {
+      if (!user) return;
+      setIsNotifying(true);
+      try {
+        const { error } = await supabase.from('feature_notify_requests').insert({
+          user_id: user.id,
+          feature_name: 'train_booking'
+        });
+        if (error && error.code !== '23505') throw error; // ignore duplicate
+        addToast("You're on the list! We'll notify you when train bookings go live.", 'success');
+      } catch (err) {
+        addToast('Something went wrong. Please try again.', 'error');
+      } finally {
+        setIsNotifying(false);
+      }
+    });
+  };
   const [expandedId,  setExpandedId]  = useState(null); // which train card is expanded
 
   const handleSearch = (e) => {
@@ -252,9 +279,26 @@ export default function TrainsPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
-        <h1>🚂 Trains</h1>
-        <p>India's rail network — search, pick your class, book</p>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <h1>🚂 Trains</h1>
+          <p>India's rail network — search, pick your class, book</p>
+        </div>
+        <button 
+          className="btn" 
+          onClick={handleNotifyMe}
+          disabled={isNotifying}
+          style={{ 
+            background: 'var(--color-surface)', 
+            border: '1.5px solid var(--color-accent-teal)', 
+            color: 'var(--color-accent-teal)',
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 16px', borderRadius: 'var(--radius-full)'
+          }}
+        >
+          <BellRing size={16} />
+          {isNotifying ? 'Saving...' : 'Notify me when live'}
+        </button>
       </div>
 
       {/* Search bar */}

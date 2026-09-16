@@ -255,7 +255,7 @@ export default function BookingPage() {
   const location    = useLocation();
   const navigate    = useNavigate();
   const { routes, fetchAllRoutes, createBooking } = useBookingStore();
-  const { vehicles }    = useVehicleStore();
+  const { vehicles, fareRates, fetchFareRates }    = useVehicleStore();
   const { balance }     = useWalletStore();
   const { addToast }    = useToastStore();
   const { user, isAuthenticated } = useAuthStore();
@@ -275,6 +275,7 @@ export default function BookingPage() {
       const saved = pendingAction.payload;
       if (saved.passengers) setPassengers(saved.passengers);
       if (saved.quota)      setQuota(saved.quota);
+      if (saved.acceptedTC !== undefined) setAcceptedTC(saved.acceptedTC);
       // Don't clear pendingAction here — GuestLoginModal.resumeAndClose() will
       // call handleBook() via resumeFn, which needs pendingAction to still exist
       // for its own context. clearPendingAction() is called inside resumeAndClose.
@@ -355,6 +356,17 @@ export default function BookingPage() {
   const [promoCodeInput,    setPromoCodeInput]     = useState('');
   const [promoCode,         setPromoCode]          = useState(null);
   const [promoDiscount,     setPromoDiscount]      = useState(0);
+  const [acceptedTC,        setAcceptedTC]         = useState(false);
+
+  // Fare engine
+  const [distanceKm, setDistanceKm] = useState(null);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    if (!fareRates || fareRates.length === 0) {
+      fetchFareRates();
+    }
+  }, [fetchFareRates, fareRates]);
 
   // Quota — train only
   const [quota, setQuota] = useState('GENERAL');
@@ -462,11 +474,41 @@ export default function BookingPage() {
   const isAgent = user?.role === 'agent';
 
   // ── Fare calculation ──────────────────────────────────────────────────────
+
+  // Mock distance if edge function fails/unreachable
+  const getMockDistance = (origin, destination) => {
+    // simple deterministic mock based on string length
+    const val = (origin.length * destination.length * 10) % 500;
+    return val < 20 ? 25 : val; 
+  };
+
+  useEffect(() => {
+    if (mode === 'vehicle' || !isTransit) {
+      // Simulate edge function call
+      const origin = route?.from || '';
+      const dest = route?.to || '';
+      const dist = getMockDistance(origin, dest);
+      setDistanceKm(dist);
+    }
+  }, [route, mode, isTransit]);
+
   const calculatePassengerPrice = (ageStr) => {
     const age = parseInt(ageStr) || 0;
     if (age > 0 && age <= 5) return 0;
-    if (age >= 6 && age <= 7) return Math.round(route.price / 2);
-    return route.price;
+    
+    let basePrice = route?.price || 0;
+    
+    // Dynamic fare for vehicles
+    if ((mode === 'vehicle' || !isTransit) && vehicle && fareRates && distanceKm) {
+      const rate = fareRates.find(f => f.vehicle_type === vehicle.type);
+      if (rate) {
+        const calculated = rate.base_fare + (distanceKm * rate.per_km_rate);
+        basePrice = Math.max(calculated, rate.min_fare);
+      }
+    }
+    
+    if (age >= 6 && age <= 7) return Math.round(basePrice / 2);
+    return basePrice;
   };
 
   let totalTicketPrice = passengers.reduce((sum, p) => sum + calculatePassengerPrice(p.age), 0);
@@ -495,7 +537,7 @@ export default function BookingPage() {
     totalAmount   -= discountAmount;
   }
 
-  // ── Booking submission ────────────────────────────────────────────────────
+  // ── Booking submission ────────────────────────────────────────────────
   const handleBook = async () => {
     setIsBooking(true);
     let result;
@@ -512,7 +554,9 @@ export default function BookingPage() {
       const transitMeta = {
         from:         listing?.from,
         to:           listing?.to,
-        price:        listing?.price || 0,
+        price:        totalAmount,
+        accepted_tc:  acceptedTC,
+        status:       'confirmed',
         operator:     listing?.operator,
         opCode:       listing?.opCode,
         travelClass:  listing?.classLabel || listing?.travelClass || listing?.listingType,
@@ -522,7 +566,6 @@ export default function BookingPage() {
         arrive:       listing?.arrive,
         listingType:  listing?.listingType,
         vehicleType:  vehicle.type,
-        status:       listing?.status || 'Confirmed',
         pnr:          mockPnr,
         coachSeat:    mockCoach,
         cabinType,
