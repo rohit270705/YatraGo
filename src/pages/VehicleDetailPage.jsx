@@ -11,6 +11,7 @@ export default function VehicleDetailPage() {
   const { createOffer } = useVehicleOfferStore();
   const { addToast } = useToastStore();
   const { user } = useAuthStore();
+  const isAdminOrOwner = user?.role === 'admin' || user?.role === 'owner';
   const gate = useAuthGate();
   
   const vehicle = getVehicle(vehicleId);
@@ -119,19 +120,22 @@ export default function VehicleDetailPage() {
             {(vehicle.imageUrl || vehicle.image_url) ? <img src={vehicle.imageUrl || vehicle.image_url} alt={vehicle.type} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Car size={36} color="var(--color-accent-teal-light)" />}
           </div>
           <div style={{ flex: 1 }}>
-            <h2 style={{ fontWeight: 800, fontSize: '1.5rem', marginBottom: 4 }}>{vehicle.registrationNumber}</h2>
+            <h2 style={{ fontWeight: 800, fontSize: '1.5rem', marginBottom: 4 }}>{isAdminOrOwner ? vehicle.registrationNumber : vehicle.type}</h2>
             <p style={{ color: 'var(--color-text-tertiary)' }}>
               {vehicle.type} • {vehicle.seatingCapacity} seats • {vehicle.luggageCapacity}kg max luggage
             </p>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginTop: 4 }}>
-              Owner: <strong>{vehicle.ownerName}</strong>
-            </p>
+            {isAdminOrOwner && (
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginTop: 4 }}>
+                Owner: <strong>{vehicle.ownerName}</strong>
+              </p>
+            )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {vehicle.approved
-              ? <span className="badge badge-success"><CheckCircle size={12} /> Approved & Active</span>
-              : <span className="badge badge-warning"><AlertTriangle size={12} /> Pending Approval</span>
-            }
+            {isAdminOrOwner && (
+              vehicle.approved
+                ? <span className="badge badge-success"><CheckCircle size={12} /> Approved & Active</span>
+                : <span className="badge badge-warning"><AlertTriangle size={12} /> Pending Approval</span>
+            )}
             <button className="btn btn-primary btn-sm" onClick={() => navigate('/tracking')}>
               <Navigation size={14} /> Live Track
             </button>
@@ -148,7 +152,7 @@ export default function VehicleDetailPage() {
           <div>
             <h3 style={{ fontWeight: 800, fontSize: '1.25rem', margin: 0, color: '#fff' }}>Direct Vehicle Booking (Negotiable Pricing)</h3>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', margin: 0 }}>
-              Book this {vehicle.type} directly from owner <strong>{vehicle.ownerName}</strong>. Propose your own travel rate!
+              Book this {vehicle.type} directly from {isAdminOrOwner ? <>owner <strong>{vehicle.ownerName}</strong></> : 'the owner'}. Propose your own travel rate!
             </p>
           </div>
         </div>
@@ -158,7 +162,7 @@ export default function VehicleDetailPage() {
             <CheckCircle size={48} color="var(--color-accent-green)" style={{ margin: '0 auto 12px' }} />
             <h4 style={{ fontWeight: 700, fontSize: '1.2rem', color: '#fff', marginBottom: 8 }}>Price Offer Submitted!</h4>
             <p style={{ color: 'var(--color-text-secondary)', maxWidth: 500, margin: '0 auto 16px' }}>
-              Your offer of <strong style={{ color: 'var(--color-accent-green)' }}>₹{Number(proposedPrice).toLocaleString()}</strong> for <strong>{routeFrom} → {routeTo}</strong> on <strong>{travelDate}</strong> has been sent to {vehicle.ownerName}.
+              Your offer of <strong style={{ color: 'var(--color-accent-green)' }}>₹{Number(proposedPrice).toLocaleString()}</strong> for <strong>{routeFrom} → {routeTo}</strong> on <strong>{travelDate}</strong> has been sent to {isAdminOrOwner ? vehicle.ownerName : 'the owner'}.
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button className="btn btn-secondary" onClick={() => { setOfferSubmitted(false); setCustomPriceEdited(false); }}>Send Another Offer</button>
@@ -318,7 +322,7 @@ export default function VehicleDetailPage() {
             </div>
 
             <button type="submit" className="btn btn-primary" disabled={isSubmitting || !termsAccepted} style={{ padding: '14px', fontSize: '1rem', fontWeight: 700 }}>
-              <Send size={18} /> Submit Price Offer to {vehicle.ownerName}
+              <Send size={18} /> Submit Price Offer to {isAdminOrOwner ? vehicle.ownerName : 'the owner'}
             </button>
           </form>
         )}
@@ -326,46 +330,48 @@ export default function VehicleDetailPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Documents */}
-        <div>
-          <h3 style={{ fontWeight: 700, marginBottom: 16 }}>
-            <Shield size={18} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
-            Document Verification
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {documents.map((doc, i) => {
-              const status = getDocStatus(doc.data);
-              return (
-                <div key={i} className="glass-card" style={{ padding: '16px 20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <span style={{ fontSize: '1.5rem' }}>{doc.icon}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{doc.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
-                        {doc.data?.number || 'N/A'}
+        {isAdminOrOwner && (
+          <div>
+            <h3 style={{ fontWeight: 700, marginBottom: 16 }}>
+              <Shield size={18} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
+              Document Verification
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {documents.map((doc, i) => {
+                const status = getDocStatus(doc.data);
+                return (
+                  <div key={i} className="glass-card" style={{ padding: '16px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <span style={{ fontSize: '1.5rem' }}>{doc.icon}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{doc.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+                          {doc.data?.number || 'N/A'}
+                        </div>
+                        {doc.data?.holder && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+                            Holder: {doc.data.holder}
+                          </div>
+                        )}
+                        {doc.data?.provider && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+                            Provider: {doc.data.provider}
+                          </div>
+                        )}
                       </div>
-                      {doc.data?.holder && (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
-                          Holder: {doc.data.holder}
+                      <div style={{ textAlign: 'right' }}>
+                        <span className={`badge ${status.class}`}>{status.label}</span>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+                          Expires: {doc.data?.validUntil || 'N/A'}
                         </div>
-                      )}
-                      {doc.data?.provider && (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
-                          Provider: {doc.data.provider}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span className={`badge ${status.class}`}>{status.label}</span>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)', marginTop: 4 }}>
-                        Expires: {doc.data?.validUntil || 'N/A'}
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Journey History */}
         <div>

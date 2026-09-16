@@ -4,7 +4,7 @@ import {
   Search, MapPin, Calendar, ArrowRightLeft, Wallet, Award,
   Clock, ArrowRight, Ticket, Star, Navigation, Gift, Repeat,
   ClipboardList, Route, Plus, Package, TrendingUp, Car, ChevronRight,
-  Plane, TrainFront, LayoutGrid, Ship
+  Plane, TrainFront, LayoutGrid, Ship, Lock
 } from 'lucide-react';
 import { useAuthStore, useWalletStore, useBookingStore, useVehicleStore, useToastStore } from '../store';
 import { supabase } from '../supabaseClient';
@@ -277,12 +277,12 @@ export default function DashboardPage() {
             <div className="pax-wallet-top">
               <div>
                 <div className="pax-wallet-label">YatraGo Pay balance</div>
-                <div className="pax-wallet-balance">₹{balance?.toLocaleString('en-IN') || '0'}</div>
-                <div className="pax-wallet-sub">Available to spend</div>
+                <div className="pax-wallet-balance">{user ? `₹${balance?.toLocaleString('en-IN') || '0'}` : '₹ - -'}</div>
+                <div className="pax-wallet-sub">{user ? 'Available to spend' : 'Sign in to view wallet'}</div>
               </div>
               <button className="pax-add-money-btn" onClick={() => navigate('/wallet')}>
-                <Plus size={15} />
-                <span>Add money</span>
+                {user ? <Plus size={15} /> : <Lock size={15} />}
+                <span>{user ? 'Add money' : 'Unlock Wallet'}</span>
               </button>
             </div>
             <div className="pax-wallet-divider" />
@@ -292,16 +292,16 @@ export default function DashboardPage() {
                   <Award size={16} color="#f59e0b" />
                   <span>Transit rewards</span>
                 </div>
-                <div className="pax-rewards-count">3 of 5 rides</div>
+                <div className="pax-rewards-count">{user ? '3 of 5 rides' : 'Sign in to earn'}</div>
               </div>
               <div className="pax-progress-bar">
-                <div className="pax-progress-fill" />
+                <div className="pax-progress-fill" style={{ width: user ? '60%' : '0%' }} />
               </div>
               <div className="pax-rewards-footer">
-                <span>2 more rides to your free trip</span>
+                <span>{user ? '2 more rides to your free trip' : 'Book rides and earn free trips!'}</span>
                 <span className="pax-rewards-expire">
                   <Clock size={12} />
-                  <span>Expires Aug 2026</span>
+                  <span>{user ? 'Expires Aug 2026' : 'Start now'}</span>
                 </span>
               </div>
             </div>

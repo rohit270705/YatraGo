@@ -1,11 +1,15 @@
 import { useNavigate } from 'react-router-dom';
 import { Car, CheckCircle, XCircle, AlertTriangle, MapPin, Shield, Eye, Calendar, Users } from 'lucide-react';
-import { useVehicleStore } from '../store';
+import { useVehicleStore, useAuthStore } from '../store';
 import SkeletonLoader from '../components/SkeletonLoader';
 
 export default function VehiclesPage() {
   const navigate = useNavigate();
   const { vehicles, isLoading } = useVehicleStore();
+  const { user } = useAuthStore();
+  const isAdminOrOwner = user?.role === 'admin' || user?.role === 'owner';
+  
+  const displayVehicles = isAdminOrOwner ? vehicles : vehicles.filter(v => v.approved && v.isActive);
 
   const getStatusBadge = (vehicle) => {
     if (!vehicle.approved) return <span className="badge badge-warning"><AlertTriangle size={12} /> Pending Approval</span>;
@@ -36,31 +40,33 @@ export default function VehiclesPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <h1>Vehicles</h1>
-        <p>View all registered vehicles and their document status</p>
+        <p>{isAdminOrOwner ? 'View all registered vehicles and their document status' : 'Browse our fleet of available vehicles'}</p>
       </div>
 
-      <div className="stats-grid" style={{ marginBottom: 'var(--space-xl)' }}>
-        <div className="stat-card">
-          <div className="stat-card-icon teal"><Car size={22} /></div>
-          <div className="stat-card-label">Total Vehicles</div>
-          <div className="stat-card-value">{vehicles.length}</div>
+      {isAdminOrOwner && (
+        <div className="stats-grid" style={{ marginBottom: 'var(--space-xl)' }}>
+          <div className="stat-card">
+            <div className="stat-card-icon teal"><Car size={22} /></div>
+            <div className="stat-card-label">Total Vehicles</div>
+            <div className="stat-card-value">{vehicles.length}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-icon green"><CheckCircle size={22} /></div>
+            <div className="stat-card-label">Active</div>
+            <div className="stat-card-value">{vehicles.filter(v => v.approved && v.isActive).length}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-card-icon amber"><AlertTriangle size={22} /></div>
+            <div className="stat-card-label">Pending Approval</div>
+            <div className="stat-card-value">{vehicles.filter(v => !v.approved).length}</div>
+          </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-card-icon green"><CheckCircle size={22} /></div>
-          <div className="stat-card-label">Active</div>
-          <div className="stat-card-value">{vehicles.filter(v => v.approved && v.isActive).length}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-card-icon amber"><AlertTriangle size={22} /></div>
-          <div className="stat-card-label">Pending Approval</div>
-          <div className="stat-card-value">{vehicles.filter(v => !v.approved).length}</div>
-        </div>
-      </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }} className="stagger-children">
         {isLoading ? (
           <SkeletonLoader type="list" count={3} />
-        ) : vehicles.map(vehicle => (
+        ) : displayVehicles.map(vehicle => (
           <div key={vehicle.id} className="glass-card clickable" onClick={() => navigate(`/vehicle/${vehicle.id}`)}>
             <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
               {/* Vehicle Icon */}
@@ -76,40 +82,44 @@ export default function VehiclesPage() {
               {/* Details */}
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <h3 style={{ fontWeight: 700, fontSize: '1.05rem' }}>{vehicle.registrationNumber}</h3>
-                  {getStatusBadge(vehicle)}
+                  <h3 style={{ fontWeight: 700, fontSize: '1.05rem' }}>{isAdminOrOwner ? vehicle.registrationNumber : vehicle.type}</h3>
+                  {isAdminOrOwner && getStatusBadge(vehicle)}
                 </div>
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-tertiary)', marginBottom: 8 }}>
                   {vehicle.type} • {vehicle.seatingCapacity} seats • {vehicle.luggageCapacity}kg luggage
                 </p>
-                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                  Owner: <strong>{vehicle.ownerName}</strong>
-                </p>
+                {isAdminOrOwner && (
+                  <>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
+                      Owner: <strong>{vehicle.ownerName}</strong>
+                    </p>
 
-                {/* Document Status Row */}
-                <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px',
-                    background: 'var(--color-surface)', borderRadius: 'var(--radius-sm)',
-                    fontSize: '0.75rem',
-                  }}>
-                    <Shield size={12} /> PUC {getDocBadge(getDocStatus(vehicle.puc))}
-                  </div>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px',
-                    background: 'var(--color-surface)', borderRadius: 'var(--radius-sm)',
-                    fontSize: '0.75rem',
-                  }}>
-                    <Shield size={12} /> DL {getDocBadge(getDocStatus(vehicle.driverLicense))}
-                  </div>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px',
-                    background: 'var(--color-surface)', borderRadius: 'var(--radius-sm)',
-                    fontSize: '0.75rem',
-                  }}>
-                    <Shield size={12} /> Insurance {getDocBadge(getDocStatus(vehicle.insurance))}
-                  </div>
-                </div>
+                    {/* Document Status Row */}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px',
+                        background: 'var(--color-surface)', borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.75rem',
+                      }}>
+                        <Shield size={12} /> PUC {getDocBadge(getDocStatus(vehicle.puc))}
+                      </div>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px',
+                        background: 'var(--color-surface)', borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.75rem',
+                      }}>
+                        <Shield size={12} /> DL {getDocBadge(getDocStatus(vehicle.driverLicense))}
+                      </div>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px',
+                        background: 'var(--color-surface)', borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.75rem',
+                      }}>
+                        <Shield size={12} /> Insurance {getDocBadge(getDocStatus(vehicle.insurance))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Right side */}
