@@ -4080,24 +4080,52 @@ export const useTripGraphStore = create((set, get) => ({
     }));
     try { await supabase.from('trip_nodes').delete().eq('id', nodeId); } catch { }
   },
-
-  clearActiveTrip: () => set({ activeTrip: null }),
+  clearActiveTrip: () => set({ activeTrip: null }),
 }));
 
 // ===== Guest Pending-Action Store =====
-// Holds the action context that a guest triggered before logging in.
-// After successful auth, the modal reads resumeFn and calls it automatically.
 export const useGuestStore = create((set) => ({
-  pendingAction: null, // { type, payload, resumeFn }
+  pendingAction: null,
   setPendingAction: (action) => set({ pendingAction: action }),
   clearPendingAction: () => set({ pendingAction: null }),
 }));
 
 // ===== Guest Login Modal Store =====
-// Single open/close toggle — one modal mounted once in AppLayout.
 export const useGuestLoginModalStore = create((set) => ({
   isOpen: false,
-  defaultTab: 'signin', // 'signin' | 'signup'
+  defaultTab: 'signin',
   openModal: (tab = 'signin') => set({ isOpen: true, defaultTab: tab }),
   closeModal: () => set({ isOpen: false }),
+}));
+
+// ===== Shared Rides Store =====
+export const useSharedRideStore = create((set, get) => ({
+  rides: MOCK_SHARED_RIDES,
+  isLoading: false,
+
+  fetchRides: async () => {
+    set({ rides: MOCK_SHARED_RIDES });
+  },
+
+  publishRide: async (rideData) => {
+    const newRide = {
+      id: 'sr-' + Date.now(),
+      ...rideData,
+      availableSeats: rideData.totalSeats,
+      driverRating: 5.0,
+    };
+    set(state => ({ rides: [newRide, ...state.rides] }));
+    return { success: true };
+  },
+
+  bookSeat: async (rideId, passengerCount = 1) => {
+    set(state => ({
+      rides: state.rides.map(r =>
+        r.id === rideId
+          ? { ...r, availableSeats: Math.max(0, r.availableSeats - passengerCount) }
+          : r
+      )
+    }));
+    return { success: true };
+  },
 }));

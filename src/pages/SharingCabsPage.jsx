@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { MapPin, Calendar, Search, Users, CarFront, Plus, Star, ArrowRight, ShieldCheck, User } from 'lucide-react';
 import { useSharedRideStore, useAuthStore, useToastStore } from '../store';
-import useAuthGate from '../hooks/useAuthGate';
+import { useAuthGate } from '../hooks/useAuthGate';
 import SkeletonLoader from '../components/SkeletonLoader';
 
 function PublishRideModal({ isOpen, onClose }) {
