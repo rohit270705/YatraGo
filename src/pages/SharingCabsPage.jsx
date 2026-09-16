@@ -127,7 +127,7 @@ export default function SharingCabsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const displayedRides = useMemo(() => {
-    let base = rides;
+    let base = rides || [];
     if (hasSearched) {
       if (fromSearch.trim()) base = base.filter(r => r.from.toLowerCase().includes(fromSearch.trim().toLowerCase()));
       if (toSearch.trim()) base = base.filter(r => r.to.toLowerCase().includes(toSearch.trim().toLowerCase()));
