@@ -3,7 +3,7 @@
 -- Database changes — run in Supabase SQL Editor
 --
 -- ASSUMPTIONS TO VERIFY BEFORE RUNNING:
--- 1. profiles table has a `role` text column with value 'admin' for
+-- 1. users table has a `role` text column with value 'admin' for
 --    admin users. If your admin check works differently, adjust the
 --    admin policies below before running.
 -- 2. vehicle_type values here (Bike, E-Rickshaw, Auto 3-Wheeler,
@@ -116,7 +116,7 @@ create index if not exists idx_route_cache_expiry on route_distance_cache(expire
 -- ---------------------------------------------------------------------
 create table if not exists feature_notify_requests (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references profiles(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
   feature_name text not null
     check (feature_name in ('flight_booking', 'train_booking')),
   requested_at timestamptz not null default now(),
@@ -156,14 +156,14 @@ create policy fare_rates_admin_write on fare_rates
   for all
   using (
     exists (
-      select 1 from profiles p
-      where p.id = auth.uid() and p.role = 'admin'
+      select 1 from public.users p
+      where p.id::text = auth.uid()::text and p.role = 'admin'
     )
   )
   with check (
     exists (
-      select 1 from profiles p
-      where p.id = auth.uid() and p.role = 'admin'
+      select 1 from public.users p
+      where p.id::text = auth.uid()::text and p.role = 'admin'
     )
   );
 
@@ -190,7 +190,7 @@ create policy feature_notify_requests_admin_select on feature_notify_requests
   for select
   using (
     exists (
-      select 1 from profiles p
-      where p.id = auth.uid() and p.role = 'admin'
+      select 1 from public.users p
+      where p.id::text = auth.uid()::text and p.role = 'admin'
     )
   );
