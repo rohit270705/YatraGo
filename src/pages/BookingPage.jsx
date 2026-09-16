@@ -8,6 +8,7 @@ import {
 import { useBookingStore, useVehicleStore, useWalletStore, useAuthStore, useToastStore, useAgentStore, useGuestStore, usePlatformStore } from '../store';
 import { useAuthGate } from '../hooks/useAuthGate';
 import { supabase } from '../supabaseClient';
+import PaymentGateway from '../components/PaymentGateway';
 import {
   calcGst, isValidGstin, gstinStateCode, gstSplitType,
   generateInvoiceNumber, GST_STATE_CODES,
@@ -351,6 +352,7 @@ export default function BookingPage() {
   }]);
   const [totalLuggageKg,    setTotalLuggageKg]    = useState(10);
   const [isBooking,         setIsBooking]          = useState(false);
+  const [showPayGateway,    setShowPayGateway]     = useState(false);
   const [confirmedBooking,  setConfirmedBooking]   = useState(null);
   const [customerPaymentMode, setCustomerPaymentMode] = useState('cash');
   const [promoCodeInput,    setPromoCodeInput]     = useState('');
@@ -794,6 +796,7 @@ export default function BookingPage() {
   const hasAnyDisabled = passengers.some(p => p.isDisabled);
 
   return (
+    <>
     <div className="animate-fade-in" style={{ maxWidth: 800, margin: '0 auto' }}>
       <div className="page-header">
         <h1>Book Your Trip</h1>
@@ -1199,20 +1202,11 @@ export default function BookingPage() {
               <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
                 <button className="btn btn-secondary btn-lg" onClick={() => setStep(2)}>← Back</button>
                 <button className="btn btn-primary btn-lg btn-full"
-                  onClick={() => gate(handleBook, {
+                  onClick={() => gate(() => setShowPayGateway(true), {
                     type: 'booking',
-                    payload: {
-                      listing: route,
-                      // ── Full form state serialized for Smart Resume ──────
-                      // If the guest logs in from another device or the component
-                      // remounts, these values are used to restore the form.
-                      passengers,
-                      quota,
-                      step,
-                      mode,
-                    },
+                    payload: { listing: route, passengers, quota, step, mode },
                   })}
-                  disabled={isBooking || (isAuthenticated && balance < totalAmount) || (showGstInvoice && customerGstin && !isValidGstin(customerGstin))}>
+                  disabled={isBooking || !acceptedTC || (showGstInvoice && customerGstin && !isValidGstin(customerGstin))}>
                   {isBooking ? <span className="spinner" style={{ width: 20, height: 20, borderWidth: 2 }} /> : <>Pay ₹{totalAmount.toLocaleString('en-IN')} &amp; Confirm</>}
                 </button>
               </div>
@@ -1302,5 +1296,26 @@ export default function BookingPage() {
         </div>
       </div>
     </div>
+
+    <PaymentGateway
+      isOpen={showPayGateway}
+      onClose={() => setShowPayGateway(false)}
+      amount={totalAmount}
+      bookingId={confirmedBooking?.id || 'pending'}
+      bookingRef={confirmedBooking?.bookingRef || `YG-${Date.now()}`}
+      userEmail={user?.email || ''}
+      userName={user?.name || user?.email || 'Guest'}
+      walletBalance={balance || 0}
+      onSuccess={async (paymentId, payMethod) => {
+        setShowPayGateway(false);
+        addToast(`Payment confirmed via ${payMethod}!`, 'success');
+        await handleBook();
+      }}
+      onError={(msg) => {
+        addToast(msg || 'Payment failed', 'error');
+        setShowPayGateway(false);
+      }}
+    />
+    </>
   );
 }
