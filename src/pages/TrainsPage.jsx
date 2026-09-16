@@ -351,7 +351,7 @@ export default function TrainsPage() {
           return (
             <div key={tr.id} className="trip-card" style={{ cursor: 'pointer' }}>
               {/* Route info row — clicking toggles class picker */}
-              <div onClick={() => setExpandedId(isExpanded ? null : tr.id)}>
+              <div onClick={() => setExpandedId(isExpanded ? null : tr.id)} style={{ flex: 1 }}>
                 <div className="trip-route">
                   <div className="trip-route-line">
                     <div className="trip-route-dot" />
@@ -385,8 +385,8 @@ export default function TrainsPage() {
               </div>
 
               {/* Price / expand panel */}
-              <div className="trip-info" onClick={() => setExpandedId(isExpanded ? null : tr.id)}>
-                <div>
+              <div className="trip-info" onClick={() => setExpandedId(isExpanded ? null : tr.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center', minWidth: 120 }}>
+                <div style={{ textAlign: 'right' }}>
                   {minPrice !== null ? (
                     <>
                       <div style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)', marginBottom: 2 }}>from</div>
@@ -398,7 +398,7 @@ export default function TrainsPage() {
                 </div>
                 <button
                   className="btn btn-primary btn-sm"
-                  style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}
+                  style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px' }}
                 >
                   {isExpanded ? <><ChevronUp size={14} /> Hide</> : <><ChevronDown size={14} /> View Classes</>}
                 </button>
@@ -406,21 +406,23 @@ export default function TrainsPage() {
 
               {/* Inline class picker (expanded) */}
               {isExpanded && (
-                <div style={{ gridColumn: '1 / -1', padding: '4px 0 8px' }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-tertiary)', letterSpacing: '0.08em', marginBottom: 4, paddingLeft: 2 }}>
+                <div style={{ flex: '0 0 380px', paddingLeft: 24, borderLeft: '1px solid var(--color-border)' }} onClick={e => e.stopPropagation()}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-secondary)', letterSpacing: '0.05em', marginBottom: 12, paddingLeft: 2, textTransform: 'uppercase' }}>
                     SELECT CLASS
                   </div>
-                  {filteredOpts.length === 0 ? (
-                    <div style={{ fontSize: '0.82rem', color: 'var(--color-text-tertiary)', padding: '8px 2px' }}>
-                      No classes match the current filter.
-                    </div>
-                  ) : filteredOpts.map(co => (
-                    <ClassPickerRow
-                      key={co.id}
-                      classOpt={co}
-                      onSelect={(opt) => handleSelectClass(tr, opt)}
-                    />
-                  ))}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {filteredOpts.length === 0 ? (
+                      <div style={{ fontSize: '0.82rem', color: 'var(--color-text-tertiary)', padding: '8px 2px' }}>
+                        No classes match the current filter.
+                      </div>
+                    ) : filteredOpts.map(co => (
+                      <ClassPickerRow
+                        key={co.id}
+                        classOpt={co}
+                        onSelect={(opt) => handleSelectClass(tr, opt)}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
