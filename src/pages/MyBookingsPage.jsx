@@ -5,7 +5,7 @@ import {
   ArrowRight, Filter, Edit3, X, Star, MessageSquare, Save, Ban, ThumbsUp,
   Pencil, Info, Plane, TrainFront, Ship
 } from 'lucide-react';
-import { useBookingStore, useToastStore, useChatStore } from '../store';
+import { useBookingStore, useToastStore, useChatStore, useReviewStore } from '../store';
 import SkeletonLoader from '../components/SkeletonLoader';
 
 const REVIEW_TAGS = [
@@ -19,8 +19,9 @@ export default function MyBookingsPage() {
   const { startPeerChat } = useChatStore();
   const {
     bookings, isLoading, cancelBooking, completeBooking, modifyBooking,
-    canModifyBooking, submitReview, skipReview, payForBooking
+    canModifyBooking, skipReview, payForBooking, submitReview: mockSubmitReview // Fallback just to clear the pending flag
   } = useBookingStore();
+  const { addReview } = useReviewStore();
   const { addToast } = useToastStore();
   const [activeTab, setActiveTab] = useState('all');
   const [cancellingId, setCancellingId] = useState(null);
@@ -115,18 +116,32 @@ export default function MyBookingsPage() {
     setReviewTags([]);
   };
 
-  const handleSubmitReview = () => {
+  const handleSubmitReview = async () => {
     if (reviewRating === 0) {
       addToast('Please select a rating', 'warning');
       return;
     }
     setIsSubmittingReview(true);
-    setTimeout(() => {
-      submitReview(reviewModal.id, reviewRating, reviewComment, reviewTags);
+    
+    // Save to DB
+    const { success } = await addReview({
+      reviewer_id: reviewModal.userId || 'guest', // Using standard review fields
+      target_type: reviewModal.booking_type === 'vehicle' ? 'vehicle' : 'booking',
+      target_id: reviewModal.route?.vehicle_id || reviewModal.id,
+      rating: reviewRating,
+      comment: reviewComment,
+      tags: reviewTags
+    });
+
+    if (success) {
+      // Clear pending state locally
+      mockSubmitReview(reviewModal.id, reviewRating, reviewComment, reviewTags);
       addToast('Thank you for your feedback! 🙏', 'success');
       setReviewModal(null);
-      setIsSubmittingReview(false);
-    }, 1200);
+    } else {
+      addToast('Failed to save review. Please try again.', 'error');
+    }
+    setIsSubmittingReview(false);
   };
 
   const handleSkipReview = (bookingId) => {

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Car, Shield, Calendar, MapPin, Users, ArrowRight, CheckCircle, AlertTriangle, Clock, Navigation, Sparkles, DollarSign, Send } from 'lucide-react';
 import { useVehicleStore, useVehicleOfferStore, useToastStore, useAuthStore } from '../store';
 import { useAuthGate } from '../hooks/useAuthGate';
+import ReviewSection from '../components/ReviewSection';
 
 export default function VehicleDetailPage() {
   const { vehicleId } = useParams();
@@ -375,7 +376,10 @@ export default function VehicleDetailPage() {
 
         {/* Journey History */}
         <div>
-          <h3 style={{ fontWeight: 700, marginBottom: 16 }}>
+          {/* Vehicle Reviews */}
+          <ReviewSection targetType="vehicle" targetId={vehicle.id} />
+
+          <h3 style={{ fontWeight: 700, marginBottom: 16, marginTop: 32 }}>
             <Clock size={18} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
             Last 5 Journeys
           </h3>
