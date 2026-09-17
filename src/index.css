@@ -4424,5 +4424,30 @@ input, button, textarea, select {
   }
 }
 
+.category-pills {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 8px;
+  padding: 8px 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.category-pills::-webkit-scrollbar { display: none; }
+.category-pills .pill {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
 
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 16px;
+}
 
+@media (max-width: 480px) {
+  .quick-actions-grid {
+    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+    gap: 10px;
+  }
+}

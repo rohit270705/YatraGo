@@ -247,7 +247,7 @@ export default function DashboardPage() {
 
         {/* ── AIRBNB-STYLE CATEGORY RAIL ── */}
         <div className="mb-8">
-          <div className="category-rail">
+          <div className="quick-actions-grid">
             {[
               { label: 'Cabs & Cars', icon: '🚗', path: '/vehicles' },
               { label: 'Homestays', icon: '🏠', path: '/host' },
