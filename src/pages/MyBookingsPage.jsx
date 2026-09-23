@@ -125,7 +125,7 @@ export default function MyBookingsPage() {
     
     // Save to DB
     const { success } = await addReview({
-      reviewer_id: reviewModal.userId || 'guest', // Using standard review fields
+      user_id: user?.id, // Correct standard Supabase foreign key to users table
       target_type: reviewModal.booking_type === 'vehicle' ? 'vehicle' : 'booking',
       target_id: reviewModal.route?.vehicle_id || reviewModal.id,
       rating: reviewRating,
