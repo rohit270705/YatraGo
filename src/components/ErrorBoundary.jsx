@@ -12,15 +12,31 @@ export default class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    // Log error safely without sensitive data
     console.error('ErrorBoundary caught rendering exception:', {
       timestamp: new Date().toISOString(),
       message: error?.message || 'Unknown error',
       componentStack: errorInfo?.componentStack || ''
     });
+
+    // Auto-reload on chunk load error (Vite/Rollup dynamic import failure)
+    const isChunkLoadError = error?.message?.match(/Failed to fetch dynamically imported module|Importing a module script failed/i);
+    if (isChunkLoadError) {
+      const isReloaded = sessionStorage.getItem('chunk_load_error_reloaded');
+      if (!isReloaded) {
+        sessionStorage.setItem('chunk_load_error_reloaded', 'true');
+        window.location.reload();
+      }
+    }
   }
 
   handleRetry = () => {
+    // If it was a chunk load error, clear flag and force reload
+    const isChunkLoadError = this.state.error?.message?.match(/Failed to fetch dynamically imported module|Importing a module script failed/i);
+    if (isChunkLoadError || !this.props.onRetry) {
+      window.location.reload();
+      return;
+    }
+
     this.setState({ hasError: false, error: null });
     if (this.props.onRetry) {
       this.props.onRetry();

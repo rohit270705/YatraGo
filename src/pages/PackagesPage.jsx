@@ -15,7 +15,7 @@ export default function PackagesPage() {
 
   const categories = ['All', 'Heritage', 'Hill Station', 'Beach', 'Spiritual', 'Wildlife/Adventure', 'Honeymoon', 'Family'];
 
-  const filteredPackages = packages.filter(p => filter === 'All' || p.category === filter);
+  const filteredPackages = (packages || []).filter(p => filter === 'All' || p.category === filter);
 
   return (
     <div className="page-container animate-fade-in">
