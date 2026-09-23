@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Plus, ArrowLeft, Wallet, Sparkles, Map, MoreHorizontal, Share2 } from 'lucide-react';
 import DayTimeline from '../components/DayTimeline';
+import DestinationGuide from '../components/DestinationGuide';
 import DashboardHeader from '../components/DashboardHeader';
 import { useTripGraphStore, useWalletStore, useAuthStore, useToastStore, useChatStore } from '../store';
 
@@ -34,7 +35,7 @@ export default function TripGraphPage() {
   const [activeDay, setActiveDay] = useState(1);
   const [showAddNode, setShowAddNode] = useState(false);
   const [showNewTrip, setShowNewTrip] = useState(false);
-  const [newTrip, setNewTrip] = useState({ title: '', budget: '', days: 3, startDate: '' });
+  const [newTrip, setNewTrip] = useState({ title: '', budget: '', days: 3, startDate: '', destination: '' });
   const [newNode, setNewNode] = useState({
     node_type: 'vehicle',
     title: '',
@@ -80,6 +81,7 @@ export default function TripGraphPage() {
       budget: Number(newTrip.budget) || 0,
       total_days: Number(newTrip.days) || 3,
       start_date: newTrip.startDate,
+      destination: newTrip.destination,
     });
     if (result.success) {
       setShowNewTrip(false);
@@ -142,6 +144,19 @@ export default function TripGraphPage() {
             <div style={{ fontSize: '1.5rem', marginBottom: 6 }}>🗺️ Plan a New Trip</div>
             <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginBottom: 24 }}>
               Create a live trip graph — add vehicle, stay, food, and parcel stops, all in one place.
+            </div>
+            <div className="form-group">
+              <label className="form-label">Destination</label>
+              <select className="form-input" value={newTrip.destination} 
+                onChange={e => setNewTrip(p => ({ 
+                  ...p, 
+                  destination: e.target.value, 
+                  title: e.target.value ? `Trip to ${e.target.options[e.target.selectedIndex].text.split(' ')[0]}` : p.title 
+                }))}>
+                <option value="">Select Destination...</option>
+                <option value="jaipur">Jaipur (Pink City)</option>
+                <option value="goa">Goa (Party Capital)</option>
+              </select>
             </div>
             <div className="form-group">
               <label className="form-label">Trip Name *</label>
