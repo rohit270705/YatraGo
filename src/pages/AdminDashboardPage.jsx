@@ -453,7 +453,7 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* User Breakdown */}
-          <div className="glass-card" style={{ marginBottom: 24 }}>
+          <div className="glass-card section-block">
             <h3 style={{ fontWeight: 700, marginBottom: 16 }}>
               <Users size={20} style={{ display: 'inline', marginRight: 8, verticalAlign: 'text-bottom' }} />
               User Breakdown
@@ -828,7 +828,7 @@ export default function AdminDashboardPage() {
       {activeSection === 'wallets' && (
         <>
           <h3 style={{ fontWeight: 700, marginBottom: 16 }}>Platform Wallets Overview</h3>
-          <div className="stats-grid" style={{ marginBottom: 24 }}>
+          <div className="stats-grid section-block">
             <div className="stat-card">
               <div className="stat-card-icon green"><Wallet size={22} /></div>
               <div className="stat-card-label">Total Platform Balance</div>
@@ -842,7 +842,7 @@ export default function AdminDashboardPage() {
           </div>
 
           <h4 style={{ fontWeight: 600, marginBottom: 12 }}>Pending Withdrawal Requests</h4>
-          <div className="data-table-wrapper" style={{ marginBottom: 32 }}>
+          <div className="data-table-wrapper section-block">
             <table className="data-table">
               <thead>
                 <tr>
@@ -893,7 +893,7 @@ export default function AdminDashboardPage() {
           </div>
           
           <h4 style={{ fontWeight: 600, marginBottom: 12 }}>User Wallet Balances</h4>
-          <div className="data-table-wrapper" style={{ marginBottom: 32 }}>
+          <div className="data-table-wrapper section-block">
             <table className="data-table">
               <thead>
                 <tr>

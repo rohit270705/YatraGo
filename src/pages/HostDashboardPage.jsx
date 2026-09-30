@@ -79,7 +79,7 @@ export default function HostDashboardPage() {
           <p>Click "List My Home" to register your property as a Pay-and-Stay for travellers.</p>
         </div>
       ) : (
-        <div className="route-grid" style={{ marginBottom: 32 }}>
+        <div className="route-grid section-block">
           {listings.map(l => (
             <div key={l.id} className="glass-card" style={{ padding: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>

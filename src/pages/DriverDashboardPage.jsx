@@ -379,7 +379,7 @@ export default function DriverDashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="card lg:col-span-2">
             <h2 className="card-title">Earnings Breakdown</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4" style={{ marginBottom: 24 }}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 section-block">
               <div className="glass-card" style={{ padding: 16 }}>
                 <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>Today&apos;s Earnings</div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-accent-green)', marginTop: 4 }}>

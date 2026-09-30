@@ -429,7 +429,7 @@ export default function OwnerDashboardPage() {
 
       {/* Vehicles Needing Documents (Approved but docs pending) */}
       {vehiclesNeedingDocs.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
+        <div className="section-block">
           <div style={{
             background: 'rgba(231, 76, 60, 0.1)', border: '1px solid rgba(231, 76, 60, 0.3)',
             borderRadius: 'var(--radius-lg)', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12
@@ -462,7 +462,7 @@ export default function OwnerDashboardPage() {
 
       {/* Pending Approvals */}
       {pendingVehicles.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
+        <div className="section-block">
           <h3 style={{ fontWeight: 700, marginBottom: 12 }}>Pending Admin Approval</h3>
           {pendingVehicles.map(v => (
             <div key={v.id} className="glass-card" style={{ marginBottom: 8 }}>
@@ -483,7 +483,7 @@ export default function OwnerDashboardPage() {
 
       {/* Booking Requests */}
       {pendingBookings.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
+        <div className="section-block">
           <h3 style={{ fontWeight: 700, marginBottom: 12 }}>Booking Requests</h3>
           {pendingBookings.map(b => (
             <div key={b.id} className="glass-card" style={{ marginBottom: 8 }}>
@@ -509,7 +509,7 @@ export default function OwnerDashboardPage() {
 
       {/* Pending Direct Vehicle Price Offers (Module 17) */}
       {pendingOffers.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
+        <div className="section-block">
           <h3 style={{ fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-accent-amber)' }}>
             <DollarSign size={20} /> Pending Direct Price Offers (Negotiable)
           </h3>

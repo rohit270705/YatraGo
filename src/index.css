@@ -4451,3 +4451,57 @@ input, button, textarea, select {
     gap: 10px;
   }
 }
+
+/* ============================================
+   CONSISTENT SPACING FIXES
+   ============================================ */
+.section-block {
+  margin-bottom: var(--space-lg); /* 24px default */
+}
+@media (min-width: 768px) {
+  .section-block {
+    margin-bottom: var(--space-xl); /* 32px on desktop */
+  }
+}
+
+.quick-actions-grid,
+.stats-grid,
+.routes-grid,
+.pax-stats-grid,
+.driver-stats-grid,
+.agent-stats-grid {
+  gap: var(--space-md) !important; /* 16px */
+}
+
+.card,
+.glass-card,
+.stat-card,
+.wallet-card,
+.trip-card,
+.vehicle-card,
+.auth-card,
+.pax-search-card {
+  margin-bottom: 12px;
+}
+
+/* Ensure all dashboard contents have viewport breathing room */
+.pax-content,
+.driver-content,
+.agent-content,
+.owner-content,
+.admin-content,
+.host-content,
+.page-container {
+  padding: 16px;
+}
+@media (min-width: 768px) {
+  .pax-content,
+  .driver-content,
+  .agent-content,
+  .owner-content,
+  .admin-content,
+  .host-content,
+  .page-container {
+    padding: 24px;
+  }
+}

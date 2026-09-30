@@ -209,7 +209,7 @@ export default function DashboardPage() {
       <div className="pax-dashboard">
         <div className="pax-content">
           <SkeletonLoader type="card" count={1} />
-          <div className="my-6">
+          <div className="section-block">
             <SkeletonLoader type="stat" count={3} />
           </div>
           <SkeletonLoader type="list" count={3} />
@@ -227,7 +227,7 @@ export default function DashboardPage() {
       <div className="pax-content">
         {/* ── PROACTIVE LIVE STATUS (TripIt-Style) ── */}
         {currentTrip && (
-          <div className="mb-6">
+          <div className="section-block">
             <LiveStatusCard
               statusType={currentTrip.status === 'in_progress' ? 'driver_arriving' : 'booking_confirmed'}
               title={currentTrip.status === 'in_progress' ? 'Your ride is 4 min away' : 'Booking Confirmed'}
@@ -241,12 +241,12 @@ export default function DashboardPage() {
         )}
 
         {/* ── UNIVERSAL MULTI-TAB SEARCH BAR ── */}
-        <div className="mb-6">
+        <div className="section-block">
           <UniversalSearchBar />
         </div>
 
         {/* ── AIRBNB-STYLE CATEGORY RAIL ── */}
-        <div className="mb-8">
+        <div className="section-block">
           <div className="quick-actions-grid">
             {[
               { label: 'Cabs & Cars', icon: '🚗', path: '/vehicles' },
